@@ -1,0 +1,336 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  # The cluster name.
+  name: {{ include "ignite.fullname" . }}-cluster
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ignite.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "ignite.fullname" . }}-svc-headless
+  replicas: {{ .Values.replicaCount }}
+  {{- if .Values.podManagementPolicy }}
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
+  {{- end }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.updateStrategy.rollingUpdate }}
+    rollingUpdate: {{- toYaml .Values.updateStrategy.rollingUpdate | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.podLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        {{- if .Values.jmx.enabled }}
+        checksum/jmx-config: {{ include (print $.Template.BasePath "/config-map-jmx.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with (include "ignite.podAnnotations" .) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        {{- toYaml (omit .Values.podSecurityContext "enabled") | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if or .Values.extraInitContainers .Values.jmx.enabled }}
+      initContainers:
+        {{- if .Values.extraInitContainers }}
+        {{- toYaml .Values.extraInitContainers | nindent 8 }}
+        {{- end }}
+        {{- if .Values.jmx.enabled }}
+        - name: jmx-agent-init
+          image: {{ include "ignite.jmxAgent.image" . }}
+          imagePullPolicy: {{ .Values.jmx.agent.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.jmx.agent.resources | nindent 12 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              wget -q -O /agent/jmx.jar \
+                https://github.com/prometheus/jmx_exporter/releases/download/1.3.0/jmx_prometheus_javaagent-1.3.0.jar
+          volumeMounts:
+            - name: jmx-agent
+              mountPath: /agent
+        {{- end }}
+      {{- end }}
+      containers:
+        {{- if .Values.extraContainers }}
+        {{- toYaml .Values.extraContainers | nindent 8 }}
+        {{- end }}
+        # Custom pod name.
+        - name: ignite-node
+          # Limits and requests for the Ignite container.
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: JVM_MIN_MEM
+              value: "{{ default 1024 .Values.memory.onHeapMb }}M"
+            - name: JVM_MAX_MEM
+              value: "{{ default 1024 .Values.memory.onHeapMb }}M"
+            - name: JVM_GCL
+              value: "G1GC"
+            - name: JVM_G1HeapRegionSize
+              value: "{{ default 1 .Values.memory.g1HeapRegionSizeMb }}M"
+            # Must be specified to ensure that Ignite 3 cluster replicas are visible to each other.
+            - name: IGNITE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if .Values.persistence.enabled }}
+            # Ignite 3 working directory.
+            - name: IGNITE_WORK_DIR
+              value: /persistence
+            {{- end }}
+            - name: IGNITE3_EXTRA_JVM_ARGS
+              value: >-
+                -server
+                -XX:+AlwaysActAsServerClassMachine
+                -XX:+UseContainerSupport
+                -XX:+AlwaysPreTouch
+                -XX:MaxGCPauseMillis=200
+                -XX:+ExplicitGCInvokesConcurrent
+                -XX:+UseStringDeduplication
+                -XX:+ParallelRefProcEnabled
+                -XX:-OmitStackTraceInFastThrow
+                -XX:+ExitOnOutOfMemoryError
+                -XX:+HeapDumpOnOutOfMemoryError
+                -XX:HeapDumpPath=/tmp/heapdump.hprof
+                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMb }}M
+                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMb }}M
+                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMb is required!" .Values.memory.maxDirectMemorySizeMb }}M
+                {{- if .Values.jmx.enabled }}
+                -javaagent:/agent/jmx.jar={{ .Values.jmx.port }}:/opt/jmx/jmx.yaml
+                {{- end }}
+                -Djava.net.preferIPv4Stack=true
+                {{ .Values.env.EXTRA_JVM_OPTS }}
+            #region For the Ignite 3 HOCON configurations environment variables substitutions (e.g., password=${?IGNITE_USER_PASSWORD}).
+            - name: IGNITE_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-auth
+                  key: ignite-user-password
+                  optional: true
+            - name: CLIENT_CONNECTOR_KS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: client-connector-ks-pass
+                  optional: true
+            - name: CLIENT_CONNECTOR_TS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: client-connector-ts-pass
+                  optional: true
+            - name: NETWORK_KS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: network-ks-pass
+                  optional: true
+            - name: NETWORK_TS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: network-ts-pass
+                  optional: true
+            - name: REST_KS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: rest-ks-pass
+                  optional: true
+            - name: REST_TS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: rest-ts-pass
+                  optional: true
+            #endregion
+            {{- range $name, $value := .Values.env }}
+            - name: "{{ $name }}"
+              value: "{{ $value }}"
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- toYaml .Values.extraEnvVars | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvFrom .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvFrom }}
+            {{- toYaml .Values.extraEnvFrom | nindent 12 }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsCM }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+            {{- end }}
+          {{- end }}
+          # Ignite 3 Docker image and it's version.
+          image: {{ include "ignite.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- toYaml (omit .Values.containerSecurityContext "enabled") | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: management
+              containerPort: {{ .Values.container.ports.management }}
+              protocol: TCP
+            - name: management-ssl
+              containerPort: {{ .Values.container.ports.managementSsl }}
+              protocol: TCP
+            - name: rest
+              containerPort: {{ .Values.container.ports.rest }}
+              protocol: TCP
+            - name: cluster
+              containerPort: {{ .Values.container.ports.cluster }}
+              protocol: TCP
+            {{- if .Values.jmx.enabled }}
+            - name: jmx
+              containerPort: {{ .Values.jmx.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- if .Values.startupProbe.httpGet }}
+            httpGet:
+              {{- include "common.tplvalues.render" (dict "value" .Values.startupProbe.httpGet "context" $) | nindent 14 }}
+              {{- if .Values.authentication.enabled }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
+              {{- end }}
+            {{- end }}
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- if .Values.livenessProbe.httpGet }}
+            httpGet:
+              {{- include "common.tplvalues.render" (dict "value" .Values.livenessProbe.httpGet "context" $) | nindent 14 }}
+              {{- if .Values.authentication.enabled }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
+              {{- end }}
+            {{- end }}
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- if .Values.readinessProbe.httpGet }}
+            httpGet:
+              {{- include "common.tplvalues.render" (dict "value" .Values.readinessProbe.httpGet "context" $) | nindent 14 }}
+              {{- if .Values.authentication.enabled }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
+              {{- end }}
+            {{- end }}
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            # The config will be placed at this path in the container.
+            - mountPath: /opt/ignite/etc/ignite-config.conf
+              name: config-map-vol
+              subPath: ignite-config.conf
+            {{- if .Values.persistence.enabled }}
+            - mountPath: /persistence
+              name: persistence
+            {{- end }}
+            {{- if .Values.jmx.enabled }}
+            - name: jmx-agent
+              mountPath: /agent
+            - name: jmx-config-map-vol
+              mountPath: /opt/jmx/jmx.yaml
+              subPath: jmx.yaml
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config-map-vol
+          configMap:
+            name: {{ include "ignite.fullname" . }}
+        {{- if .Values.jmx.enabled }}
+        - name: jmx-agent
+          emptyDir: { }
+        - name: jmx-config-map-vol
+          configMap:
+            name: {{ include "ignite.fullname" . }}-jmx
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: persistence
+        {{- if .Values.persistence.labels }}
+        labels:
+          {{- toYaml .Values.persistence.labels | nindent 10 }}
+        {{- end }}
+        {{- if .Values.persistence.annotations }}
+        annotations:
+          {{- toYaml .Values.persistence.annotations | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+  {{- if .Values.persistence.persistentVolumeClaimRetentionPolicy.enabled }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.persistence.persistentVolumeClaimRetentionPolicy.whenDeleted }}
+    whenScaled: {{ .Values.persistence.persistentVolumeClaimRetentionPolicy.whenScaled }}
+  {{- end }}
+  {{- end }}

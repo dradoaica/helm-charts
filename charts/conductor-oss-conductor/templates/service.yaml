@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "conductor-oss-conductor.fullname" . }}
+  labels:
+    {{- include "conductor-oss-conductor.labels" . | nindent 4 }}
+  {{- with (include "conductor-oss-conductor.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: rest
+      port: {{ .Values.service.ports.rest }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.rest }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePorts.rest }}
+      nodePort: {{ .Values.service.nodePorts.rest }}
+      {{- end }}
+    - name: ui
+      port: {{ .Values.service.ports.ui }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.ui }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePorts.ui }}
+      nodePort: {{ .Values.service.nodePorts.ui }}
+      {{- end }}
+    {{- if .Values.grpcServer.enabled }}
+    - name: grpc
+      port: {{ .Values.grpcServer.port }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.grpc }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePorts.grpc }}
+      nodePort: {{ .Values.service.nodePorts.grpc }}
+      {{- end }}
+    {{- end }}
+  selector:
+    {{- include "conductor-oss-conductor.selectorLabels" . | nindent 4 }}

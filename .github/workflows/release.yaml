@@ -1,0 +1,55 @@
+name: Release Charts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    permissions:
+      contents: write # to push chart release and create a release (helm/chart-releaser-action)
+      packages: write # to push OCI chart to GHCR
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.19.4
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_GENERATE_RELEASE_NOTES: true
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push OCI charts to GHCR
+        run: |
+          # the chart-releaser action stores packaged charts in .cr-release-packages by default
+          if [ -d ".cr-release-packages" ]; then
+            for pkg in .cr-release-packages/*.tgz; do
+              if [ -z "${pkg}" ]; then continue; fi
+              echo "Pushing ${pkg}..."
+              helm push "${pkg}" oci://ghcr.io/${{ github.repository_owner }}/charts
+            done
+          else
+            echo "No new charts to push."
+          fi

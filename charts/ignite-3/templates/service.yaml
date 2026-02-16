@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ignite.fullname" . }}
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: management
+      port: {{ .Values.service.ports.management }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.management }}
+    - name: management-ssl
+      port: {{ .Values.service.ports.managementSsl }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.managementSsl }}
+    - name: rest
+      port: {{ .Values.service.ports.rest }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.rest }}
+    - name: cluster
+      port: {{ .Values.service.ports.cluster }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.cluster }}
+    {{- if .Values.jmx.enabled }}
+    - name: jmx
+      port: {{ .Values.service.ports.jmx }}
+      protocol: TCP
+      targetPort: {{ .Values.jmx.port }}
+    {{- end }}
+  selector:
+    {{- include "ignite.selectorLabels" . | nindent 4 }}
+  sessionAffinity: None

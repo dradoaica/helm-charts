@@ -1,0 +1,25 @@
+apiVersion: v2
+appVersion: "2.17.0"
+description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
+name: aspnetcore-ignite-server
+type: application
+version: 2.17.0
+keywords:
+  - ignite
+  - csharp
+  - dotnet
+  - aspnetcore
+  - datagrid
+  - caching
+  - distributed
+  - key-value
+  - nosql
+home: https://github.com/dradoaica/AspNetCore.Ignite/
+icon: https://ignite.apache.org/img/logo.svg
+sources:
+  - https://github.com/dradoaica/AspNetCore.Ignite/
+maintainers:
+  - name: dradoaica
+    email: dradoaica@gmail.com
+    url: https://dradoaica.blogspot.com/
+kubeVersion: ">= 1.26.0"

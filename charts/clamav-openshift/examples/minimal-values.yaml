@@ -1,0 +1,7 @@
+# Minimal values for ClamAV OpenShift
+# Use this for development, testing, or resource-constrained environments
+#
+# Install with:
+#   helm install clamav ./charts/clamav-openshift -f ./charts/clamav-openshift/examples/minimal-values.yaml
+
+replicaCount: 1

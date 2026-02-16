@@ -1,0 +1,7 @@
+# Minimal values for Apache Ignite 3
+# Use this for development, testing, or resource-constrained environments
+#
+# Install with:
+#   helm install ignite-3 ./charts/ignite-3 -f ./charts/ignite-3/examples/minimal-values.yaml
+
+replicaCount: 1

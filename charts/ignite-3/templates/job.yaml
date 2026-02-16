@@ -1,0 +1,213 @@
+{{- if and .Values.persistence.enabled .Values.initializationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ignite.fullname" . }}-cluster-init
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "0"
+    {{- with (include "ignite.annotations" .) }}
+    {{- . | nindent 4 }}
+    {{- end }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-init
+      {{- with (include "ignite.podAnnotations" .) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 120
+      serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      containers:
+        - name: cluster-init
+          # Specify the Docker image with the Ignite 3 CLI and its version.
+          image: {{ include "ignite.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+          # Command to init the cluster. URL and host must be the name of the service you created before. Port is the management port from values.
+          args:
+            - -c
+            - |
+              export JDK_JAVA_OPTIONS="--add-opens=java.base/java.lang=ALL-UNNAMED \
+              --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
+              --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+              --add-opens=java.base/java.io=ALL-UNNAMED \
+              --add-opens=java.base/java.nio=ALL-UNNAMED \
+              --add-opens=java.base/java.math=ALL-UNNAMED \
+              --add-opens=java.base/java.util=ALL-UNNAMED \
+              --add-opens=java.base/java.time=ALL-UNNAMED \
+              --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED \
+              --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+              --add-opens=java.base/sun.security.x509=ALL-UNNAMED"
+
+              CLUSTER_URL="http://{{ include "ignite.fullname" . }}-svc-headless:{{ .Values.service.ports.management }}"
+              DEFAULT_USER="ignite"
+              DEFAULT_PASSWORD="${IGNITE_USER_PASSWORD:-ignite}"
+
+              /opt/ignite3cli/bin/ignite3 cli config set ignite.cluster-endpoint-url="$CLUSTER_URL"
+              /opt/ignite3cli/bin/ignite3 cli config set ignite.auth.basic.username="$DEFAULT_USER"
+              /opt/ignite3cli/bin/ignite3 cli config set ignite.auth.basic.password="$DEFAULT_PASSWORD"
+
+              REPLICA_COUNT={{ .Values.replicaCount }}
+              for i in $(seq 0 $((REPLICA_COUNT - 1))); do
+                POD_URL="http://{{ include "ignite.fullname" . }}-cluster-$i.{{ include "ignite.fullname" . }}-svc-headless.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.ports.management }}"
+                echo "[INFO] Waiting for the Ignite pod $i ($POD_URL) to be ready..."
+                while true; do
+                  STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 node status --url=$POD_URL 2>&1)
+                  EXIT_CODE=$?
+                  echo "[INFO] Node $i status response: $STATUS_RESPONSE"
+                  if [ $EXIT_CODE -eq 0 ]; then
+                    echo "[INFO] The Ignite pod $i is ready"
+                    break
+                  fi
+
+                  echo "[WARNING] The Ignite pod $i is not ready. Retrying in 5s..."
+                  sleep 5
+                done
+              done
+
+              echo "[INFO] Checking the Ignite cluster state..."
+              STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 cluster status --url=$CLUSTER_URL 2>&1)
+              EXIT_CODE=$?
+              if [ $EXIT_CODE -eq 0 ] && echo "$STATUS_RESPONSE" | grep -q 'status: active'; then
+                echo "[INFO] The Ignite cluster is already active"
+                exit 0
+              fi
+
+              echo "[INFO] Waiting for the last Ignite pod to be ready in the physical cluster topology..."
+              MAX_RETRIES=30
+              for i in $(seq 1 $MAX_RETRIES); do
+                if /opt/ignite3cli/bin/ignite3 cluster topology physical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
+                  echo "[INFO] All Ignite pods are ready in the physical cluster topology"
+                  break
+                fi
+
+                echo "[WARNING] Waiting for the last Ignite pod to be ready in the physical cluster topology ($i/$MAX_RETRIES)..."
+                if [ $i -lt $MAX_RETRIES ]; then
+                  sleep 5
+                else
+                  echo "[ERROR] Not all Ignite pods appeared in the physical cluster topology within $MAX_RETRIES retries"
+                  exit 1
+                fi
+              done
+
+              # Calculate CMG and meta storage group sizes according to Ignite recommendations
+              if [ $REPLICA_COUNT -le 3 ]; then
+                # For clusters ≤3 nodes: all nodes are used for both CMG and meta storage
+                CMG_SIZE=$REPLICA_COUNT
+              elif [ $REPLICA_COUNT -eq 4 ]; then
+                # For clusters =4 nodes: three nodes are used (to maintain odd number)
+                CMG_SIZE=3
+              else
+                # For clusters ≥5 nodes: five nodes are used (to balance fault tolerance and overhead)
+                CMG_SIZE=5
+              fi
+
+              # Build CMG node list (first N nodes)
+              CMG_NODES=""
+              for i in $(seq 0 $((CMG_SIZE-1))); do
+                if [ -n "$CMG_NODES" ]; then
+                  CMG_NODES="$CMG_NODES,{{ include "ignite.fullname" . }}-cluster-$i"
+                else
+                  CMG_NODES="{{ include "ignite.fullname" . }}-cluster-$i"
+                fi
+              done
+
+              # Log the approach being used
+              echo "[INFO] Using StatefulSet naming pattern for cluster initialization. Initializing the Ignite cluster..."
+              echo "[INFO] Replica count: $REPLICA_COUNT"
+              echo "[INFO] CMG size: $CMG_SIZE"
+              echo "[INFO] CMG nodes: $CMG_NODES"
+              INIT_RES=$(/opt/ignite3cli/bin/ignite3 cluster init --name={{ include "ignite.fullname" . }} --metastorage-group $CMG_NODES --url=$CLUSTER_URL --config-files=/cluster-config.conf 2>&1)
+              EXIT_CODE=$?
+              if [ $EXIT_CODE -ne 0 ]; then
+                echo "[ERROR] Failed to initialize the cluster (exit code $EXIT_CODE): $INIT_RES"
+                exit 1
+              fi
+
+              echo "[INFO] Cluster initialization response: $INIT_RES"
+
+              echo "[INFO] Waiting for the last Ignite pod to be ready in the logical cluster topology..."
+              for i in $(seq 1 $MAX_RETRIES); do
+                if /opt/ignite3cli/bin/ignite3 cluster topology logical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
+                  echo "[INFO] All Ignite pods are ready in the logical cluster topology"
+                  break
+                fi
+
+                echo "[WARNING] Waiting for the last Ignite pod to be ready in the logical cluster topology ($i/$MAX_RETRIES)..."
+                if [ $i -lt $MAX_RETRIES ]; then
+                  sleep 5
+                else
+                  echo "[ERROR] Not all Ignite pods appeared in the logical cluster topology within $MAX_RETRIES retries"
+                  exit 1
+                fi
+              done
+
+              echo "[INFO] Waiting for the Ignite cluster to become active..."
+              for i in $(seq 1 $MAX_RETRIES); do
+                STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 cluster status --url=$CLUSTER_URL 2>&1)
+                EXIT_CODE=$?
+                echo "[INFO] Status response ($i/$MAX_RETRIES): $STATUS_RESPONSE"
+                if [ $EXIT_CODE -eq 0 ] && echo "$STATUS_RESPONSE" | grep -q 'status: active'; then
+                  echo "[INFO] The Ignite cluster is now active!"
+                  exit 0
+                fi
+
+                if [ $i -lt $MAX_RETRIES ]; then
+                  echo "[WARNING] The Ignite cluster is not yet active. Retrying in 5s..."
+                  sleep 5
+                fi
+              done
+
+              echo "[ERROR] The Ignite cluster did not become active within $MAX_RETRIES retries"
+              exit 1
+          resources:
+            {{- toYaml .Values.initializationJob.resources | nindent 12 }}
+          env:
+            - name: IGNITE_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-auth
+                  key: ignite-user-password
+                  optional: true
+          volumeMounts:
+            - name: config-map-vol
+              mountPath: /cluster-config.conf
+              subPath: cluster-config.conf
+      volumes:
+        - name: config-map-vol
+          configMap:
+            name: {{ include "ignite.fullname" . }}
+      restartPolicy: Never
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

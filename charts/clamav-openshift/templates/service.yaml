@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clamav-openshift.fullname" . }}
+  labels:
+    {{- include "clamav-openshift.labels" . | nindent 4 }}
+  {{- with (include "clamav-openshift.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: clamd
+      port: {{ .Values.service.ports.clamd }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.clamd }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePorts.clamd }}
+      nodePort: {{ .Values.service.nodePorts.clamd }}
+      {{- end }}
+    {{- if .Values.milter.enabled }}
+    - name: milter
+      port: {{ .Values.service.ports.milter }}
+      protocol: TCP
+      targetPort: {{ .Values.container.ports.milter }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePorts.milter }}
+      nodePort: {{ .Values.service.nodePorts.milter }}
+      {{- end }}
+    {{- end }}
+  selector:
+    {{- include "clamav-openshift.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,21 @@
+apiVersion: v2
+appVersion: "1.5.1"
+description: ClamAV is an open-source antivirus engine for detecting trojans, viruses, malware & other malicious threats. This chart deploys ClamAV as a StatefulSet with persistence support.
+name: clamav-openshift
+type: application
+version: 1.5.1
+keywords:
+  - clamav
+  - antivirus
+  - malware
+  - security
+  - scanning
+home: https://github.com/dradoaica/clamav-docker-openshift/
+icon: https://www.clamav.net/assets/clamav-trademark.png
+sources:
+  - https://github.com/dradoaica/clamav-docker-openshift/
+maintainers:
+  - name: dradoaica
+    email: dradoaica@gmail.com
+    url: https://dradoaica.blogspot.com/
+kubeVersion: ">= 1.26.0"

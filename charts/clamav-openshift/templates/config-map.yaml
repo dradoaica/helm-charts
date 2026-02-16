@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clamav-openshift.fullname" . }}
+  labels:
+    {{- include "clamav-openshift.labels" . | nindent 4 }}
+  {{- with (include "clamav-openshift.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+data:
+  # https://github.com/Cisco-Talos/clamav/blob/main/etc/clamav-milter.conf.sample
+  clamav-milter.conf: |
+    MilterSocket inet:{{ .Values.container.ports.milter }}
+    User clamav
+    Foreground yes
+    PidFile /tmp/clamav-milter.pid
+    ClamdSocket unix:/tmp/clamd.sock
+    MaxFileSize {{ .Values.milter.maxFileSize }}M
+    OnClean Accept
+    OnInfected Quarantine
+    OnFail Defer
+    LogFile /var/log/clamav/clamav-milter.log
+    LogFileMaxSize 1M
+    LogTime yes
+    LogSyslog no
+    LogVerbose yes
+    SupportMultipleRecipients yes
+  # https://github.com/Cisco-Talos/clamav/blob/main/etc/clamd.conf.sample
+  clamd.conf: |
+    LogFile /var/log/clamav/clamd.log
+    LogFileMaxSize 1M
+    LogTime yes
+    LogClean yes
+    LogSyslog no
+    LogVerbose yes
+    PidFile /tmp/clamd.pid
+    DatabaseDirectory /var/lib/clamav
+    LocalSocket /tmp/clamd.sock
+    TCPSocket {{ .Values.container.ports.clamd }}
+    MaxConnectionQueueLength {{ .Values.clamd.maxConnectionQueueLength }}
+    StreamMaxLength {{ .Values.clamd.streamMaxLength }}M
+    MaxThreads {{ .Values.clamd.maxThreads }}
+    MaxQueue {{ .Values.clamd.maxQueue }}
+    SendBufTimeout {{ .Values.clamd.sendBufTimeout }}
+    User clamav
+    ExitOnOOM yes
+    Foreground yes
+    MaxScanSize {{ .Values.clamd.maxScanSize }}M
+    MaxFileSize {{ .Values.clamd.maxFileSize }}M
+  # https://github.com/Cisco-Talos/clamav/blob/main/etc/freshclam.conf.sample
+  freshclam.conf: |
+    DatabaseDirectory /var/lib/clamav
+    UpdateLogFile /var/log/clamav/freshclam.log
+    LogFileMaxSize 1M
+    LogTime yes
+    LogVerbose yes
+    LogSyslog no
+    PidFile /tmp/freshclam.pid
+    DatabaseOwner clamav
+    DatabaseMirror {{ .Values.freshclam.mirrors }}
+    Checks {{ .Values.freshclam.checks }}
+    {{- if .Values.freshclam.httpProxyHost }}
+    HTTPProxyServer {{ .Values.freshclam.httpProxyHost }}
+    {{- end }}
+    {{- if .Values.freshclam.httpProxyPort }}
+    HTTPProxyPort {{ .Values.freshclam.httpProxyPort }}
+    {{- end }}
+    {{- if .Values.freshclam.httpProxyUsername }}
+    HTTPProxyUsername {{ .Values.freshclam.httpProxyUsername }}
+    {{- end }}
+    {{- if .Values.freshclam.httpProxyPassword }}
+    HTTPProxyPassword {{ .Values.freshclam.httpProxyPassword }}
+    {{- end }}
+    NotifyClamd /etc/clamav/clamd.conf
+    Foreground yes

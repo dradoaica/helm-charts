@@ -1,0 +1,17 @@
+apiVersion: v2
+appVersion: "3.22.0-rc1"
+description: Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
+name: conductor-oss-conductor
+type: application
+version: 3.22.0
+keywords:
+  - conductor
+home: https://docs.conductor-oss.org/
+icon: https://docs.conductor-oss.org/home/icons/conductor.svg
+sources:
+  - https://github.com/conductor-oss/conductor
+maintainers:
+  - name: dradoaica
+    email: dradoaica@gmail.com
+    url: https://dradoaica.blogspot.com/
+kubeVersion: ">= 1.26.0"

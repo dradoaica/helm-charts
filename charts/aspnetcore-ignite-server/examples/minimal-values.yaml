@@ -1,0 +1,7 @@
+# Minimal values for ASP.NET Core Ignite Server
+# Use this for development, testing, or resource-constrained environments
+#
+# Install with:
+#   helm install ignite-server ./charts/aspnetcore-ignite-server -f ./charts/aspnetcore-ignite-server/examples/minimal-values.yaml
+
+replicaCount: 1

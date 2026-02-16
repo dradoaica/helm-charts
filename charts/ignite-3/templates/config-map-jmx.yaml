@@ -1,0 +1,15 @@
+{{- if .Values.jmx.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ignite.fullname" . }}-jmx
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+data:
+  jmx.yaml: |
+  {{- .Values.jmx.config | nindent 4 }}
+{{- end }}

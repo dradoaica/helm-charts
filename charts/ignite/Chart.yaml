@@ -1,0 +1,24 @@
+apiVersion: v2
+appVersion: "2.17.0"
+description: Apache Ignite is a distributed database for high-performance computing with in-memory speed.
+name: ignite
+type: application
+version: 2.17.0
+keywords:
+  - java
+  - datagrid
+  - caching
+  - jvm
+  - sql
+  - key-value
+  - nosql
+  - distributed
+home: https://ignite.apache.org/docs/ignite2/latest/
+icon: https://ignite.apache.org/img/logo.svg
+sources:
+  - https://github.com/apache/ignite
+maintainers:
+  - name: dradoaica
+    email: dradoaica@gmail.com
+    url: https://dradoaica.blogspot.com/
+kubeVersion: ">= 1.26.0"

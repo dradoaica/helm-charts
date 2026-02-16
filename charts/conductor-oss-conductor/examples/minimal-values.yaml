@@ -1,0 +1,9 @@
+# Minimal values for Conductor OSS
+# Use this for development, testing, or resource-constrained environments
+#
+# NOTE: Conductor requires Redis. You must provide a Redis connection.
+#
+# Install with:
+#   helm install conductor ./charts/conductor-oss-conductor -f ./charts/conductor-oss-conductor/examples/minimal-values.yaml
+
+replicaCount: 1

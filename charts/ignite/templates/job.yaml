@@ -1,0 +1,185 @@
+{{- if and .Values.persistence.enabled .Values.activationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ignite.fullname" . }}-cluster-activate
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "0"
+    {{- with (include "ignite.annotations" .) }}
+    {{- . | nindent 4 }}
+    {{- end }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-activate
+      {{- with (include "ignite.podAnnotations" .) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 120
+      serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      containers:
+        - name: cluster-activate
+          image: {{ include "ignite.activationJob.image" . }}
+          imagePullPolicy: {{ .Values.activationJob.image.pullPolicy }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |
+              REPLICA_COUNT={{ .Values.replicaCount }}
+              for i in $(seq 0 $((REPLICA_COUNT - 1))); do
+                POD_HOST="{{ include "ignite.fullname" . }}-cluster-$i.{{ include "ignite.fullname" . }}-svc-headless.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.ports.rest }}"
+                echo "[INFO] Waiting for the Ignite pod $i ($POD_HOST) to be ready..."
+                while true; do
+                  PROBE_RESPONSE=$(curl -sS --fail "http://$POD_HOST/ignite?cmd=probe" 2>&1)
+                  EXIT_CODE=$?
+                  if [ $EXIT_CODE -eq 0 ]; then
+                    echo "[INFO] The Ignite pod $i is ready: $PROBE_RESPONSE"
+                    break
+                  fi
+
+                  echo "[WARNING] The Ignite pod $i is not ready (exit code $EXIT_CODE): $PROBE_RESPONSE. Retrying in 5s..."
+                  sleep 5
+                done
+              done
+
+              echo "[INFO] Activating the Ignite cluster..."
+              CLUSTER_HOST="{{ include "ignite.fullname" . }}-svc-headless:{{ .Values.service.ports.rest }}"
+              DEFAULT_USER="ignite"
+              DEFAULT_PASSWORD="ignite"
+              NEW_PASSWORD="${IGNITE_USER_PASSWORD:-}"
+
+              CURRENT_PASSWORD=$DEFAULT_PASSWORD
+              if [ -n "$NEW_PASSWORD" ]; then
+                echo "[INFO] Checking if the Ignite cluster is reachable with the new password..."
+                STATE_RESPONSE=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=state&ignite.login=$DEFAULT_USER&ignite.password=$NEW_PASSWORD" 2>&1)
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0'; then
+                  echo "[INFO] Authenticated successfully with the new password"
+                  CURRENT_PASSWORD=$NEW_PASSWORD
+                  PASSWORD_ALREADY_CHANGED=true
+                else
+                  echo "[INFO] Could not authenticate with the new password. Attempting with the default password..."
+                  PASSWORD_ALREADY_CHANGED=false
+                fi
+              fi
+
+              echo "[INFO] Checking the Ignite cluster state..."
+              STATE_RESPONSE=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=state&ignite.login=$DEFAULT_USER&ignite.password=$CURRENT_PASSWORD" 2>&1)
+              EXIT_CODE=$?
+              if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
+                echo "[INFO] The Ignite cluster is already ACTIVE"
+                exit 0
+              else
+                echo "[INFO] The Ignite cluster is not active. Activating..."
+                ACTIVATION_RES=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=setstate&state=ACTIVE&ignite.login=$DEFAULT_USER&ignite.password=$CURRENT_PASSWORD" 2>&1)
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -ne 0 ] || ! echo "$ACTIVATION_RES" | grep -q '"successStatus".*0'; then
+                  echo "[ERROR] Failed to activate the Ignite cluster (exit code $EXIT_CODE): $ACTIVATION_RES"
+                  exit 1
+                fi
+
+                echo "[INFO] Activation response: $ACTIVATION_RES"
+              fi
+
+              echo "[INFO] Ensuring the Ignite cluster is fully ACTIVE..."
+              MAX_RETRIES=30
+              for i in $(seq 1 $MAX_RETRIES); do
+                STATE_RESPONSE=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=state&ignite.login=$DEFAULT_USER&ignite.password=$CURRENT_PASSWORD" 2>&1)
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
+                  echo "[INFO] The Ignite cluster is now ACTIVE!"
+
+                  if [ -n "$NEW_PASSWORD" ]; then
+                    if [ "$PASSWORD_ALREADY_CHANGED" = "false" ]; then
+                      echo "[INFO] Setting the new password for '$DEFAULT_USER' user..."
+                      TMP_CACHE="alterUserSqlDdlCommand"
+                      echo "[INFO] Creating the temporary cache '$TMP_CACHE'..."
+                      CACHE_CREATE_RES=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=getorcreate&cacheName=$TMP_CACHE&ignite.login=$DEFAULT_USER&ignite.password=$DEFAULT_PASSWORD" 2>&1)
+                      EXIT_CODE=$?
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_CREATE_RES" | grep -q '"successStatus".*0'; then
+                        echo "[ERROR] Failed to create the temporary cache '$TMP_CACHE': $CACHE_CREATE_RES"
+                        exit 1
+                      fi
+
+                      echo "[INFO] Executing the 'ALTER USER' SQL DDL command..."
+                      ALTER_USER_RES=$(curl -sS -G "http://$CLUSTER_HOST/ignite" \
+                        --data-urlencode "cmd=qryfldexe" \
+                        --data-urlencode "pageSize=1" \
+                        --data-urlencode "cacheName=$TMP_CACHE" \
+                        --data-urlencode "qry=ALTER USER \"$DEFAULT_USER\" WITH PASSWORD '$NEW_PASSWORD';" \
+                        --data-urlencode "ignite.login=$DEFAULT_USER" \
+                        --data-urlencode "ignite.password=$DEFAULT_PASSWORD" 2>&1)
+                      EXIT_CODE=$?
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$ALTER_USER_RES" | grep -q '"successStatus".*0'; then
+                        echo "[ERROR] Failed to execute ALTER USER command: $ALTER_USER_RES"
+                        exit 1
+                      fi
+
+                      echo "[INFO] Destroying the temporary cache '$TMP_CACHE'..."
+                      CACHE_DEST_RES=$(curl -sS "http://$CLUSTER_HOST/ignite?cmd=destcache&cacheName=$TMP_CACHE&ignite.login=$DEFAULT_USER&ignite.password=$NEW_PASSWORD" 2>&1)
+                      EXIT_CODE=$?
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_DEST_RES" | grep -q '"successStatus".*0'; then
+                        echo "[ERROR] Failed to destroy the temporary cache '$TMP_CACHE': $CACHE_DEST_RES"
+                        exit 1
+                      fi
+
+                      echo "[INFO] The password was changed successfully."
+                    else
+                      echo "[INFO] The password already matches the specified one. Skipping password update..."
+                    fi
+                  fi
+
+                  exit 0
+                fi
+
+                if [ $i -lt $MAX_RETRIES ]; then
+                  echo "[WARNING] Waiting for the Ignite cluster to become ACTIVE ($i/$MAX_RETRIES). Retrying in 5s..."
+                  sleep 5
+                fi
+              done
+
+              echo "[ERROR] The Ignite cluster did not become ACTIVE within $MAX_RETRIES retries"
+              exit 1
+          resources:
+            {{- toYaml .Values.activationJob.resources | nindent 12 }}
+          env:
+            - name: IGNITE_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-auth
+                  key: ignite-user-password
+                  optional: true
+      restartPolicy: Never
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "aspnetcore-ignite-server.fullname" . }}-test-connection
+  labels:
+    {{- include "aspnetcore-ignite-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  {{- with .Values.global.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  containers:
+    - name: wget
+      image: docker.io/busybox:1.36
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1001
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Testing connection to {{ include "aspnetcore-ignite-server.fullname" . }}:{{ .Values.service.ports.rest }}..."
+          wget --spider --timeout=10 "http://{{ include "aspnetcore-ignite-server.fullname" . }}:{{ .Values.service.ports.rest }}/ignite?cmd=version"
+          exit_code=$?
+          if [ $exit_code -eq 0 ]; then
+            echo "Connection test PASSED"
+          else
+            echo "Connection test FAILED"
+          fi
+          exit $exit_code
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

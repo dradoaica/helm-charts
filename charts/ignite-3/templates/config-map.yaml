@@ -1,0 +1,220 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ignite.fullname" . }}
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+data:
+  cluster-config.conf: |
+    ignite {
+      security {
+        enabled:{{ .Values.authentication.enabled }}
+        authentication {
+          providers=[
+            {
+              name=default
+              type=basic
+              users=[
+                {
+                  password="{{ .Values.authentication.igniteUserPassword | default "ignite" }}"
+                  username=ignite
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ignite-config.conf: |
+    ignite {
+        clientConnector {
+            connectTimeoutMillis=5000
+            idleTimeoutMillis=0
+            listenAddresses=[]
+            metricsEnabled=true
+            port={{ .Values.container.ports.rest }}
+            sendServerExceptionStackTraceToClient=false
+            ssl {
+                ciphers="{{ .Values.ssl.clientConnector.ciphers }}"
+                clientAuth={{ .Values.ssl.clientConnector.clientAuth }}
+                enabled={{ .Values.ssl.clientConnector.enabled }}
+                keyStore {
+                    password="{{ .Values.ssl.clientConnector.keyStorePassword }}"
+                    path="{{ .Values.ssl.clientConnector.keyStoreFilePath }}"
+                    type="{{ .Values.ssl.clientConnector.keyStoreType }}"
+                }
+                trustStore {
+                    password="{{ .Values.ssl.clientConnector.trustStorePassword }}"
+                    path="{{ .Values.ssl.clientConnector.trustStoreFilePath }}"
+                    type="{{ .Values.ssl.clientConnector.trustStoreType }}"
+                }
+            }
+        }
+        compute {
+            queueMaxSize=2147483647
+            statesLifetimeMillis=60000
+            threadPoolSize=10
+        }
+        deployment {
+            location=deployment
+        }
+        failureHandler {
+            dumpThreadsOnFailure=true
+            dumpThreadsThrottlingTimeoutMillis=10000
+            handler {
+                ignoredFailureTypes=[
+                    systemWorkerBlocked,
+                    systemCriticalOperationTimeout
+                ]
+                type=noop
+            }
+            oomBufferSizeBytes=16384
+        }
+        network {
+            fileTransfer {
+                chunkSizeBytes=1048576
+                maxConcurrentRequests=4
+                responseTimeoutMillis=10000
+                threadPoolSize=8
+            }
+            inbound {
+                soBacklog=128
+                soKeepAlive=true
+                soLinger=0
+                soReuseAddr=true
+                tcpNoDelay=true
+            }
+            listenAddresses=[]
+            membership {
+                failurePingIntervalMillis=1000
+                membershipSyncIntervalMillis=30000
+                scaleCube {
+                    failurePingRequestMembers=3
+                    gossipIntervalMillis=200
+                    gossipRepeatMult=3
+                    membershipSuspicionMultiplier=5
+                    metadataTimeoutMillis=3000
+                }
+            }
+            nodeFinder {
+                netClusterNodes=[
+                  # Kubernetes service to access the Ignite 3 cluster on the Kubernetes network
+                  "{{ include "ignite.fullname" . }}-svc-headless:{{ .Values.container.ports.cluster }}"
+                ]
+                type=STATIC
+            }
+            outbound {
+                soKeepAlive=true
+                soLinger=0
+                tcpNoDelay=true
+            }
+            port={{ .Values.container.ports.cluster }}
+            shutdownQuietPeriodMillis=0
+            shutdownTimeoutMillis=15000
+            ssl {
+                ciphers="{{ .Values.ssl.network.ciphers }}"
+                clientAuth={{ .Values.ssl.network.clientAuth }}
+                enabled={{ .Values.ssl.network.enabled }}
+                keyStore {
+                    password="{{ .Values.ssl.network.keyStorePassword }}"
+                    path="{{ .Values.ssl.network.keyStoreFilePath }}"
+                    type="{{ .Values.ssl.network.keyStoreType }}"
+                }
+                trustStore {
+                    password="{{ .Values.ssl.network.trustStorePassword }}"
+                    path="{{ .Values.ssl.network.trustStoreFilePath }}"
+                    type="{{ .Values.ssl.network.trustStoreType }}"
+                }
+            }
+        }
+        raft {
+            fsync=false
+            installSnapshotTimeoutMillis=2147483647
+            logStripesCount=4
+            logYieldStrategy=false
+            responseTimeoutMillis=3000
+            retryDelayMillis=200
+            retryTimeoutMillis=10000
+            stripes=10
+            volatileRaft {
+                logStorageBudget {
+                    name=unlimited
+                }
+            }
+        }
+        rest {
+            dualProtocol={{ .Values.ssl.rest.enabled }}
+            httpToHttpsRedirection=false
+            port={{ .Values.container.ports.management }}
+            ssl {
+                ciphers="{{ .Values.ssl.rest.ciphers }}"
+                clientAuth={{ .Values.ssl.rest.clientAuth }}
+                enabled={{ .Values.ssl.rest.enabled }}
+                keyStore {
+                    password="{{ .Values.ssl.rest.keyStorePassword }}"
+                    path="{{ .Values.ssl.rest.keyStoreFilePath }}"
+                    type="{{ .Values.ssl.rest.keyStoreType }}"
+                }
+                port={{ .Values.container.ports.managementSsl }}
+                trustStore {
+                    password="{{ .Values.ssl.rest.trustStorePassword }}"
+                    path="{{ .Values.ssl.rest.trustStoreFilePath }}"
+                    type="{{ .Values.ssl.rest.trustStoreType }}"
+                }
+            }
+        }
+        sql {
+            execution {
+                threadCount=4
+            }
+            planner {
+                threadCount=4
+            }
+        }
+        storage {
+            engines {
+                aimem {
+                    pageSizeBytes=16384
+                }
+                aipersist {
+                    checkpoint {
+                        checkpointDelayMillis=200
+                        checkpointThreads=4
+                        compactionThreads=4
+                        intervalDeviationPercent=40
+                        intervalMillis=180000
+                        logReadLockThresholdTimeoutMillis=0
+                        readLockTimeoutMillis=10000
+                        useAsyncFileIoFactory=true
+                    }
+                    pageSizeBytes=16384
+                }
+                rocksdb {
+                    flushDelayMillis=100
+                }
+            }
+            profiles=[
+                {
+                    engine={{ .Values.dataStorage.engine }}
+                    name=default
+                    replacementMode=CLOCK
+                    sizeBytes={{ mul (required "A valid memory.offHeapMb is required!" .Values.memory.offHeapMb) 1024 1024 }}
+                }
+            ]
+        }
+        system {
+            cmgPath=""
+            criticalWorkers {
+                livenessCheckIntervalMillis=200
+                maxAllowedLagMillis=500
+                nettyThreadsHeartbeatIntervalMillis=100
+            }
+            metastoragePath=""
+            partitionsBasePath=""
+            partitionsLogPath=""
+        }
+    }

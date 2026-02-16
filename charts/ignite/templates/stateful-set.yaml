@@ -1,0 +1,262 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ignite.fullname" . }}-cluster
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ignite.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "ignite.fullname" . }}-svc-headless
+  replicas: {{ .Values.replicaCount }}
+  {{- if .Values.podManagementPolicy }}
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
+  {{- end }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.updateStrategy.rollingUpdate }}
+    rollingUpdate: {{- toYaml .Values.updateStrategy.rollingUpdate | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.podLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        {{- with (include "ignite.podAnnotations" .) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        {{- toYaml (omit .Values.podSecurityContext "enabled") | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.extraInitContainers }}
+      initContainers:
+        {{- toYaml .Values.extraInitContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if .Values.extraContainers }}
+        {{- toYaml .Values.extraContainers | nindent 8 }}
+        {{- end }}
+        - name: ignite-node
+          image: {{ include "ignite.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- toYaml (omit .Values.containerSecurityContext "enabled") | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: JVM_OPTS
+              value: >-
+                -server
+                -XX:+AlwaysActAsServerClassMachine
+                -XX:+UseContainerSupport
+                -XX:+AlwaysPreTouch
+                -XX:+UseG1GC
+                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMb }}M
+                -XX:MaxGCPauseMillis=200
+                -XX:+ExplicitGCInvokesConcurrent
+                -XX:+UseStringDeduplication
+                -XX:+ParallelRefProcEnabled
+                -XX:-OmitStackTraceInFastThrow
+                -XX:+ExitOnOutOfMemoryError
+                -XX:+HeapDumpOnOutOfMemoryError
+                -XX:HeapDumpPath=/tmp/heapdump.hprof
+                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMb }}M
+                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMb }}M
+                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMb is required!" .Values.memory.maxDirectMemorySizeMb }}M
+                -Xms{{ default 1024 .Values.memory.onHeapMb }}M
+                -Xmx{{ default 1024 .Values.memory.onHeapMb }}M
+                -Djava.net.preferIPv4Stack=true
+                {{ .Values.env.EXTRA_JVM_OPTS }}
+            - name: OPTION_LIBS
+              value: "ignite-kubernetes,ignite-rest-http,ignite-json,ignite-log4j2,ignite-opencensus{{- if .Values.env.EXTRA_OPTION_LIBS }},{{ .Values.env.EXTRA_OPTION_LIBS }}{{- end }}"
+            - name: CONFIG_URI
+              value: file:///opt/ignite/apache-ignite/config/ignite-config.xml
+            # Must be specified to ensure that Ignite cluster replicas are visible to each other.
+            - name: IGNITE_OVERRIDE_CONSISTENT_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # Set to false to disable the quiet mode and enable the verbose mode.
+            - name: IGNITE_QUIET
+              value: 'false'
+            # Set to false to switch off the memory-mapped file approach for WAL in LOG_ONLY mode.
+            - name: IGNITE_WAL_MMAP
+              value: 'false'
+            #region For the Ignite XML configurations environment variables substitutions (e.g., <property name="keyStorePassword" value="${IGNITE_SSL_KS_PASS}"/>).
+            - name: IGNITE_SSL_KS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: ignite-ssl-ks-pass
+                  optional: true
+            - name: IGNITE_SSL_TS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ignite.fullname" . }}-ssl
+                  key: ignite-ssl-ts-pass
+                  optional: true
+            #endregion
+            {{- range $name, $value := .Values.env }}
+            - name: "{{ $name }}"
+              value: "{{ $value }}"
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- toYaml .Values.extraEnvVars | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvFrom .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvFrom }}
+            {{- toYaml .Values.extraEnvFrom | nindent 12 }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsCM }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: jdbc
+              containerPort: {{ .Values.container.ports.jdbc }}
+              protocol: TCP
+            - name: spi-comm
+              containerPort: {{ .Values.container.ports.spiCommunication }}
+              protocol: TCP
+            - name: spi-discovery
+              containerPort: {{ .Values.container.ports.spiDiscovery }}
+              protocol: TCP
+            - name: jmx
+              containerPort: {{ .Values.container.ports.jmx }}
+              protocol: TCP
+            - name: sql
+              containerPort: {{ .Values.container.ports.sql }}
+              protocol: TCP
+            - name: rest
+              containerPort: {{ .Values.container.ports.rest }}
+              protocol: TCP
+            - name: thin-clients
+              containerPort: {{ .Values.container.ports.thinClients }}
+              protocol: TCP
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - mountPath: "/storage"
+              name: storage
+            - mountPath: "/wal"
+              name: wal
+            {{- end }}
+            - name: config-volume
+              mountPath: /opt/ignite/apache-ignite/config/ignite-config.xml
+              subPath: ignite-config.xml
+            - name: config-volume
+              mountPath: /opt/ignite/apache-ignite/config/log4j2-config.xml
+              subPath: log4j2-config.xml
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "ignite.fullname" . }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+        {{- if .Values.persistence.storageVolume.labels }}
+        labels:
+          {{- toYaml .Values.persistence.storageVolume.labels | nindent 10 }}
+        {{- end }}
+        {{- if .Values.persistence.storageVolume.annotations }}
+        annotations:
+          {{- toYaml .Values.persistence.storageVolume.annotations | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+        {{- toYaml .Values.persistence.storageVolume.accessModes | nindent 10 }}
+        {{- if .Values.persistence.storageVolume.storageClass }}
+        storageClassName: {{ .Values.persistence.storageVolume.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.storageVolume.size }}
+    - metadata:
+        name: wal
+        {{- if .Values.persistence.walVolume.labels }}
+        labels:
+          {{- toYaml .Values.persistence.walVolume.labels | nindent 10 }}
+        {{- end }}
+        {{- if .Values.persistence.walVolume.annotations }}
+        annotations:
+          {{- toYaml .Values.persistence.walVolume.annotations | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+        {{- toYaml .Values.persistence.walVolume.accessModes | nindent 10 }}
+        {{- if .Values.persistence.walVolume.storageClass }}
+        storageClassName: {{ .Values.persistence.walVolume.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.walVolume.size }}
+  {{- if .Values.persistence.persistentVolumeClaimRetentionPolicy.enabled }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.persistence.persistentVolumeClaimRetentionPolicy.whenDeleted }}
+    whenScaled: {{ .Values.persistence.persistentVolumeClaimRetentionPolicy.whenScaled }}
+  {{- end }}
+  {{- end }}

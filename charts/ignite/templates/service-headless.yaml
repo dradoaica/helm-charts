@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ignite.fullname" . }}-svc-headless
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+  {{- with (include "ignite.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: jdbc
+      port: {{ .Values.service.ports.jdbc }}
+      targetPort: {{ .Values.container.ports.jdbc }}
+    - name: spi-comm
+      port: {{ .Values.service.ports.spiCommunication }}
+      targetPort: {{ .Values.container.ports.spiCommunication }}
+    - name: spi-discovery
+      port: {{ .Values.service.ports.spiDiscovery }}
+      targetPort: {{ .Values.container.ports.spiDiscovery }}
+    - name: jmx
+      port: {{ .Values.service.ports.jmx }}
+      targetPort: {{ .Values.container.ports.jmx }}
+    - name: sql
+      port: {{ .Values.service.ports.sql }}
+      targetPort: {{ .Values.container.ports.sql }}
+    - name: rest
+      port: {{ .Values.service.ports.rest }}
+      targetPort: {{ .Values.container.ports.rest }}
+    - name: thin-clients
+      port: {{ .Values.service.ports.thinClients }}
+      targetPort: {{ .Values.container.ports.thinClients }}
+  selector:
+    {{- include "ignite.selectorLabels" . | nindent 4 }}
+  publishNotReadyAddresses: True
+  sessionAffinity: None
