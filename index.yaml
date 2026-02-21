@@ -61,6 +61,29 @@ entries:
     version: 1.5.1
   conductor-oss-conductor:
   - apiVersion: v2
+    appVersion: 3.22.0-beta
+    created: "2026-02-21T17:33:24.502274828Z"
+    description: Conductor OSS Conductor is a platform originally created at Netflix
+      to orchestrate workflows that span across microservices. This chart deploys
+      Conductor OSS Conductor as a Deployment.
+    digest: 29d7983ce65fc080ee311e5d007363d044dc1c4357005a8ba194edd817446518
+    home: https://docs.conductor-oss.org/
+    icon: https://docs.conductor-oss.org/home/icons/conductor.svg
+    keywords:
+    - conductor
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: conductor-oss-conductor
+    sources:
+    - https://github.com/conductor-oss/conductor
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/conductor-oss-conductor-3.22.1/conductor-oss-conductor-3.22.1.tgz
+    version: 3.22.1
+  - apiVersion: v2
     appVersion: 3.22.0-rc1
     created: "2026-02-16T18:31:36.568625271Z"
     description: Conductor OSS Conductor is a platform originally created at Netflix
@@ -84,6 +107,35 @@ entries:
     - https://github.com/dradoaica/helm-charts/releases/download/conductor-oss-conductor-3.22.0/conductor-oss-conductor-3.22.0.tgz
     version: 3.22.0
   ignite:
+  - apiVersion: v2
+    appVersion: 2.17.0
+    created: "2026-02-21T17:33:24.64634171Z"
+    description: Apache Ignite is a distributed database for high-performance computing
+      with in-memory speed.
+    digest: 6373c5ac127184156404f70d1472115d592ac85574f41f8a33bb872c6ed9f16d
+    home: https://ignite.apache.org/docs/ignite2/latest/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - java
+    - datagrid
+    - caching
+    - jvm
+    - sql
+    - key-value
+    - nosql
+    - distributed
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: ignite
+    sources:
+    - https://github.com/apache/ignite
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/ignite-2.17.1/ignite-2.17.1.tgz
+    version: 2.17.1
   - apiVersion: v2
     appVersion: 2.17.0
     created: "2026-02-16T18:31:36.725464393Z"
@@ -116,6 +168,35 @@ entries:
   ignite-3:
   - apiVersion: v2
     appVersion: 3.1.0
+    created: "2026-02-21T17:33:24.771834019Z"
+    description: Apache Ignite is a distributed database for high-performance computing
+      with in-memory speed.
+    digest: 4f5a9f3d711b4f681832f7e3e12f386ad9e0aadb36b8a28bfdaf29287f39982a
+    home: https://ignite.apache.org/docs/ignite3/latest/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - java
+    - datagrid
+    - caching
+    - jvm
+    - sql
+    - key-value
+    - nosql
+    - distributed
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: ignite-3
+    sources:
+    - https://github.com/apache/ignite-3
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.1/ignite-3-3.1.1.tgz
+    version: 3.1.1
+  - apiVersion: v2
+    appVersion: 3.1.0
     created: "2026-02-16T18:31:36.895607479Z"
     description: Apache Ignite is a distributed database for high-performance computing
       with in-memory speed.
@@ -143,4 +224,4 @@ entries:
     urls:
     - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.0/ignite-3-3.1.0.tgz
     version: 3.1.0
-generated: "2026-02-16T18:31:36.895615273Z"
+generated: "2026-02-21T17:33:24.771848937Z"
