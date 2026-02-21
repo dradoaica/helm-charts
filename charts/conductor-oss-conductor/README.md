@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.22.0](https://img.shields.io/badge/Version-3.22.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.0-rc1](https://img.shields.io/badge/AppVersion-3.22.0--rc1-informational?style=flat-square)
+![Version: 3.22.1](https://img.shields.io/badge/Version-3.22.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.0-beta](https://img.shields.io/badge/AppVersion-3.22.0--beta-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -25,37 +25,37 @@ Kubernetes: `>= 1.26.0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node affinity |
-| ai | object | `{"anthropic":{"apiKey":""},"azureopenai":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"enabled":true,"gemini":{"location":"us-central1","projectId":""},"grok":{"apiKey":""},"huggingface":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openai":{"apiKey":"","organizationId":""},"perplexity":{"apiKey":""},"stabilityai":{"apiKey":""}}` | AI configuration |
+| ai | object | `{"anthropic":{"apiKey":""},"azureOpenAI":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"enabled":true,"gemini":{"location":"us-central1","projectID":""},"grok":{"apiKey":""},"huggingFace":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openAI":{"apiKey":"","organizationID":""},"perplexity":{"apiKey":""},"stabilityAI":{"apiKey":""}}` | AI configuration |
 | ai.anthropic | object | `{"apiKey":""}` | Anthropic configuration |
 | ai.anthropic.apiKey | string | `""` | Anthropic API Key |
-| ai.azureopenai | object | `{"apiKey":"","baseUrl":"","deploymentName":""}` | Azure OpenAI configuration |
-| ai.azureopenai.apiKey | string | `""` | Azure OpenAI API Key |
-| ai.azureopenai.baseUrl | string | `""` | Azure OpenAI Base URL |
-| ai.azureopenai.deploymentName | string | `""` | Azure OpenAI Deployment Name |
+| ai.azureOpenAI | object | `{"apiKey":"","baseUrl":"","deploymentName":""}` | Azure OpenAI configuration |
+| ai.azureOpenAI.apiKey | string | `""` | Azure OpenAI API Key |
+| ai.azureOpenAI.baseUrl | string | `""` | Azure OpenAI Base URL |
+| ai.azureOpenAI.deploymentName | string | `""` | Azure OpenAI Deployment Name |
 | ai.bedrock | object | `{"accessKey":"","region":"us-east-1","secretKey":""}` | AWS Bedrock configuration |
 | ai.bedrock.accessKey | string | `""` | AWS Access Key ID |
 | ai.bedrock.region | string | `"us-east-1"` | AWS Region |
 | ai.bedrock.secretKey | string | `""` | AWS Secret Access Key |
 | ai.cohere | object | `{"apiKey":""}` | Cohere configuration |
 | ai.cohere.apiKey | string | `""` | Cohere API Key |
-| ai.gemini | object | `{"location":"us-central1","projectId":""}` | Google Gemini configuration |
+| ai.gemini | object | `{"location":"us-central1","projectID":""}` | Google Gemini configuration |
 | ai.gemini.location | string | `"us-central1"` | Google Cloud Location |
-| ai.gemini.projectId | string | `""` | Google Cloud Project ID |
+| ai.gemini.projectID | string | `""` | Google Cloud Project ID |
 | ai.grok | object | `{"apiKey":""}` | Grok configuration |
 | ai.grok.apiKey | string | `""` | Grok API Key |
-| ai.huggingface | object | `{"apiKey":""}` | HuggingFace configuration |
-| ai.huggingface.apiKey | string | `""` | HuggingFace API Key |
+| ai.huggingFace | object | `{"apiKey":""}` | HuggingFace configuration |
+| ai.huggingFace.apiKey | string | `""` | HuggingFace API Key |
 | ai.mistral | object | `{"apiKey":""}` | Mistral configuration |
 | ai.mistral.apiKey | string | `""` | Mistral API Key |
 | ai.ollama | object | `{"baseUrl":"http://localhost:11434"}` | Ollama configuration |
 | ai.ollama.baseUrl | string | `"http://localhost:11434"` | Ollama Base URL |
-| ai.openai | object | `{"apiKey":"","organizationId":""}` | OpenAI configuration |
-| ai.openai.apiKey | string | `""` | OpenAI API Key |
-| ai.openai.organizationId | string | `""` | OpenAI Organization ID |
+| ai.openAI | object | `{"apiKey":"","organizationID":""}` | OpenAI configuration |
+| ai.openAI.apiKey | string | `""` | OpenAI API Key |
+| ai.openAI.organizationID | string | `""` | OpenAI Organization ID |
 | ai.perplexity | object | `{"apiKey":""}` | Perplexity configuration |
 | ai.perplexity.apiKey | string | `""` | Perplexity API Key |
-| ai.stabilityai | object | `{"apiKey":""}` | StabilityAI configuration |
-| ai.stabilityai.apiKey | string | `""` | StabilityAI API Key |
+| ai.stabilityAI | object | `{"apiKey":""}` | StabilityAI configuration |
+| ai.stabilityAI.apiKey | string | `""` | StabilityAI API Key |
 | amqpEventQueues | object | `{"batchSize":1,"connectionTimeoutInMilliSecs":180000,"durable":false,"duration":1000,"enabled":false,"exclusive":false,"handshakeTimeoutInMilliSecs":180000,"hosts":"","limit":50,"listenerQueuePrefix":"","maxChannelCount":5000,"maxPriority":-1,"networkRecoveryIntervalInMilliSecs":5000,"password":"","pollTimeDuration":"100ms","port":5672,"queueType":"classic","requestHeartbeatTimeoutInSecs":30,"retryType":"REGULARINTERVALS","sequentialMsgProcessing":true,"useExchange":true,"useNio":false,"username":"","virtualHost":"/"}` | AMQP (RabbitMQ) Event Queues configuration |
 | amqpEventQueues.batchSize | int | `1` | Batch size for message consumption |
 | amqpEventQueues.connectionTimeoutInMilliSecs | int | `180000` | Connection timeout in ms |
@@ -82,9 +82,9 @@ Kubernetes: `>= 1.26.0`
 | amqpEventQueues.username | string | `""` | RabbitMQ username |
 | amqpEventQueues.virtualHost | string | `"/"` | RabbitMQ virtual host |
 | annotations | object | `{}` | Annotations to add to all resources |
-| app | object | `{"activeWorkerLastPollTimeout":"","appId":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
+| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
 | app.activeWorkerLastPollTimeout | string | `""` | The time to consider if a worker is actively polling for a task (e.g., 10s) |
-| app.appId | string | `""` | The ID with which the app has been registered (e.g., conductor, myApp) |
+| app.appID | string | `""` | The ID with which the app has been registered (e.g., conductor, myApp) |
 | app.asyncIndexingEnabled | string | `""` | Whether to enable asynchronous indexing to Elasticsearch |
 | app.asyncUpdateDelay | string | `""` | The delay with which short-running workflows will be updated in Elasticsearch when async indexing is enabled (e.g., 60s) |
 | app.asyncUpdateShortRunningWorkflowDuration | string | `"10m"` | The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (e.g., 30s) |
@@ -168,9 +168,8 @@ Kubernetes: `>= 1.26.0`
 | fullnameOverride | string | `""` | String to fully override the fullname template with a string |
 | global.imagePullSecrets | list | `[]` | Global pod image pull secrets |
 | global.imageRegistry | string | `""` | Global container image registry override |
-| grpcServer | object | `{"enabled":true,"port":8090}` | GRPC Server configuration |
+| grpcServer | object | `{"enabled":true}` | GRPC Server configuration |
 | grpcServer.enabled | bool | `true` | Enable GRPC server |
-| grpcServer.port | int | `8090` | GRPC server port |
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
 | image.registry | string | `"docker.io"` | Main container image registry |
 | image.repository | string | `"conductoross/conductor"` | Main container image repository |
@@ -198,16 +197,16 @@ Kubernetes: `>= 1.26.0`
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | logging | object | `{"level":{"root":"INFO"}}` | Logging configuration |
 | logging.level.root | string | `"INFO"` | Root log level |
-| management | object | `{"endpointsWebExposureInclude":"health,info,metrics,prometheus","healthRedisEnabled":true,"healthShowDetails":"always","metricsExport":{"atlas":false,"azureMonitor":false,"azureMonitorInstrumentationKey":"","cloudwatch":false,"cloudwatchNamespace":"conductor","datadog":false,"datadogApiKey":"","dynatrace":false,"elastic":false,"influx":false,"jmx":false,"newRelic":false,"otlp":false,"stackdriver":false,"stackdriverProjectId":"","statsd":false},"metricsPercentiles":"0.50,0.75,0.90,0.95,0.99"}` | Management configuration |
+| management | object | `{"endpointsWebExposureInclude":"health,info,metrics,prometheus","healthRedisEnabled":true,"healthShowDetails":"always","metricsExport":{"atlas":false,"azureMonitor":false,"azureMonitorInstrumentationKey":"","cloudWatch":false,"cloudWatchNamespace":"conductor","datadog":false,"datadogApiKey":"","dynatrace":false,"elastic":false,"influx":false,"jmx":false,"newRelic":false,"otlp":false,"stackdriver":false,"stackdriverProjectID":"","statsD":false},"metricsPercentiles":"0.50,0.75,0.90,0.95,0.99"}` | Management configuration |
 | management.endpointsWebExposureInclude | string | `"health,info,metrics,prometheus"` | Actuator endpoints to expose (comma-separated) |
 | management.healthRedisEnabled | bool | `true` | Enable Redis health check |
 | management.healthShowDetails | string | `"always"` | Health endpoint detail level (never, when_authorized, always) |
-| management.metricsExport | object | `{"atlas":false,"azureMonitor":false,"azureMonitorInstrumentationKey":"","cloudwatch":false,"cloudwatchNamespace":"conductor","datadog":false,"datadogApiKey":"","dynatrace":false,"elastic":false,"influx":false,"jmx":false,"newRelic":false,"otlp":false,"stackdriver":false,"stackdriverProjectId":"","statsd":false}` | Metrics export backends |
+| management.metricsExport | object | `{"atlas":false,"azureMonitor":false,"azureMonitorInstrumentationKey":"","cloudWatch":false,"cloudWatchNamespace":"conductor","datadog":false,"datadogApiKey":"","dynatrace":false,"elastic":false,"influx":false,"jmx":false,"newRelic":false,"otlp":false,"stackdriver":false,"stackdriverProjectID":"","statsD":false}` | Metrics export backends |
 | management.metricsExport.atlas | bool | `false` | Enable Atlas metrics export |
 | management.metricsExport.azureMonitor | bool | `false` | Enable Azure Monitor metrics export |
 | management.metricsExport.azureMonitorInstrumentationKey | string | `""` | Azure Monitor Instrumentation Key |
-| management.metricsExport.cloudwatch | bool | `false` | Enable CloudWatch metrics export |
-| management.metricsExport.cloudwatchNamespace | string | `"conductor"` | CloudWatch Namespace |
+| management.metricsExport.cloudWatch | bool | `false` | Enable CloudWatch metrics export |
+| management.metricsExport.cloudWatchNamespace | string | `"conductor"` | CloudWatch Namespace |
 | management.metricsExport.datadog | bool | `false` | Enable Datadog metrics export |
 | management.metricsExport.datadogApiKey | string | `""` | Datadog API Key |
 | management.metricsExport.dynatrace | bool | `false` | Enable Dynatrace metrics export |
@@ -217,28 +216,28 @@ Kubernetes: `>= 1.26.0`
 | management.metricsExport.newRelic | bool | `false` | Enable New Relic metrics export |
 | management.metricsExport.otlp | bool | `false` | Enable OTLP metrics export |
 | management.metricsExport.stackdriver | bool | `false` | Enable Stackdriver metrics export |
-| management.metricsExport.stackdriverProjectId | string | `""` | Stackdriver Project ID |
-| management.metricsExport.statsd | bool | `false` | Enable StatsD metrics export |
+| management.metricsExport.stackdriverProjectID | string | `""` | Stackdriver Project ID |
+| management.metricsExport.statsD | bool | `false` | Enable StatsD metrics export |
 | management.metricsPercentiles | string | `"0.50,0.75,0.90,0.95,0.99"` | Request metrics percentiles (comma-separated) |
-| memory.g1HeapRegionSizeMb | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
-| memory.maxDirectMemorySizeMb | string | `""` | JVM DirectMemory max size in MB. If not set, defaults to 256 |
-| memory.maxMetaspaceSizeMb | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
-| memory.onHeapMb | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 2048 |
-| memory.reservedCodeCacheSizeMb | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
+| memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
+| memory.maxDirectMemorySizeMB | string | `""` | JVM DirectMemory max size in MB. If not set, defaults to 256 |
+| memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
+| memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 2048 |
+| memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | metrics | object | `{"loggerEnabled":false,"loggerReportPeriodSeconds":1,"prometheusEnabled":false}` | Metrics configuration |
 | metrics.loggerEnabled | bool | `false` | Enable metrics logging |
 | metrics.loggerReportPeriodSeconds | int | `1` | Metrics logging a report period in seconds |
 | metrics.prometheusEnabled | bool | `false` | Enable Prometheus metrics |
-| mysql | object | `{"database":"","host":"","password":"","port":3306,"username":""}` | MySQL configuration |
-| mysql.database | string | `""` | MySQL database name |
-| mysql.host | string | `""` | MySQL host |
-| mysql.password | string | `""` | MySQL password |
-| mysql.port | int | `3306` | MySQL port |
-| mysql.username | string | `""` | MySQL username |
+| mySQL | object | `{"database":"","host":"","password":"","port":3306,"username":""}` | MySQL configuration |
+| mySQL.database | string | `""` | MySQL database name |
+| mySQL.host | string | `""` | MySQL host |
+| mySQL.password | string | `""` | MySQL password |
+| mySQL.port | int | `3306` | MySQL port |
+| mySQL.username | string | `""` | MySQL username |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
-| natsEventQueues | object | `{"enabled":false,"natsStream":{"clusterId":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
+| natsEventQueues | object | `{"enabled":false,"natsStream":{"clusterID":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
 | natsEventQueues.enabled | bool | `false` | Enable NATS event queue support |
-| natsEventQueues.natsStream.clusterId | string | `"test-cluster"` | NATS streaming cluster ID |
+| natsEventQueues.natsStream.clusterID | string | `"test-cluster"` | NATS streaming cluster ID |
 | natsEventQueues.natsStream.durableName | string | `""` | NATS streaming durable name |
 | natsEventQueues.natsStream.listenerQueuePrefix | string | `""` | Listener queue prefix |
 | natsEventQueues.natsStream.url | string | `"nats://localhost:4222"` | NATS streaming URL |
@@ -247,17 +246,17 @@ Kubernetes: `>= 1.26.0`
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
-| opensearch | object | `{"clusterHealthColor":"green","indexName":"","indexPrefix":"","indexReplicasCount":0,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":0}` | OpenSearch configuration |
-| opensearch.clusterHealthColor | string | `"green"` | OpenSearch cluster health color |
-| opensearch.indexName | string | `""` | OpenSearch index name |
-| opensearch.indexPrefix | string | `""` | OpenSearch index prefix |
-| opensearch.indexReplicasCount | int | `0` | OpenSearch index replicas count |
-| opensearch.password | string | `""` | OpenSearch password |
-| opensearch.restClientConnectionTimeout | int | `5000` | OpenSearch REST client connection timeout |
-| opensearch.restClientReadTimeout | int | `30000` | OpenSearch REST client read timeout |
-| opensearch.url | string | `""` | OpenSearch URL |
-| opensearch.username | string | `""` | OpenSearch username |
-| opensearch.version | int | `0` | OpenSearch version |
+| openSearch | object | `{"clusterHealthColor":"green","indexName":"","indexPrefix":"","indexReplicasCount":0,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":0}` | OpenSearch configuration |
+| openSearch.clusterHealthColor | string | `"green"` | OpenSearch cluster health color |
+| openSearch.indexName | string | `""` | OpenSearch index name |
+| openSearch.indexPrefix | string | `""` | OpenSearch index prefix |
+| openSearch.indexReplicasCount | int | `0` | OpenSearch index replicas count |
+| openSearch.password | string | `""` | OpenSearch password |
+| openSearch.restClientConnectionTimeout | int | `5000` | OpenSearch REST client connection timeout |
+| openSearch.restClientReadTimeout | int | `30000` | OpenSearch REST client read timeout |
+| openSearch.url | string | `""` | OpenSearch URL |
+| openSearch.username | string | `""` | OpenSearch username |
+| openSearch.version | int | `0` | OpenSearch version |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
 | podDisruptionBudget.create | bool | `false` | Create a PodDisruptionBudget for high availability |
 | podDisruptionBudget.maxUnavailable | string | `""` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
@@ -304,15 +303,15 @@ Kubernetes: `>= 1.26.0`
 | redis.timeBetweenEvictionRunsMillis | string | `""` | Time between eviction runs (ms, -1 to disable) |
 | redis.workflowNamespacePrefix | string | `"conductor"` | Workflow namespace prefix |
 | replicaCount | int | `1` | Number of pods |
-| resources | object | `{"limits":{"cpu":"2","memory":"3Gi"},"requests":{"cpu":"300m","memory":"2Gi"}}` | Main container requests/limits  memory calculation: onHeapMb (JVM Heap max size)   + maxMetaspaceSizeMb (JVM Metaspace max size)   + reservedCodeCacheSizeMb (JVM ReservedCodeCache size)   + maxDirectMemorySizeMb (JVM DirectMemory max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
+| resources | object | `{"limits":{"cpu":"2","memory":"3Gi"},"requests":{"cpu":"300m","memory":"2Gi"}}` | Main container requests/limits  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + maxDirectMemorySizeMB (JVM DirectMemory max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
-| security | object | `{"auth":{"basic":{"enabled":false,"principal":"","realm":"","role":""},"oidc":{"audience":"","clientId":"","clientSecret":"","discoveryUri":"","enabled":false,"groupsClaim":"groups"}},"enabled":false}` | Security configuration (IAM/Auth) |
+| security | object | `{"auth":{"basic":{"enabled":false,"principal":"","realm":"","role":""},"oidc":{"audience":"","clientID":"","clientSecret":"","discoveryUri":"","enabled":false,"groupsClaim":"groups"}},"enabled":false}` | Security configuration (IAM/Auth) |
 | security.auth.basic.enabled | bool | `false` | Enable Basic authentication |
 | security.auth.basic.principal | string | `""` | Basic Auth Principal |
 | security.auth.basic.realm | string | `""` | Basic Auth Realm |
 | security.auth.basic.role | string | `""` | Basic Auth Role |
 | security.auth.oidc.audience | string | `""` | OIDC Audience |
-| security.auth.oidc.clientId | string | `""` | OIDC Client ID |
+| security.auth.oidc.clientID | string | `""` | OIDC Client ID |
 | security.auth.oidc.clientSecret | string | `""` | OIDC Client Secret (can be provided via secret) |
 | security.auth.oidc.discoveryUri | string | `""` | OIDC Discovery URI |
 | security.auth.oidc.enabled | bool | `false` | Enable OIDC authentication |
@@ -321,7 +320,8 @@ Kubernetes: `>= 1.26.0`
 | service.nodePorts.grpc | string | `""` | NodePort value for gRPC when service.type is NodePort |
 | service.nodePorts.rest | string | `""` | NodePort value for REST API when service.type is NodePort |
 | service.nodePorts.ui | string | `""` | NodePort value for UI when service.type is NodePort |
-| service.ports | object | `{"rest":8080,"ui":5000}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
+| service.ports | object | `{"grpc":8090,"rest":8080,"ui":5000}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
+| service.ports.grpc | int | `8090` | Service port for gRPC |
 | service.ports.rest | int | `8080` | Service port for REST API |
 | service.ports.ui | int | `5000` | Service port for UI |
 | service.type | string | `"ClusterIP"` | Service type (ClusterIP, NodePort, LoadBalancer) |

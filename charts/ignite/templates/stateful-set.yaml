@@ -75,7 +75,7 @@ spec:
                 -XX:+UseContainerSupport
                 -XX:+AlwaysPreTouch
                 -XX:+UseG1GC
-                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMb }}M
+                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMB }}M
                 -XX:MaxGCPauseMillis=200
                 -XX:+ExplicitGCInvokesConcurrent
                 -XX:+UseStringDeduplication
@@ -84,11 +84,11 @@ spec:
                 -XX:+ExitOnOutOfMemoryError
                 -XX:+HeapDumpOnOutOfMemoryError
                 -XX:HeapDumpPath=/tmp/heapdump.hprof
-                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMb }}M
-                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMb }}M
-                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMb is required!" .Values.memory.maxDirectMemorySizeMb }}M
-                -Xms{{ default 1024 .Values.memory.onHeapMb }}M
-                -Xmx{{ default 1024 .Values.memory.onHeapMb }}M
+                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMB }}M
+                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMB }}M
+                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMB is required!" .Values.memory.maxDirectMemorySizeMB }}M
+                -Xms{{ default 1024 .Values.memory.onHeapMB }}M
+                -Xmx{{ default 1024 .Values.memory.onHeapMB }}M
                 -Djava.net.preferIPv4Stack=true
                 {{ .Values.env.EXTRA_JVM_OPTS }}
             - name: OPTION_LIBS

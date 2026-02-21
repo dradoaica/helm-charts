@@ -100,13 +100,13 @@ containerSecurityContext:
     type: "RuntimeDefault"
 
 # -- Main container requests/limits with guaranteed QoS (requests = limits)
-#  memory calculation: onHeapMb (JVM Heap max size)
-#   + maxMetaspaceSizeMb (JVM Metaspace max size)
-#   + reservedCodeCacheSizeMb (JVM ReservedCodeCache size)
-#   + offHeapMb (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))
-#   + MIN(256MB, offHeapMb) (offHeapMb < 1 GB)
-#     || offHeapMb/4 (offHeapMb between 1 GB and 8 GB)
-#     || 2GB (offHeapMb > 8 GB)
+#  memory calculation: onHeapMB (JVM Heap max size)
+#   + maxMetaspaceSizeMB (JVM Metaspace max size)
+#   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)
+#   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))
+#   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)
+#     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)
+#     || 2GB (offHeapMB > 8 GB)
 #       (default storage profile checkpointing buffer size)
 #   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.)
 resources:
@@ -276,17 +276,17 @@ replicaCount: 1
 
 memory:
   # -- On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024
-  onHeapMb: ""
+  onHeapMB: ""
   # -- JVM Metaspace max size in MB. If not set, defaults to 256
-  maxMetaspaceSizeMb: ""
+  maxMetaspaceSizeMB: ""
   # -- JVM ReservedCodeCache size in MB. If not set, defaults to 240
-  reservedCodeCacheSizeMb: ""
+  reservedCodeCacheSizeMB: ""
   # -- JVM G1 Heap region size in MB. If not set, defaults to 1
-  g1HeapRegionSizeMb: ""
+  g1HeapRegionSizeMB: ""
   # -- Off-heap memory limit in MB. Configures the sizeBytes for the default storage profile (data + indexes)
-  offHeapMb: 2048
-  # -- JVM DirectMemory max size in MB (offHeapMb + checkpointing buffer size)
-  maxDirectMemorySizeMb: 2560
+  offHeapMB: 2048
+  # -- JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size)
+  maxDirectMemorySizeMB: 2560
 
 authentication:
   # -- Enable authentication

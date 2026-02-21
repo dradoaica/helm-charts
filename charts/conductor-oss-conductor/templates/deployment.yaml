@@ -67,7 +67,7 @@ spec:
                 -XX:+UseContainerSupport
                 -XX:+AlwaysPreTouch
                 -XX:+UseG1GC
-                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMb }}M
+                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMB }}M
                 -XX:MaxGCPauseMillis=200
                 -XX:+ExplicitGCInvokesConcurrent
                 -XX:+UseStringDeduplication
@@ -76,19 +76,19 @@ spec:
                 -XX:+ExitOnOutOfMemoryError
                 -XX:+HeapDumpOnOutOfMemoryError
                 -XX:HeapDumpPath=/tmp/heapdump.hprof
-                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMb }}M
-                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMb }}M
-                -XX:MaxDirectMemorySize={{ default 256 .Values.memory.maxDirectMemorySizeMb }}M
-                -Xms{{ default 2048 .Values.memory.onHeapMb }}M
-                -Xmx{{ default 2048 .Values.memory.onHeapMb }}M
+                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMB }}M
+                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMB }}M
+                -XX:MaxDirectMemorySize={{ default 256 .Values.memory.maxDirectMemorySizeMB }}M
+                -Xms{{ default 2048 .Values.memory.onHeapMB }}M
+                -Xmx{{ default 2048 .Values.memory.onHeapMB }}M
                 {{ .Values.env.EXTRA_JVM_OPTS }}
             {{- if .Values.app.stack }}
             - name: conductor.app.stack
               value: {{ .Values.app.stack | quote }}
             {{- end }}
-            {{- if .Values.app.appId }}
+            {{- if .Values.app.appID }}
             - name: conductor.app.appId
-              value: {{ .Values.app.appId | quote }}
+              value: {{ .Values.app.appID | quote }}
             {{- end }}
             {{- if .Values.app.executorServiceMaxThreadCount }}
             - name: conductor.app.executorServiceMaxThreadCount
@@ -260,8 +260,6 @@ spec:
             - name: conductor.external-payload-storage.type
               value: {{ .Values.externalPayloadStorage.type | quote }}
             {{- end }}
-            - name: conductor.api-docs.cors.allowed-origins
-              value: {{ .Values.cors.allowedOrigins | quote }}
             {{- $dbRedis := hasPrefix "redis" .Values.db.type }}
             {{- $queueRedis := hasPrefix "redis" .Values.queue.type }}
             {{- $lockRedis := eq .Values.workflowExecutionLock.type "redis" }}
@@ -330,14 +328,14 @@ spec:
             {{- end }}
             {{- if eq .Values.db.type "mysql" }}
             - name: spring.datasource.url
-              value: "jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port }}/{{ .Values.mysql.database }}"
+              value: "jdbc:mysql://{{ .Values.mySQL.host }}:{{ .Values.mySQL.port }}/{{ .Values.mySQL.database }}"
             - name: spring.datasource.username
-              value: {{ .Values.mysql.username | quote }}
+              value: {{ .Values.mySQL.username | quote }}
             - name: spring.datasource.password
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: mysql-password
+                  key: my-sql-password
             {{- end }}
             {{- if or (eq .Values.db.type "postgres") (eq .Values.workflowExecutionLock.type "postgres") (eq .Values.indexing.type "postgres") (and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "postgres")) }}
             - name: spring.datasource.url
@@ -377,28 +375,28 @@ spec:
             {{- end }}
             {{- if eq .Values.indexing.type "opensearch" }}
             - name: conductor.elasticsearch.url
-              value: {{ .Values.opensearch.url | quote }}
+              value: {{ .Values.openSearch.url | quote }}
             - name: conductor.elasticsearch.username
-              value: {{ .Values.opensearch.username | quote }}
+              value: {{ .Values.openSearch.username | quote }}
             - name: conductor.elasticsearch.password
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: opensearch-password
+                  key: open-search-password
             - name: conductor.elasticsearch.indexName
-              value: {{ .Values.opensearch.indexName | quote }}
+              value: {{ .Values.openSearch.indexName | quote }}
             - name: conductor.elasticsearch.indexPrefix
-              value: {{ .Values.opensearch.indexPrefix | quote }}
+              value: {{ .Values.openSearch.indexPrefix | quote }}
             - name: conductor.elasticsearch.indexReplicasCount
-              value: {{ .Values.opensearch.indexReplicasCount | quote }}
+              value: {{ .Values.openSearch.indexReplicasCount | quote }}
             - name: conductor.elasticsearch.version
-              value: {{ .Values.opensearch.version | quote }}
+              value: {{ .Values.openSearch.version | quote }}
             - name: conductor.elasticsearch.clusterHealthColor
-              value: {{ .Values.opensearch.clusterHealthColor | quote }}
+              value: {{ .Values.openSearch.clusterHealthColor | quote }}
             - name: conductor.elasticsearch.restClientConnectionTimeout
-              value: {{ .Values.opensearch.restClientConnectionTimeout | quote }}
+              value: {{ .Values.openSearch.restClientConnectionTimeout | quote }}
             - name: conductor.elasticsearch.restClientReadTimeout
-              value: {{ .Values.opensearch.restClientReadTimeout | quote }}
+              value: {{ .Values.openSearch.restClientReadTimeout | quote }}
             {{- end }}
             {{- if eq .Values.indexing.type "postgres" }}
             - name: conductor.elasticsearch.version
@@ -580,16 +578,16 @@ spec:
             {{- end }}
             - name: conductor.integrations.ai.enabled
               value: {{ .Values.ai.enabled | quote }}
-            {{- if .Values.ai.openai.apiKey }}
+            {{- if .Values.ai.openAI.apiKey }}
             - name: conductor.ai.openai.api-key
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-openai-api-key
+                  key: ai-open-ai-api-key
             {{- end }}
-            {{- if .Values.ai.openai.organizationId }}
+            {{- if .Values.ai.openAI.organizationID }}
             - name: conductor.ai.openai.organization-id
-              value: {{ .Values.ai.openai.organizationId | quote }}
+              value: {{ .Values.ai.openAI.organizationID | quote }}
             {{- end }}
             {{- if .Values.ai.anthropic.apiKey }}
             - name: conductor.ai.anthropic.api-key
@@ -626,34 +624,34 @@ spec:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-perplexity-api-key
             {{- end }}
-            {{- if .Values.ai.huggingface.apiKey }}
+            {{- if .Values.ai.huggingFace.apiKey }}
             - name: conductor.ai.huggingface.api-key
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-huggingface-api-key
+                  key: ai-hugging-face-api-key
             {{- end }}
-            {{- if .Values.ai.stabilityai.apiKey }}
+            {{- if .Values.ai.stabilityAI.apiKey }}
             - name: conductor.ai.stabilityai.api-key
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-stabilityai-api-key
+                  key: ai-stability-ai-api-key
             {{- end }}
-            {{- if .Values.ai.azureopenai.apiKey }}
+            {{- if .Values.ai.azureOpenAI.apiKey }}
             - name: conductor.ai.azureopenai.api-key
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-azureopenai-api-key
+                  key: ai-azure-open-ai-api-key
             {{- end }}
-            {{- if .Values.ai.azureopenai.baseUrl }}
+            {{- if .Values.ai.azureOpenAI.baseUrl }}
             - name: conductor.ai.azureopenai.base-url
-              value: {{ .Values.ai.azureopenai.baseUrl | quote }}
+              value: {{ .Values.ai.azureOpenAI.baseUrl | quote }}
             {{- end }}
-            {{- if .Values.ai.azureopenai.deploymentName }}
+            {{- if .Values.ai.azureOpenAI.deploymentName }}
             - name: conductor.ai.azureopenai.deployment-name
-              value: {{ .Values.ai.azureopenai.deploymentName | quote }}
+              value: {{ .Values.ai.azureOpenAI.deploymentName | quote }}
             {{- end }}
             {{- if .Values.ai.bedrock.accessKey }}
             - name: conductor.ai.bedrock.access-key
@@ -673,9 +671,9 @@ spec:
             - name: conductor.ai.bedrock.region
               value: {{ .Values.ai.bedrock.region | quote }}
             {{- end }}
-            {{- if .Values.ai.gemini.projectId }}
+            {{- if .Values.ai.gemini.projectID }}
             - name: conductor.ai.gemini.project-id
-              value: {{ .Values.ai.gemini.projectId | quote }}
+              value: {{ .Values.ai.gemini.projectID | quote }}
             {{- end }}
             {{- if .Values.ai.gemini.location }}
             - name: conductor.ai.gemini.location
@@ -711,9 +709,9 @@ spec:
               value: {{ .Values.management.metricsExport.newRelic | quote }}
             - name: management.stackdriver.metrics.export.enabled
               value: {{ .Values.management.metricsExport.stackdriver | quote }}
-            {{- if .Values.management.metricsExport.stackdriverProjectId }}
+            {{- if .Values.management.metricsExport.stackdriverProjectID }}
             - name: management.stackdriver.metrics.export.projectId
-              value: {{ .Values.management.metricsExport.stackdriverProjectId | quote }}
+              value: {{ .Values.management.metricsExport.stackdriverProjectID | quote }}
             {{- end }}
             - name: management.datadog.metrics.export.enabled
               value: {{ .Values.management.metricsExport.datadog | quote }}
@@ -721,12 +719,12 @@ spec:
             - name: management.datadog.metrics.export.apiKey
               value: {{ .Values.management.metricsExport.datadogApiKey | quote }}
             {{- end }}
-            - name: management.statsd.metrics.export.enabled
+            - name: management.statsD.metrics.export.enabled
               value: {{ .Values.management.metricsExport.statsd | quote }}
             - name: management.cloudwatch.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.cloudwatch | quote }}
+              value: {{ .Values.management.metricsExport.cloudWatch | quote }}
             - name: management.cloudwatch.metrics.export.namespace
-              value: {{ .Values.management.metricsExport.cloudwatchNamespace | quote }}
+              value: {{ .Values.management.metricsExport.cloudWatchNamespace | quote }}
             - name: management.azuremonitor.metrics.export.enabled
               value: {{ .Values.management.metricsExport.azureMonitor | quote }}
             {{- if .Values.management.metricsExport.azureMonitorInstrumentationKey }}
@@ -739,6 +737,8 @@ spec:
               value: {{ .Values.grpcServer.enabled | quote }}
             - name: conductor.grpcServer.server.port
               value: {{ .Values.grpcServer.port | quote }}
+            - name: conductor.api-docs.cors.allowed-origins
+              value: {{ .Values.cors.allowedOrigins | quote }}
             {{- if .Values.security.enabled }}
             - name: conductor.security.enabled
               value: {{ .Values.security.enabled | quote }}
@@ -747,7 +747,7 @@ spec:
             - name: conductor.security.auth.oidc.discovery-uri
               value: {{ .Values.security.auth.oidc.discoveryUri | quote }}
             - name: conductor.security.auth.oidc.client-id
-              value: {{ .Values.security.auth.oidc.clientId | quote }}
+              value: {{ .Values.security.auth.oidc.clientID | quote }}
             {{- if .Values.security.auth.oidc.clientSecret }}
             - name: conductor.security.auth.oidc.client-secret
               valueFrom:

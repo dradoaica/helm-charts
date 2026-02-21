@@ -92,10 +92,10 @@ containerSecurityContext:
     type: "RuntimeDefault"
 
 # -- Main container requests/limits
-#  memory calculation: onHeapMb (JVM Heap max size)
-#   + maxMetaspaceSizeMb (JVM Metaspace max size)
-#   + reservedCodeCacheSizeMb (JVM ReservedCodeCache size)
-#   + maxDirectMemorySizeMb (JVM DirectMemory max size)
+#  memory calculation: onHeapMB (JVM Heap max size)
+#   + maxMetaspaceSizeMB (JVM Metaspace max size)
+#   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)
+#   + maxDirectMemorySizeMB (JVM DirectMemory max size)
 #   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.)
 resources:
   requests:
@@ -163,6 +163,8 @@ service:
     rest: 8080
     # -- Service port for UI
     ui: 5000
+    # -- Service port for gRPC
+    grpc: 8090
   nodePorts:
     # -- NodePort value for REST API when service.type is NodePort
     rest: ""
@@ -248,22 +250,22 @@ replicaCount: 1
 
 memory:
   # -- On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 2048
-  onHeapMb: ""
+  onHeapMB: ""
   # -- JVM Metaspace max size in MB. If not set, defaults to 256
-  maxMetaspaceSizeMb: ""
+  maxMetaspaceSizeMB: ""
   # -- JVM ReservedCodeCache size in MB. If not set, defaults to 240
-  reservedCodeCacheSizeMb: ""
+  reservedCodeCacheSizeMB: ""
   # -- JVM G1 Heap region size in MB. If not set, defaults to 1
-  g1HeapRegionSizeMb: ""
+  g1HeapRegionSizeMB: ""
   # -- JVM DirectMemory max size in MB. If not set, defaults to 256
-  maxDirectMemorySizeMb: ""
+  maxDirectMemorySizeMB: ""
 
 # -- App configuration
 app:
   # -- Name of the stack within which the app is running (e.g., dev, testing, staging, prod)
   stack: ""
   # -- The ID with which the app has been registered (e.g., conductor, myApp)
-  appId: ""
+  appID: ""
   # -- The maximum number of threads to be allocated to the executor service threadpool
   executorServiceMaxThreadCount: ""
   # -- The timeout duration to set when a workflow is pushed to the decider queue (e.g., 30s, 1m)
@@ -462,7 +464,7 @@ elasticsearch:
   restClientReadTimeout: 30000
 
 # -- MySQL configuration
-mysql:
+mySQL:
   # -- MySQL host
   host: ""
   # -- MySQL port
@@ -502,7 +504,7 @@ postgres:
     maxDataYears: 1
 
 # -- OpenSearch configuration
-opensearch:
+openSearch:
   # -- OpenSearch URL
   url: ""
   # -- OpenSearch username
@@ -581,7 +583,7 @@ natsEventQueues:
   enabled: false
   natsStream:
     # -- NATS streaming cluster ID
-    clusterId: "test-cluster"
+    clusterID: "test-cluster"
     # -- NATS streaming durable name
     durableName: ""
     # -- NATS streaming URL
@@ -648,11 +650,11 @@ statusNotifier:
 ai:
   enabled: true
   # -- OpenAI configuration
-  openai:
+  openAI:
     # -- OpenAI API Key
     apiKey: ""
     # -- OpenAI Organization ID
-    organizationId: ""
+    organizationID: ""
   # -- Anthropic configuration
   anthropic:
     # -- Anthropic API Key
@@ -674,15 +676,15 @@ ai:
     # -- Perplexity API Key
     apiKey: ""
   # -- HuggingFace configuration
-  huggingface:
+  huggingFace:
     # -- HuggingFace API Key
     apiKey: ""
   # -- StabilityAI configuration
-  stabilityai:
+  stabilityAI:
     # -- StabilityAI API Key
     apiKey: ""
   # -- Azure OpenAI configuration
-  azureopenai:
+  azureOpenAI:
     # -- Azure OpenAI API Key
     apiKey: ""
     # -- Azure OpenAI Base URL
@@ -700,7 +702,7 @@ ai:
   # -- Google Gemini configuration
   gemini:
     # -- Google Cloud Project ID
-    projectId: ""
+    projectID: ""
     # -- Google Cloud Location
     location: "us-central1"
   # -- Ollama configuration
@@ -744,17 +746,17 @@ management:
     # -- Enable Stackdriver metrics export
     stackdriver: false
     # -- Stackdriver Project ID
-    stackdriverProjectId: ""
+    stackdriverProjectID: ""
     # -- Enable Datadog metrics export
     datadog: false
     # -- Datadog API Key
     datadogApiKey: ""
     # -- Enable StatsD metrics export
-    statsd: false
+    statsD: false
     # -- Enable CloudWatch metrics export
-    cloudwatch: false
+    cloudWatch: false
     # -- CloudWatch Namespace
-    cloudwatchNamespace: "conductor"
+    cloudWatchNamespace: "conductor"
     # -- Enable Azure Monitor metrics export
     azureMonitor: false
     # -- Azure Monitor Instrumentation Key
@@ -766,8 +768,6 @@ management:
 grpcServer:
   # -- Enable GRPC server
   enabled: true
-  # -- GRPC server port
-  port: 8090
 
 # -- CORS configuration
 cors:
@@ -785,7 +785,7 @@ security:
       # -- OIDC Discovery URI
       discoveryUri: ""
       # -- OIDC Client ID
-      clientId: ""
+      clientID: ""
       # -- OIDC Client Secret (can be provided via secret)
       clientSecret: ""
       # -- OIDC Audience

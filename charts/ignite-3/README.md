@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.1.0](https://img.shields.io/badge/Version-3.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.1.0](https://img.shields.io/badge/AppVersion-3.1.0-informational?style=flat-square)
+![Version: 3.1.1](https://img.shields.io/badge/Version-3.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.1.0](https://img.shields.io/badge/AppVersion-3.1.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -69,12 +69,12 @@ Kubernetes: `>= 1.26.0`
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |
 | livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/management/v1/node/state","port":10300},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
-| memory.g1HeapRegionSizeMb | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
-| memory.maxDirectMemorySizeMb | int | `2560` | JVM DirectMemory max size in MB (offHeapMb + checkpointing buffer size) |
-| memory.maxMetaspaceSizeMb | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
-| memory.offHeapMb | int | `2048` | Off-heap memory limit in MB. Configures the sizeBytes for the default storage profile (data + indexes) |
-| memory.onHeapMb | string | `""` | On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024 |
-| memory.reservedCodeCacheSizeMb | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
+| memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
+| memory.maxDirectMemorySizeMB | int | `2560` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size) |
+| memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
+| memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the sizeBytes for the default storage profile (data + indexes) |
+| memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024 |
+| memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
 | networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
@@ -103,7 +103,7 @@ Kubernetes: `>= 1.26.0`
 | readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/management/v1/node/state","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |
-| resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMb (JVM Heap max size)   + maxMetaspaceSizeMb (JVM Metaspace max size)   + reservedCodeCacheSizeMb (JVM ReservedCodeCache size)   + offHeapMb (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMb) (offHeapMb < 1 GB)     || offHeapMb/4 (offHeapMb between 1 GB and 8 GB)     || 2GB (offHeapMb > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
+| resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
 | service.ports | object | `{"cluster":3344,"jmx":9404,"management":10300,"managementSsl":10400,"rest":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |

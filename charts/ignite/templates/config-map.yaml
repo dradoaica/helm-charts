@@ -138,7 +138,7 @@ data:
                         <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
                             <property name="persistenceEnabled" value="{{ .Values.persistence.enabled }}"/>
                             <property name="metricsEnabled" value="{{ .Values.metrics.enabled }}"/>
-                            <property name="maxSize" value="{{ mul (required "A valid memory.offHeapMb is required!" .Values.memory.offHeapMb) 1024 1024 }}"/>
+                            <property name="maxSize" value="{{ mul (required "A valid memory.offHeapMB is required!" .Values.memory.offHeapMB) 1024 1024 }}"/>
                             {{- if and (not .Values.persistence.enabled) .Values.dataStorage.pageEvictionMode }}
                             <property name="pageEvictionMode" value="{{ .Values.dataStorage.pageEvictionMode }}"/>
                             {{- end }}

@@ -87,13 +87,13 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: JVM_MIN_MEM
-              value: "{{ default 1024 .Values.memory.onHeapMb }}M"
+              value: "{{ default 1024 .Values.memory.onHeapMB }}M"
             - name: JVM_MAX_MEM
-              value: "{{ default 1024 .Values.memory.onHeapMb }}M"
+              value: "{{ default 1024 .Values.memory.onHeapMB }}M"
             - name: JVM_GCL
               value: "G1GC"
             - name: JVM_G1HeapRegionSize
-              value: "{{ default 1 .Values.memory.g1HeapRegionSizeMb }}M"
+              value: "{{ default 1 .Values.memory.g1HeapRegionSizeMB }}M"
             # Must be specified to ensure that Ignite 3 cluster replicas are visible to each other.
             - name: IGNITE_NODE_NAME
               valueFrom:
@@ -118,9 +118,9 @@ spec:
                 -XX:+ExitOnOutOfMemoryError
                 -XX:+HeapDumpOnOutOfMemoryError
                 -XX:HeapDumpPath=/tmp/heapdump.hprof
-                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMb }}M
-                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMb }}M
-                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMb is required!" .Values.memory.maxDirectMemorySizeMb }}M
+                -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMB }}M
+                -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMB }}M
+                -XX:MaxDirectMemorySize={{ required "A valid memory.maxDirectMemorySizeMB is required!" .Values.memory.maxDirectMemorySizeMB }}M
                 {{- if .Values.jmx.enabled }}
                 -javaagent:/agent/jmx.jar={{ .Values.jmx.port }}:/opt/jmx/jmx.yaml
                 {{- end }}

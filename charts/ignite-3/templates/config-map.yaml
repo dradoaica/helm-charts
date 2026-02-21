@@ -202,7 +202,7 @@ data:
                     engine={{ .Values.dataStorage.engine }}
                     name=default
                     replacementMode=CLOCK
-                    sizeBytes={{ mul (required "A valid memory.offHeapMb is required!" .Values.memory.offHeapMb) 1024 1024 }}
+                    sizeBytes={{ mul (required "A valid memory.offHeapMB is required!" .Values.memory.offHeapMB) 1024 1024 }}
                 }
             ]
         }
