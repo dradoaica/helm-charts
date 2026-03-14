@@ -1,6 +1,6 @@
 # Install MicroK8s
 
-## Via multipass with a static network
+## Via multipass with a static network on Windows
 
 ```
 New-VMSwitch -SwitchName "MyStaticSwitch" -SwitchType Internal
@@ -35,9 +35,10 @@ microk8s config | ForEach-Object { $_ -replace 'https://.*:16443', 'https://192.
 microk8s status --wait-ready
 ```
 
-## Or via microk8s
+## Or via microk8s on Ubuntu
 
 ```
+sudo snap install microk8s --classic
 microk8s install --cpu=4 --mem=8 --disk=40 --channel=1.30/stable
 microk8s status --wait-ready
 ```
@@ -67,6 +68,8 @@ microk8s dashboard-proxy
 ```
 
 # Install helm charts
+
+# On Windows
 
 ```
 microk8s kubectl create namespace ra2
@@ -104,6 +107,32 @@ microk8s helm uninstall ignite-3 -n ra2
 multipass exec microk8s-vm -- rm -rf charts/ignite-3
 ```
 
+# Or on Ubuntu
+
+```
+microk8s kubectl create namespace ra2
+
+microk8s helm install aspnetcore-ignite-server ./charts/aspnetcore-ignite-server -n ra2
+microk8s kubectl port-forward -n ra2 service/aspnetcore-ignite-server 10800:10800 8080:8080
+microk8s helm uninstall aspnetcore-ignite-server -n ra2
+
+microk8s helm install clamav-openshift ./charts/clamav-openshift -n ra2
+microk8s kubectl port-forward -n ra2 service/clamav-openshift 3310:3310
+microk8s helm uninstall clamav-openshift -n ra2
+
+microk8s helm install conductor-oss-conductor ./charts/conductor-oss-conductor -n ra2
+microk8s kubectl port-forward -n ra2 service/conductor-oss-conductor 5000:5000 8080:8080
+microk8s helm uninstall conductor-oss-conductor -n ra2
+
+microk8s helm install ignite ./charts/ignite -n ra2
+microk8s kubectl port-forward -n ra2 service/ignite 10800:10800 8080:8080
+microk8s helm uninstall ignite -n ra2
+
+microk8s helm install ignite-3 ./charts/ignite-3 -n ra2
+microk8s kubectl port-forward -n ra2 service/ignite-3 10800:10800 10300:10300
+microk8s helm uninstall ignite-3 -n ra2
+```
+
 # Stop MicroK8s
 
 ```
@@ -112,14 +141,14 @@ microk8s stop
 
 # Uninstall MicroK8s
 
-## Via multipass
+## Via multipass on Windows
 
 ```
 multipass delete microk8s-vm
 multipass purge
 ```
 
-## Or via microk8s
+## Or via microk8s on Ubuntu
 
 ```
 microk8s uninstall
@@ -127,7 +156,7 @@ microk8s uninstall
 
 # Misc
 
-## Refresh MicroK8s certs
+## Refresh MicroK8s certs on Windows
 
 ```
 microk8s refresh-certs --cert ca.crt
@@ -137,7 +166,7 @@ multipass exec microk8s-vm -- sudo snap restart microk8s
 microk8s config | ForEach-Object { $_ -replace 'https://.*:16443', 'https://192.168.85.3:16443' } > $env:LOCALAPPDATA\MicroK8s\config
 ```
 
-## Install local tools
+## Install local tools on Windows
 
 ```
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -147,4 +176,20 @@ Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 ```
 scoop install helm
 scoop install helm-docs
+```
+
+## Install local tools on Ubuntu
+
+```
+sudo apt update
+sudo apt install build-essential procps curl file git
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
+```
+
+```
+brew install helm
+brew install norwoodj/tap/helm-docs
 ```
