@@ -31,7 +31,6 @@ sudo snap restart microk8s
 sudo snap install microk8s-integrator-windows
 sudo iptables -P FORWARD ACCEPT
 exit
-microk8s config | ForEach-Object { $_ -replace 'https://.*:16443', 'https://192.168.85.3:16443' } > $env:LOCALAPPDATA\MicroK8s\config
 microk8s status --wait-ready
 ```
 
@@ -39,7 +38,6 @@ microk8s status --wait-ready
 
 ```
 sudo snap install microk8s --classic
-microk8s install --cpu=4 --mem=8 --disk=40 --channel=1.30/stable
 microk8s status --wait-ready
 ```
 
@@ -69,7 +67,7 @@ microk8s dashboard-proxy
 
 # Install helm charts
 
-# On Windows
+## On Windows
 
 ```
 microk8s kubectl create namespace ra2
@@ -107,7 +105,7 @@ microk8s helm uninstall ignite-3 -n ra2
 multipass exec microk8s-vm -- rm -rf charts/ignite-3
 ```
 
-# Or on Ubuntu
+## Or on Ubuntu
 
 ```
 microk8s kubectl create namespace ra2
@@ -163,7 +161,6 @@ microk8s refresh-certs --cert ca.crt
 microk8s refresh-certs --cert server.crt
 microk8s refresh-certs --cert front-proxy-client.crt
 multipass exec microk8s-vm -- sudo snap restart microk8s
-microk8s config | ForEach-Object { $_ -replace 'https://.*:16443', 'https://192.168.85.3:16443' } > $env:LOCALAPPDATA\MicroK8s\config
 ```
 
 ## Install local tools on Windows
