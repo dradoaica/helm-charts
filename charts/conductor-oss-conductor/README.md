@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.22.2](https://img.shields.io/badge/Version-3.22.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.2](https://img.shields.io/badge/AppVersion-3.22.2-informational?style=flat-square)
+![Version: 3.22.3](https://img.shields.io/badge/Version-3.22.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.3](https://img.shields.io/badge/AppVersion-3.22.3-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
