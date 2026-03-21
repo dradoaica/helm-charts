@@ -25,12 +25,14 @@ runcmd:
 
 multipass launch --name microk8s-vm --cpus 4 --memory 8G --disk 40G --network name=MyStaticSwitch --cloud-init microk8s-vm-my-static-switch.yaml
 multipass shell microk8s-vm
-sudo snap install microk8s --classic --channel=1.30/stable
+sudo snap install microk8s --classic
 echo '--node-ip=192.168.85.3' | sudo tee -a /var/snap/microk8s/current/args/kubelet
 sudo snap restart microk8s
 sudo snap install microk8s-integrator-windows
 sudo iptables -P FORWARD ACCEPT
 exit
+New-Item -ItemType directory -Path "$env:USERPROFILE/.kube"
+microk8s config > "$env:USERPROFILE/.kube/config"
 microk8s status --wait-ready
 ```
 
@@ -41,6 +43,9 @@ sudo snap install microk8s --classic
 sudo usermod -a -G microk8s $USER
 sudo chown -R $USER ~/.kube
 newgrp microk8s
+sudo snap install kubectl --classic
+mkdir -p ~/.kube
+microk8s config > ~/.kube/config
 microk8s status --wait-ready
 ```
 
@@ -48,7 +53,6 @@ microk8s status --wait-ready
 
 ```
 microk8s enable --help
-microk8s enable dashboard
 microk8s enable hostpath-storage
 microk8s enable metrics-server
 microk8s enable prometheus
@@ -62,10 +66,10 @@ microk8s status --wait-ready
 microk8s kubectl get all --all-namespaces
 ```
 
-# Access the MicroK8s dashboard
+# Access K9s
 
 ```
-microk8s dashboard-proxy
+k9s
 ```
 
 # Install helm charts
@@ -176,6 +180,7 @@ Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 ```
 scoop install helm
 scoop install helm-docs
+scoop install k9s
 ```
 
 ## Install local tools on Ubuntu
@@ -192,4 +197,5 @@ echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
 ```
 brew install helm
 brew install norwoodj/tap/helm-docs
+brew install derailed/k9s/k9s
 ```
