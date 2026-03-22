@@ -122,7 +122,7 @@ livenessProbe:
   # -- Enable liveness probe
   enabled: true
   httpGet:
-    path: /management/v1/node/state
+    path: /health/liveness
     port: 10300
   initialDelaySeconds: 5
   periodSeconds: 30
@@ -135,7 +135,7 @@ readinessProbe:
   # -- Enable readiness probe
   enabled: true
   httpGet:
-    path: /management/v1/node/state
+    path: /health/readiness
     port: 10300
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -148,7 +148,7 @@ startupProbe:
   # -- Enable startup probe
   enabled: true
   httpGet:
-    path: /management/v1/node/state
+    path: /health/liveness
     port: 10300
   initialDelaySeconds: 30
   periodSeconds: 10

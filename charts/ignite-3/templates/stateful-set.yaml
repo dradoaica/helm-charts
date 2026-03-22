@@ -217,43 +217,13 @@ spec:
               protocol: TCP
             {{- end }}
           {{- if .Values.startupProbe.enabled }}
-          startupProbe:
-            {{- if .Values.startupProbe.httpGet }}
-            httpGet:
-              {{- include "common.tplvalues.render" (dict "value" .Values.startupProbe.httpGet "context" $) | nindent 14 }}
-              {{- if .Values.authentication.enabled }}
-              httpHeaders:
-                - name: Authorization
-                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
-              {{- end }}
-            {{- end }}
-            {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
           {{- end }}
           {{- if .Values.livenessProbe.enabled }}
-          livenessProbe:
-            {{- if .Values.livenessProbe.httpGet }}
-            httpGet:
-              {{- include "common.tplvalues.render" (dict "value" .Values.livenessProbe.httpGet "context" $) | nindent 14 }}
-              {{- if .Values.authentication.enabled }}
-              httpHeaders:
-                - name: Authorization
-                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
-              {{- end }}
-            {{- end }}
-            {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
           {{- end }}
           {{- if .Values.readinessProbe.enabled }}
-          readinessProbe:
-            {{- if .Values.readinessProbe.httpGet }}
-            httpGet:
-              {{- include "common.tplvalues.render" (dict "value" .Values.readinessProbe.httpGet "context" $) | nindent 14 }}
-              {{- if .Values.authentication.enabled }}
-              httpHeaders:
-                - name: Authorization
-                  value: {{ printf "Basic %s" (printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc) | quote }}
-              {{- end }}
-            {{- end }}
-            {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled" "httpGet") "context" $) | nindent 12 }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
           {{- end }}
           {{- if .Values.lifecycleHooks }}
           lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}

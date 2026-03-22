@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.1.1](https://img.shields.io/badge/Version-3.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.1.0](https://img.shields.io/badge/AppVersion-3.1.0-informational?style=flat-square)
+![Version: 3.2.0](https://img.shields.io/badge/Version-3.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -67,7 +67,7 @@ Kubernetes: `>= 1.26.0`
 | jmx.port | int | `9404` | JMX agent port |
 | labels | object | `{}` | Additional labels to add to all resources |
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |
-| livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/management/v1/node/state","port":10300},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
+| livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/liveness","port":10300},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
 | memory.maxDirectMemorySizeMB | int | `2560` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size) |
@@ -100,7 +100,7 @@ Kubernetes: `>= 1.26.0`
 | podSecurityContext.enabled | bool | `true` | Enable pod security context |
 | priorityClassName | string | `""` | Pod priority class name |
 | rbac.create | bool | `true` | Create RBAC items (e.g., role, role-binding) |
-| readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/management/v1/node/state","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
+| readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/readiness","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
@@ -136,7 +136,7 @@ Kubernetes: `>= 1.26.0`
 | ssl.rest.trustStoreFilePath | string | `""` | Path to the truststore used by the REST endpoint |
 | ssl.rest.trustStorePassword | string | `""` | Password for the REST endpoint truststore |
 | ssl.rest.trustStoreType | string | `"PKCS12"` | Truststore type for the REST endpoint |
-| startupProbe | object | `{"enabled":true,"failureThreshold":15,"httpGet":{"path":"/management/v1/node/state","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1}` | Startup probe configuration |
+| startupProbe | object | `{"enabled":true,"failureThreshold":15,"httpGet":{"path":"/health/liveness","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1}` | Startup probe configuration |
 | startupProbe.enabled | bool | `true` | Enable startup probe |
 | terminationGracePeriodSeconds | int | `60` | Pod termination grace period |
 | tolerations | list | `[]` | Node tolerations |
