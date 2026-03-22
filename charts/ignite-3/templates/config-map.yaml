@@ -203,6 +203,7 @@ data:
                     name=default
                     replacementMode=CLOCK
                     sizeBytes={{ mul (required "A valid memory.offHeapMB is required!" .Values.memory.offHeapMB) 1024 1024 }}
+                    writeBufferSize=67108864
                 }
             ]
         }
