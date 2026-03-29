@@ -22,7 +22,9 @@ write_files:
         version: 2
 runcmd:
   - netplan apply
+```
 
+```
 multipass launch --name microk8s-vm --cpus 4 --memory 8G --disk 40G --network name=MyStaticSwitch --cloud-init microk8s-vm-my-static-switch.yaml
 multipass shell microk8s-vm
 sudo snap install microk8s --classic
@@ -31,20 +33,23 @@ sudo snap restart microk8s
 sudo snap install microk8s-integrator-windows
 sudo iptables -P FORWARD ACCEPT
 exit
+```
+
+```
 New-Item -ItemType directory -Path "$env:USERPROFILE/.kube"
 microk8s config > "$env:USERPROFILE/.kube/config"
 microk8s status --wait-ready
 ```
 
-## Or via microk8s on Ubuntu
+## Or via Microk8s on Ubuntu
 
 ```
 sudo snap install microk8s --classic
+sudo snap install kubectl --classic
 sudo usermod -a -G microk8s $USER
+mkdir -p ~/.kube
 sudo chown -R $USER ~/.kube
 newgrp microk8s
-sudo snap install kubectl --classic
-mkdir -p ~/.kube
 microk8s config > ~/.kube/config
 microk8s status --wait-ready
 ```
@@ -55,7 +60,8 @@ microk8s status --wait-ready
 microk8s enable --help
 microk8s enable hostpath-storage
 microk8s enable metrics-server
-microk8s enable prometheus
+microk8s enable observability
+microk8s enable nvidia
 ```
 
 # Re/Start MicroK8s
@@ -64,12 +70,6 @@ microk8s enable prometheus
 microk8s start
 microk8s status --wait-ready
 microk8s kubectl get all --all-namespaces
-```
-
-# Access K9s
-
-```
-k9s
 ```
 
 # Install helm charts
@@ -138,6 +138,12 @@ microk8s kubectl port-forward -n ra2 service/ignite-3 10800:10800 10300:10300
 microk8s helm uninstall ignite-3 -n ra2
 ```
 
+# Access K9s
+
+```
+k9s -n ra2
+```
+
 # Stop MicroK8s
 
 ```
@@ -153,9 +159,10 @@ multipass delete microk8s-vm
 multipass purge
 ```
 
-## Or via microk8s on Ubuntu
+## Or via Microk8s on Ubuntu
 
 ```
+sudo snap remove kubectl
 sudo snap remove microk8s
 ```
 
