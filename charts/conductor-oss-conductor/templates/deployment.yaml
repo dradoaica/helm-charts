@@ -110,6 +110,14 @@ spec:
             - name: conductor.app.sweeperWorkflowPollTimeout
               value: {{ .Values.app.sweeperWorkflowPollTimeout | quote }}
             {{- end }}
+            {{- if .Values.app.sweeperSweepBatchSize }}
+            - name: conductor.app.sweeper.sweepBatchSize
+              value: {{ .Values.app.sweeperSweepBatchSize | quote }}
+            {{- end }}
+            {{- if .Values.app.sweeperQueuePopTimeout }}
+            - name: conductor.app.sweeper.queuePopTimeout
+              value: {{ .Values.app.sweeperQueuePopTimeout | quote }}
+            {{- end }}
             {{- if .Values.app.eventProcessorThreadCount }}
             - name: conductor.app.eventProcessorThreadCount
               value: {{ .Values.app.eventProcessorThreadCount | quote }}
@@ -162,6 +170,10 @@ spec:
             - name: conductor.app.systemTaskWorkerPollInterval
               value: {{ .Values.app.systemTaskWorkerPollInterval | quote }}
             {{- end }}
+            {{- if .Values.app.systemTaskQueuePopTimeout }}
+            - name: conductor.app.systemTaskQueuePopTimeout
+              value: {{ .Values.app.systemTaskQueuePopTimeout | quote }}
+            {{- end }}
             {{- if .Values.app.systemTaskWorkerExecutionNamespace }}
             - name: conductor.app.systemTaskWorkerExecutionNamespace
               value: {{ .Values.app.systemTaskWorkerExecutionNamespace | quote }}
@@ -169,6 +181,10 @@ spec:
             {{- if .Values.app.isolatedSystemTaskWorkerThreadCount }}
             - name: conductor.app.isolatedSystemTaskWorkerThreadCount
               value: {{ .Values.app.isolatedSystemTaskWorkerThreadCount | quote }}
+            {{- end }}
+            {{- if .Values.app.systemTaskPostponeThreshold }}
+            - name: conductor.app.systemTaskPostponeThreshold
+              value: {{ .Values.app.systemTaskPostponeThreshold | quote }}
             {{- end }}
             - name: conductor.app.asyncUpdateShortRunningWorkflowDuration
               value: {{ .Values.app.asyncUpdateShortRunningWorkflowDuration | quote }}
@@ -252,11 +268,27 @@ spec:
               value: {{ .Values.queues.dynomiteThreads | quote }}
             - name: conductor.workflow-execution-lock.type
               value: {{ .Values.workflowExecutionLock.type | quote }}
+            {{- if eq .Values.workflowExecutionLock.type "zookeeper" }}
+            - name: conductor.zookeeper-lock.connectionString
+              value: {{ .Values.zookeeperLock.connectionString | quote }}
+            {{- if .Values.zookeeperLock.sessionTimeoutMs }}
+            - name: conductor.zookeeper-lock.sessionTimeoutMs
+              value: {{ .Values.zookeeperLock.sessionTimeoutMs | quote }}
+            {{- end }}
+            {{- if .Values.zookeeperLock.connectionTimeoutMs }}
+            - name: conductor.zookeeper-lock.connectionTimeoutMs
+              value: {{ .Values.zookeeperLock.connectionTimeoutMs | quote }}
+            {{- end }}
+            {{- if .Values.zookeeperLock.namespace }}
+            - name: conductor.zookeeper-lock.namespace
+              value: {{ .Values.zookeeperLock.namespace | quote }}
+            {{- end }}
+            {{- end }}
             - name: conductor.indexing.enabled
               value: {{ .Values.indexing.enabled | quote }}
             - name: conductor.indexing.type
               value: {{ .Values.indexing.type | quote }}
-            {{- if .Values.externalPayloadStorage.type }}
+            {{- if and .Values.externalPayloadStorage.type (not (or (eq .Values.externalPayloadStorage.type "s3") (eq .Values.externalPayloadStorage.type "azure_blob"))) }}
             - name: conductor.external-payload-storage.type
               value: {{ .Values.externalPayloadStorage.type | quote }}
             {{- end }}
@@ -336,6 +368,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: my-sql-password
+            {{- if .Values.mySQL.deadlockRetryMax }}
+            - name: conductor.mysql.deadlockRetryMax
+              value: {{ .Values.mySQL.deadlockRetryMax | quote }}
+            {{- end }}
+            {{- if .Values.mySQL.taskDefCacheRefreshInterval }}
+            - name: conductor.mysql.taskDefCacheRefreshInterval
+              value: {{ .Values.mySQL.taskDefCacheRefreshInterval | quote }}
+            {{- end }}
             {{- end }}
             {{- if or (eq .Values.db.type "postgres") (eq .Values.workflowExecutionLock.type "postgres") (eq .Values.indexing.type "postgres") (and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "postgres")) }}
             - name: spring.datasource.url
@@ -347,6 +387,71 @@ spec:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: postgres-password
+            {{- if .Values.postgres.schema }}
+            - name: conductor.postgres.schema
+              value: {{ .Values.postgres.schema | quote }}
+            {{- end }}
+            {{- if .Values.postgres.deadlockRetryMax }}
+            - name: conductor.postgres.deadlockRetryMax
+              value: {{ .Values.postgres.deadlockRetryMax | quote }}
+            {{- end }}
+            {{- if .Values.postgres.taskDefCacheRefreshInterval }}
+            - name: conductor.postgres.taskDefCacheRefreshInterval
+              value: {{ .Values.postgres.taskDefCacheRefreshInterval | quote }}
+            {{- end }}
+            {{- if .Values.postgres.asyncMaxPoolSize }}
+            - name: conductor.postgres.asyncMaxPoolSize
+              value: {{ .Values.postgres.asyncMaxPoolSize | quote }}
+            {{- end }}
+            {{- if .Values.postgres.asyncWorkerQueueSize }}
+            - name: conductor.postgres.asyncWorkerQueueSize
+              value: {{ .Values.postgres.asyncWorkerQueueSize | quote }}
+            {{- end }}
+            {{- if .Values.postgres.pollDataFlushInterval }}
+            - name: conductor.postgres.pollDataFlushInterval
+              value: {{ .Values.postgres.pollDataFlushInterval | quote }}
+            {{- end }}
+            {{- if .Values.postgres.pollDataCacheValidityPeriod }}
+            - name: conductor.postgres.pollDataCacheValidityPeriod
+              value: {{ .Values.postgres.pollDataCacheValidityPeriod | quote }}
+            {{- end }}
+            {{- if .Values.postgres.onlyIndexOnStatusChange }}
+            - name: conductor.postgres.onlyIndexOnStatusChange
+              value: {{ .Values.postgres.onlyIndexOnStatusChange | quote }}
+            {{- end }}
+            {{- if .Values.postgres.experimentalQueueNotify }}
+            - name: conductor.postgres.experimentalQueueNotify
+              value: {{ .Values.postgres.experimentalQueueNotify | quote }}
+            {{- end }}
+            {{- if .Values.postgres.experimentalQueueNotifyStalePeriod }}
+            - name: conductor.postgres.experimentalQueueNotifyStalePeriod
+              value: {{ .Values.postgres.experimentalQueueNotifyStalePeriod | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if eq .Values.db.type "cassandra" }}
+            - name: conductor.cassandra.contactPoints
+              value: {{ .Values.cassandra.contactPoints | quote }}
+            - name: conductor.cassandra.port
+              value: {{ .Values.cassandra.port | quote }}
+            - name: conductor.cassandra.keyspace
+              value: {{ .Values.cassandra.keyspace | quote }}
+            {{- if .Values.cassandra.localDatacenter }}
+            - name: conductor.cassandra.localDatacenter
+              value: {{ .Values.cassandra.localDatacenter | quote }}
+            {{- end }}
+            {{- if .Values.cassandra.username }}
+            - name: conductor.cassandra.username
+              value: {{ .Values.cassandra.username | quote }}
+            {{- end }}
+            {{- if .Values.cassandra.password }}
+            - name: CASSANDRA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: cassandra-password
+            - name: conductor.cassandra.password
+              value: "$(CASSANDRA_PASSWORD)"
+            {{- end }}
             {{- end }}
             {{- if eq .Values.indexing.type "elasticsearch" }}
             - name: conductor.elasticsearch.url
@@ -362,8 +467,18 @@ spec:
               value: {{ .Values.elasticsearch.indexName | quote }}
             - name: conductor.elasticsearch.indexPrefix
               value: {{ .Values.elasticsearch.indexPrefix | quote }}
+            - name: conductor.elasticsearch.indexShardCount
+              value: {{ .Values.elasticsearch.indexShardCount | quote }}
             - name: conductor.elasticsearch.indexReplicasCount
               value: {{ .Values.elasticsearch.indexReplicasCount | quote }}
+            - name: conductor.elasticsearch.indexBatchSize
+              value: {{ .Values.elasticsearch.indexBatchSize | quote }}
+            - name: conductor.elasticsearch.asyncWorkerQueueSize
+              value: {{ .Values.elasticsearch.asyncWorkerQueueSize | quote }}
+            - name: conductor.elasticsearch.asyncMaxPoolSize
+              value: {{ .Values.elasticsearch.asyncMaxPoolSize | quote }}
+            - name: conductor.elasticsearch.asyncBufferFlushTimeout
+              value: {{ .Values.elasticsearch.asyncBufferFlushTimeout | quote }}
             - name: conductor.elasticsearch.version
               value: {{ .Values.elasticsearch.version | quote }}
             - name: conductor.elasticsearch.clusterHealthColor
@@ -372,6 +487,45 @@ spec:
               value: {{ .Values.elasticsearch.restClientConnectionTimeout | quote }}
             - name: conductor.elasticsearch.restClientReadTimeout
               value: {{ .Values.elasticsearch.restClientReadTimeout | quote }}
+            {{- end }}
+            {{- if or (eq .Values.indexing.type "opensearch2") (eq .Values.indexing.type "opensearch3") }}
+            - name: conductor.opensearch.url
+              value: {{ .Values.openSearch.url | quote }}
+            {{- if .Values.openSearch.username }}
+            - name: conductor.opensearch.username
+              value: {{ .Values.openSearch.username | quote }}
+            {{- end }}
+            - name: conductor.opensearch.password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: open-search-password
+            - name: conductor.opensearch.indexPrefix
+              value: {{ .Values.openSearch.indexPrefix | quote }}
+            - name: conductor.opensearch.indexShardCount
+              value: {{ .Values.openSearch.indexShardCount | quote }}
+            - name: conductor.opensearch.indexReplicasCount
+              value: {{ .Values.openSearch.indexReplicasCount | quote }}
+            - name: conductor.opensearch.autoIndexManagementEnabled
+              value: {{ .Values.openSearch.autoIndexManagementEnabled | quote }}
+            - name: conductor.opensearch.clusterHealthColor
+              value: {{ .Values.openSearch.clusterHealthColor | quote }}
+            - name: conductor.opensearch.indexBatchSize
+              value: {{ .Values.openSearch.indexBatchSize | quote }}
+            - name: conductor.opensearch.asyncWorkerQueueSize
+              value: {{ .Values.openSearch.asyncWorkerQueueSize | quote }}
+            - name: conductor.opensearch.asyncMaxPoolSize
+              value: {{ .Values.openSearch.asyncMaxPoolSize | quote }}
+            - name: conductor.opensearch.asyncBufferFlushTimeout
+              value: {{ .Values.openSearch.asyncBufferFlushTimeout | quote }}
+            - name: conductor.opensearch.taskLogResultLimit
+              value: {{ .Values.openSearch.taskLogResultLimit | quote }}
+            - name: conductor.opensearch.restClientConnectionRequestTimeout
+              value: {{ .Values.openSearch.restClientConnectionRequestTimeout | quote }}
+            - name: conductor.opensearch.restClientConnectionTimeout
+              value: {{ .Values.openSearch.restClientConnectionTimeout | quote }}
+            - name: conductor.opensearch.restClientReadTimeout
+              value: {{ .Values.openSearch.restClientReadTimeout | quote }}
             {{- end }}
             {{- if eq .Values.indexing.type "opensearch" }}
             - name: conductor.elasticsearch.url
@@ -397,6 +551,48 @@ spec:
               value: {{ .Values.openSearch.restClientConnectionTimeout | quote }}
             - name: conductor.elasticsearch.restClientReadTimeout
               value: {{ .Values.openSearch.restClientReadTimeout | quote }}
+            {{- end }}
+            {{- if and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "s3") }}
+            - name: conductor.external-payload-storage.type
+              value: "S3"
+            - name: conductor.external-payload-storage.s3.bucketName
+              value: {{ .Values.s3.externalPayloadStorage.bucketName | quote }}
+            - name: conductor.external-payload-storage.s3.signedUrlExpirationDuration
+              value: {{ .Values.s3.externalPayloadStorage.signedUrlExpirationDuration | quote }}
+            {{- end }}
+            {{- if and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "azure_blob") }}
+            - name: conductor.external-payload-storage.type
+              value: "azure_blob"
+            {{- if .Values.azureBlob.externalPayloadStorage.connectionString }}
+            - name: workflow.external.payload.storage.azure_blob.connection_string
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: azure-blob-connection-string
+            {{- end }}
+            {{- if .Values.azureBlob.externalPayloadStorage.endpoint }}
+            - name: workflow.external.payload.storage.azure_blob.endpoint
+              value: {{ .Values.azureBlob.externalPayloadStorage.endpoint | quote }}
+            {{- end }}
+            {{- if .Values.azureBlob.externalPayloadStorage.sasToken }}
+            - name: workflow.external.payload.storage.azure_blob.sas_token
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: azure-blob-sas-token
+            {{- end }}
+            - name: workflow.external.payload.storage.azure_blob.container_name
+              value: {{ .Values.azureBlob.externalPayloadStorage.containerName | quote }}
+            - name: workflow.external.payload.storage.azure_blob.signedurlexpirationseconds
+              value: {{ .Values.azureBlob.externalPayloadStorage.signedUrlExpirationSeconds | quote }}
+            - name: workflow.external.payload.storage.azure_blob.workflow_input_path
+              value: {{ .Values.azureBlob.externalPayloadStorage.workflowInputPath | quote }}
+            - name: workflow.external.payload.storage.azure_blob.workflow_output_path
+              value: {{ .Values.azureBlob.externalPayloadStorage.workflowOutputPath | quote }}
+            - name: workflow.external.payload.storage.azure_blob.task_input_path
+              value: {{ .Values.azureBlob.externalPayloadStorage.taskInputPath | quote }}
+            - name: workflow.external.payload.storage.azure_blob.task_output_path
+              value: {{ .Values.azureBlob.externalPayloadStorage.taskOutputPath | quote }}
             {{- end }}
             {{- if eq .Values.indexing.type "postgres" }}
             - name: conductor.elasticsearch.version
@@ -736,7 +932,7 @@ spec:
             - name: conductor.grpcServer.server.enabled
               value: {{ .Values.grpcServer.enabled | quote }}
             - name: conductor.grpcServer.server.port
-              value: {{ .Values.grpcServer.port | quote }}
+              value: {{ .Values.container.ports.grpc | quote }}
             - name: conductor.api-docs.cors.allowed-origins
               value: {{ .Values.cors.allowedOrigins | quote }}
             {{- if .Values.security.enabled }}

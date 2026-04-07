@@ -276,6 +276,10 @@ app:
   sweeperThreadCount: ""
   # -- The timeout for polling workflows to be swept (e.g., 2000ms, 2s)
   sweeperWorkflowPollTimeout: ""
+  # -- Batch size per sweep poll (e.g., 2)
+  sweeperSweepBatchSize: ""
+  # -- Queue pop timeout in ms for sweeper (e.g., 100)
+  sweeperQueuePopTimeout: ""
   # -- The number of threads to configure the threadpool in the event processor
   eventProcessorThreadCount: ""
   # -- Whether to enable indexing of messages within event payloads
@@ -306,10 +310,14 @@ app:
   systemTaskWorkerCallbackDuration: ""
   # -- The interval at which system task queues will be polled by system task workers (e.g., 50ms)
   systemTaskWorkerPollInterval: ""
+  # -- Queue pop timeout in ms for system tasks (e.g., 100ms)
+  systemTaskQueuePopTimeout: ""
   # -- The namespace for the system task workers to provide instance-level isolation
   systemTaskWorkerExecutionNamespace: ""
   # -- The number of threads to be used within the threadpool for system task workers in each isolation group
   isolatedSystemTaskWorkerThreadCount: ""
+  # -- After this many polls, begin exponential backoff for system tasks (e.g., 200)
+  systemTaskPostponeThreshold: ""
   # -- The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (e.g., 30s)
   asyncUpdateShortRunningWorkflowDuration: "10m"
   # -- The delay with which short-running workflows will be updated in Elasticsearch when async indexing is enabled (e.g., 60s)
@@ -357,17 +365,17 @@ app:
 
 # -- DB configuration
 db:
-  # -- DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, memory)
+  # -- DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory)
   type: redis_standalone
 
 # -- Queue configuration
 queue:
-  # -- Queue type (redis_standalone, redis_cluster, redis_sentinel, postgres, memory)
+  # -- Queue type (redis_standalone, redis_cluster, redis_sentinel, postgres, sqlite, memory)
   type: redis_standalone
 
 # -- Default event queue configuration
 defaultEventQueue:
-  # -- The default event queue type (e.g., amqp, nats_stream, kafka)
+  # -- Default event queue type (e.g., amqp, nats_stream, kafka)
   type: "amqp"
 
 # -- Queues configuration
@@ -377,19 +385,19 @@ queues:
 
 # -- Workflow execution lock configuration
 workflowExecutionLock:
-  # -- Workflow execution lock type (redis, postgres, local_only, noop_lock)
+  # -- Workflow execution lock type (redis, postgres, zookeeper, local_only, noop_lock)
   type: redis
 
 # -- Indexing configuration
 indexing:
   # -- Enable indexing
   enabled: true
-  # -- Indexing type (elasticsearch, opensearch, postgres, memory)
+  # -- Indexing type (elasticsearch, opensearch, opensearch2, opensearch3, postgres, sqlite, memory)
   type: elasticsearch
 
 # -- External payload storage configuration
 externalPayloadStorage:
-  # -- External payload storage type (postgres, null)
+  # -- External payload storage type (postgres, s3, azure_blob, null)
   type: null
 
 # -- Workflow archival configuration
@@ -440,29 +448,6 @@ redis:
   # -- Number of connections to test per eviction run
   numTestsPerEvictionRun: ""
 
-# -- Elasticsearch configuration
-elasticsearch:
-  # -- Elasticsearch URL
-  url: ""
-  # -- Elasticsearch username
-  username: ""
-  # -- Elasticsearch password
-  password: ""
-  # -- Elasticsearch index name
-  indexName: ""
-  # -- Elasticsearch index prefix
-  indexPrefix: ""
-  # -- Elasticsearch index replicas count
-  indexReplicasCount: 0
-  # -- Elasticsearch version
-  version: 7
-  # -- Elasticsearch cluster health color
-  clusterHealthColor: yellow
-  # -- Elasticsearch REST client connection timeout
-  restClientConnectionTimeout: 5000
-  # -- Elasticsearch REST client read timeout
-  restClientReadTimeout: 30000
-
 # -- MySQL configuration
 mySQL:
   # -- MySQL host
@@ -475,6 +460,10 @@ mySQL:
   password: ""
   # -- MySQL database name
   database: ""
+  # -- MySQL deadlock retry max attempts
+  deadlockRetryMax: ""
+  # -- Task definition cache refresh interval (e.g., 60s)
+  taskDefCacheRefreshInterval: ""
 
 # -- PostgreSQL configuration
 postgres:
@@ -488,6 +477,26 @@ postgres:
   password: ""
   # -- PostgreSQL database name
   database: ""
+  # -- PostgreSQL schema
+  schema: ""
+  # -- PostgreSQL deadlock retry max attempts
+  deadlockRetryMax: ""
+  # -- Task definition cache refresh interval (e.g., 60s)
+  taskDefCacheRefreshInterval: ""
+  # -- Maximum async indexing threads (Postgres persistence)
+  asyncMaxPoolSize: ""
+  # -- Async indexing task queue depth (Postgres persistence)
+  asyncWorkerQueueSize: ""
+  # -- Poll data flush interval in ms (e.g., 5000)
+  pollDataFlushInterval: ""
+  # -- Poll data cache validity period in ms (e.g., 5000)
+  pollDataCacheValidityPeriod: ""
+  # -- Only index workflow on status change
+  onlyIndexOnStatusChange: ""
+  # -- Enable LISTEN/NOTIFY based queues (experimental)
+  experimentalQueueNotify: ""
+  # -- LISTEN/NOTIFY stale period in ms (e.g., 5000)
+  experimentalQueueNotifyStalePeriod: ""
   # -- External payload storage configuration for PostgreSQL
   externalPayloadStorage:
     # -- Conductor URL
@@ -503,28 +512,20 @@ postgres:
     # -- Max data years
     maxDataYears: 1
 
-# -- OpenSearch configuration
-openSearch:
-  # -- OpenSearch URL
-  url: ""
-  # -- OpenSearch username
+# -- Cassandra configuration
+cassandra:
+  # -- Cassandra contact points (comma-separated hostnames or IPs)
+  contactPoints: ""
+  # -- Cassandra port
+  port: 9042
+  # -- Cassandra keyspace
+  keyspace: "conductor"
+  # -- Cassandra local datacenter (recommended when using the DataStax driver)
+  localDatacenter: ""
+  # -- Cassandra username
   username: ""
-  # -- OpenSearch password
+  # -- Cassandra password
   password: ""
-  # -- OpenSearch index name
-  indexName: ""
-  # -- OpenSearch index prefix
-  indexPrefix: ""
-  # -- OpenSearch index replicas count
-  indexReplicasCount: 0
-  # -- OpenSearch version
-  version: 0
-  # -- OpenSearch cluster health color
-  clusterHealthColor: green
-  # -- OpenSearch REST client connection timeout
-  restClientConnectionTimeout: 5000
-  # -- OpenSearch REST client read timeout
-  restClientReadTimeout: 30000
 
 # -- AMQP (RabbitMQ) Event Queues configuration
 amqpEventQueues:
@@ -609,6 +610,121 @@ kafkaEventQueues:
   producer: { }
   # -- Kafka admin client properties
   admin: { }
+
+# -- Zookeeper lock configuration
+zookeeperLock:
+  # -- Zookeeper connection string for workflow execution lock (e.g., zk1:2181,zk2:2181)
+  connectionString: ""
+  # -- Zookeeper lock session timeout in ms
+  sessionTimeoutMs: ""
+  # -- Zookeeper lock connection timeout in ms
+  connectionTimeoutMs: ""
+  # -- Zookeeper namespace/key prefix
+  namespace: ""
+
+# -- Elasticsearch configuration
+elasticsearch:
+  # -- Elasticsearch URL
+  url: ""
+  # -- Elasticsearch username
+  username: ""
+  # -- Elasticsearch password
+  password: ""
+  # -- Elasticsearch index name
+  indexName: ""
+  # -- Elasticsearch index prefix
+  indexPrefix: ""
+  # -- Elasticsearch index replicas count
+  indexReplicasCount: 0
+  # -- Elasticsearch primary shard count per index
+  indexShardCount: 5
+  # -- Documents per batch in async indexing mode
+  indexBatchSize: 1
+  # -- Async indexing task queue depth
+  asyncWorkerQueueSize: 100
+  # -- Maximum async indexing threads
+  asyncMaxPoolSize: 12
+  # -- Maximum time an async buffer is held before flushing (e.g., 10s)
+  asyncBufferFlushTimeout: "10s"
+  # -- Elasticsearch version
+  version: 7
+  # -- Elasticsearch cluster health color
+  clusterHealthColor: yellow
+  # -- Elasticsearch REST client connection timeout
+  restClientConnectionTimeout: 5000
+  # -- Elasticsearch REST client read timeout
+  restClientReadTimeout: 30000
+
+# -- OpenSearch configuration
+openSearch:
+  # -- OpenSearch URL
+  url: ""
+  # -- OpenSearch username
+  username: ""
+  # -- OpenSearch password
+  password: ""
+  # -- OpenSearch index prefix (preferred). If set, used as `conductor.opensearch.indexPrefix`
+  indexPrefix: ""
+  # -- (Legacy) OpenSearch index name, mapped to indexPrefix when used via legacy elasticsearch namespace
+  indexName: ""
+  # -- OpenSearch primary shard count per index
+  indexShardCount: 5
+  # -- OpenSearch index replicas count
+  indexReplicasCount: 0
+  # -- (Legacy) OpenSearch version value used with `conductor.elasticsearch.version` when indexing.type=opensearch
+  version: 0
+  # -- OpenSearch cluster health color
+  clusterHealthColor: green
+  # -- Whether Conductor automatically manages indices
+  autoIndexManagementEnabled: true
+  # -- Documents per batch in async indexing mode
+  indexBatchSize: 1
+  # -- Async indexing task queue depth
+  asyncWorkerQueueSize: 100
+  # -- Maximum async indexing threads
+  asyncMaxPoolSize: 12
+  # -- Maximum time async buffer is held before flushing (e.g., 10s)
+  asyncBufferFlushTimeout: "10s"
+  # -- Maximum task log entries returned per search
+  taskLogResultLimit: 10
+  # -- REST client connection request timeout in ms (-1 means unlimited)
+  restClientConnectionRequestTimeout: -1
+  # -- OpenSearch REST client connection timeout
+  restClientConnectionTimeout: 5000
+  # -- OpenSearch REST client read timeout
+  restClientReadTimeout: 30000
+
+# -- Amazon S3 configuration
+s3:
+  # -- External payload storage configuration for Amazon S3
+  externalPayloadStorage:
+    # -- Bucket name where payloads will be stored
+    bucketName: ""
+    # -- Signed URL expiration duration in seconds
+    signedUrlExpirationDuration: 5
+
+# -- Azure Blob configuration
+azureBlob:
+# -- External payload storage configuration for Azure Blob
+  externalPayloadStorage:
+    # -- Storage connection string (required to sign URLs)
+    connectionString: ""
+    # -- Storage endpoint (optional if connectionString is set)
+    endpoint: ""
+    # -- Storage SAS token (optional if connectionString is set)
+    sasToken: ""
+    # -- Storage container name
+    containerName: "conductor-payloads"
+    # -- Signed URL expiration in seconds
+    signedUrlExpirationSeconds: 5
+    # -- Path prefix for workflow input payloads
+    workflowInputPath: "workflow/input/"
+    # -- Path prefix for workflow output payloads
+    workflowOutputPath: "workflow/output/"
+    # -- Path prefix for task input payloads
+    taskInputPath: "task/input/"
+    # -- Path prefix for task output payloads
+    taskOutputPath: "task/output/"
 
 # -- Status listener configuration (webhook notifications)
 statusListener:
@@ -766,7 +882,7 @@ management:
 
 # -- GRPC Server configuration
 grpcServer:
-  # -- Enable GRPC server
+  # -- Enable GRPC server (listen port is `container.ports.grpc`)
   enabled: true
 
 # -- CORS configuration

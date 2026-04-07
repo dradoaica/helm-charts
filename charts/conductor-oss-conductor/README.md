@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.22.3](https://img.shields.io/badge/Version-3.22.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.3](https://img.shields.io/badge/AppVersion-3.22.3-informational?style=flat-square)
+![Version: 3.23.4](https://img.shields.io/badge/Version-3.23.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.3](https://img.shields.io/badge/AppVersion-3.22.3-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -82,7 +82,7 @@ Kubernetes: `>= 1.26.0`
 | amqpEventQueues.username | string | `""` | RabbitMQ username |
 | amqpEventQueues.virtualHost | string | `"/"` | RabbitMQ virtual host |
 | annotations | object | `{}` | Annotations to add to all resources |
-| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
+| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperQueuePopTimeout":"","sweeperSweepBatchSize":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskPostponeThreshold":"","systemTaskQueuePopTimeout":"","systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
 | app.activeWorkerLastPollTimeout | string | `""` | The time to consider if a worker is actively polling for a task (e.g., 10s) |
 | app.appID | string | `""` | The ID with which the app has been registered (e.g., conductor, myApp) |
 | app.asyncIndexingEnabled | string | `""` | Whether to enable asynchronous indexing to Elasticsearch |
@@ -109,9 +109,13 @@ Kubernetes: `>= 1.26.0`
 | app.ownerEmailMandatory | string | `""` | Whether to validate the owner email field as mandatory within workflow and task definitions |
 | app.stack | string | `""` | Name of the stack within which the app is running (e.g., dev, testing, staging, prod) |
 | app.summaryInputOutputJsonSerializationEnabled | string | `""` | Whether to enable summary input/output JSON serialization |
+| app.sweeperQueuePopTimeout | string | `""` | Queue pop timeout in ms for sweeper (e.g., 100) |
+| app.sweeperSweepBatchSize | string | `""` | Batch size per sweep poll (e.g., 2) |
 | app.sweeperThreadCount | string | `""` | The number of threads to use for background sweeping on active workflows |
 | app.sweeperWorkflowPollTimeout | string | `""` | The timeout for polling workflows to be swept (e.g., 2000ms, 2s) |
 | app.systemTaskMaxPollCount | int | `20` | The maximum number of threads to be polled within the threadpool for system task workers |
+| app.systemTaskPostponeThreshold | string | `""` | After this many polls, begin exponential backoff for system tasks (e.g., 200) |
+| app.systemTaskQueuePopTimeout | string | `""` | Queue pop timeout in ms for system tasks (e.g., 100ms) |
 | app.systemTaskWorkerCallbackDuration | string | `""` | The interval after which a system task will be checked by the system task worker for completion (e.g., 30s) |
 | app.systemTaskWorkerExecutionNamespace | string | `""` | The namespace for the system task workers to provide instance-level isolation |
 | app.systemTaskWorkerPollInterval | string | `""` | The interval at which system task queues will be polled by system task workers (e.g., 50ms) |
@@ -134,20 +138,43 @@ Kubernetes: `>= 1.26.0`
 | autoscaling.minReplicas | int | `1` | Minimum number of replicas |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
 | autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
+| azureBlob | object | `{"externalPayloadStorage":{"connectionString":"","containerName":"conductor-payloads","endpoint":"","sasToken":"","signedUrlExpirationSeconds":5,"taskInputPath":"task/input/","taskOutputPath":"task/output/","workflowInputPath":"workflow/input/","workflowOutputPath":"workflow/output/"}}` | Azure Blob configuration |
+| azureBlob.externalPayloadStorage | object | `{"connectionString":"","containerName":"conductor-payloads","endpoint":"","sasToken":"","signedUrlExpirationSeconds":5,"taskInputPath":"task/input/","taskOutputPath":"task/output/","workflowInputPath":"workflow/input/","workflowOutputPath":"workflow/output/"}` | External payload storage configuration for Azure Blob |
+| azureBlob.externalPayloadStorage.connectionString | string | `""` | Storage connection string (required to sign URLs) |
+| azureBlob.externalPayloadStorage.containerName | string | `"conductor-payloads"` | Storage container name |
+| azureBlob.externalPayloadStorage.endpoint | string | `""` | Storage endpoint (optional if connectionString is set) |
+| azureBlob.externalPayloadStorage.sasToken | string | `""` | Storage SAS token (optional if connectionString is set) |
+| azureBlob.externalPayloadStorage.signedUrlExpirationSeconds | int | `5` | Signed URL expiration in seconds |
+| azureBlob.externalPayloadStorage.taskInputPath | string | `"task/input/"` | Path prefix for task input payloads |
+| azureBlob.externalPayloadStorage.taskOutputPath | string | `"task/output/"` | Path prefix for task output payloads |
+| azureBlob.externalPayloadStorage.workflowInputPath | string | `"workflow/input/"` | Path prefix for workflow input payloads |
+| azureBlob.externalPayloadStorage.workflowOutputPath | string | `"workflow/output/"` | Path prefix for workflow output payloads |
+| cassandra | object | `{"contactPoints":"","keyspace":"conductor","localDatacenter":"","password":"","port":9042,"username":""}` | Cassandra configuration |
+| cassandra.contactPoints | string | `""` | Cassandra contact points (comma-separated hostnames or IPs) |
+| cassandra.keyspace | string | `"conductor"` | Cassandra keyspace |
+| cassandra.localDatacenter | string | `""` | Cassandra local datacenter (recommended when using the DataStax driver) |
+| cassandra.password | string | `""` | Cassandra password |
+| cassandra.port | int | `9042` | Cassandra port |
+| cassandra.username | string | `""` | Cassandra username |
 | container.ports | object | `{"grpc":8090,"rest":8080,"ui":5000}` | Container ports used by the Pod spec and as Service targetPort values |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":false,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | cors | object | `{"allowedOrigins":"*"}` | CORS configuration |
 | cors.allowedOrigins | string | `"*"` | Allowed origins for CORS (comma-separated, or * for all) |
 | db | object | `{"type":"redis_standalone"}` | DB configuration |
-| db.type | string | `"redis_standalone"` | DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, memory) |
+| db.type | string | `"redis_standalone"` | DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory) |
 | defaultEventQueue | object | `{"type":"amqp"}` | Default event queue configuration |
-| defaultEventQueue.type | string | `"amqp"` | The default event queue type (e.g., amqp, nats_stream, kafka) |
-| elasticsearch | object | `{"clusterHealthColor":"yellow","indexName":"","indexPrefix":"","indexReplicasCount":0,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
+| defaultEventQueue.type | string | `"amqp"` | Default event queue type (e.g., amqp, nats_stream, kafka) |
+| elasticsearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"clusterHealthColor":"yellow","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
+| elasticsearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time an async buffer is held before flushing (e.g., 10s) |
+| elasticsearch.asyncMaxPoolSize | int | `12` | Maximum async indexing threads |
+| elasticsearch.asyncWorkerQueueSize | int | `100` | Async indexing task queue depth |
 | elasticsearch.clusterHealthColor | string | `"yellow"` | Elasticsearch cluster health color |
+| elasticsearch.indexBatchSize | int | `1` | Documents per batch in async indexing mode |
 | elasticsearch.indexName | string | `""` | Elasticsearch index name |
 | elasticsearch.indexPrefix | string | `""` | Elasticsearch index prefix |
 | elasticsearch.indexReplicasCount | int | `0` | Elasticsearch index replicas count |
+| elasticsearch.indexShardCount | int | `5` | Elasticsearch primary shard count per index |
 | elasticsearch.password | string | `""` | Elasticsearch password |
 | elasticsearch.restClientConnectionTimeout | int | `5000` | Elasticsearch REST client connection timeout |
 | elasticsearch.restClientReadTimeout | int | `30000` | Elasticsearch REST client read timeout |
@@ -156,7 +183,7 @@ Kubernetes: `>= 1.26.0`
 | elasticsearch.version | int | `7` | Elasticsearch version |
 | env | object | `{"EXTRA_JVM_OPTS":""}` | Environment variables |
 | externalPayloadStorage | object | `{"type":null}` | External payload storage configuration |
-| externalPayloadStorage.type | string | `nil` | External payload storage type (postgres, null) |
+| externalPayloadStorage.type | string | `nil` | External payload storage type (postgres, s3, azure_blob, null) |
 | extraContainers | list | `[]` | Extra sidecar containers to inject into the main Pod spec |
 | extraEnvFrom | list | `[]` | Extra envFrom entries to inject into the main container |
 | extraEnvVars | list | `[]` | Extra environment variables to inject into the main container |
@@ -169,14 +196,14 @@ Kubernetes: `>= 1.26.0`
 | global.imagePullSecrets | list | `[]` | Global pod image pull secrets |
 | global.imageRegistry | string | `""` | Global container image registry override |
 | grpcServer | object | `{"enabled":true}` | GRPC Server configuration |
-| grpcServer.enabled | bool | `true` | Enable GRPC server |
+| grpcServer.enabled | bool | `true` | Enable GRPC server (listen port is `container.ports.grpc`) |
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
 | image.registry | string | `"docker.io"` | Main container image registry |
 | image.repository | string | `"conductoross/conductor"` | Main container image repository |
 | image.tag | string | `""` | Main container image tag |
 | indexing | object | `{"enabled":true,"type":"elasticsearch"}` | Indexing configuration |
 | indexing.enabled | bool | `true` | Enable indexing |
-| indexing.type | string | `"elasticsearch"` | Indexing type (elasticsearch, opensearch, postgres, memory) |
+| indexing.type | string | `"elasticsearch"` | Indexing type (elasticsearch, opensearch, opensearch2, opensearch3, postgres, sqlite, memory) |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
@@ -228,11 +255,13 @@ Kubernetes: `>= 1.26.0`
 | metrics.loggerEnabled | bool | `false` | Enable metrics logging |
 | metrics.loggerReportPeriodSeconds | int | `1` | Metrics logging a report period in seconds |
 | metrics.prometheusEnabled | bool | `false` | Enable Prometheus metrics |
-| mySQL | object | `{"database":"","host":"","password":"","port":3306,"username":""}` | MySQL configuration |
+| mySQL | object | `{"database":"","deadlockRetryMax":"","host":"","password":"","port":3306,"taskDefCacheRefreshInterval":"","username":""}` | MySQL configuration |
 | mySQL.database | string | `""` | MySQL database name |
+| mySQL.deadlockRetryMax | string | `""` | MySQL deadlock retry max attempts |
 | mySQL.host | string | `""` | MySQL host |
 | mySQL.password | string | `""` | MySQL password |
 | mySQL.port | int | `3306` | MySQL port |
+| mySQL.taskDefCacheRefreshInterval | string | `""` | Task definition cache refresh interval (e.g., 60s) |
 | mySQL.username | string | `""` | MySQL username |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | natsEventQueues | object | `{"enabled":false,"natsStream":{"clusterID":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
@@ -246,17 +275,25 @@ Kubernetes: `>= 1.26.0`
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
-| openSearch | object | `{"clusterHealthColor":"green","indexName":"","indexPrefix":"","indexReplicasCount":0,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":0}` | OpenSearch configuration |
+| openSearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"autoIndexManagementEnabled":true,"clusterHealthColor":"green","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionRequestTimeout":-1,"restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"taskLogResultLimit":10,"url":"","username":"","version":0}` | OpenSearch configuration |
+| openSearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time async buffer is held before flushing (e.g., 10s) |
+| openSearch.asyncMaxPoolSize | int | `12` | Maximum async indexing threads |
+| openSearch.asyncWorkerQueueSize | int | `100` | Async indexing task queue depth |
+| openSearch.autoIndexManagementEnabled | bool | `true` | Whether Conductor automatically manages indices |
 | openSearch.clusterHealthColor | string | `"green"` | OpenSearch cluster health color |
-| openSearch.indexName | string | `""` | OpenSearch index name |
-| openSearch.indexPrefix | string | `""` | OpenSearch index prefix |
+| openSearch.indexBatchSize | int | `1` | Documents per batch in async indexing mode |
+| openSearch.indexName | Legacy | `""` | OpenSearch index name, mapped to indexPrefix when used via legacy elasticsearch namespace |
+| openSearch.indexPrefix | string | `""` | OpenSearch index prefix (preferred). If set, used as `conductor.opensearch.indexPrefix` |
 | openSearch.indexReplicasCount | int | `0` | OpenSearch index replicas count |
+| openSearch.indexShardCount | int | `5` | OpenSearch primary shard count per index |
 | openSearch.password | string | `""` | OpenSearch password |
+| openSearch.restClientConnectionRequestTimeout | int | `-1` | REST client connection request timeout in ms (-1 means unlimited) |
 | openSearch.restClientConnectionTimeout | int | `5000` | OpenSearch REST client connection timeout |
 | openSearch.restClientReadTimeout | int | `30000` | OpenSearch REST client read timeout |
+| openSearch.taskLogResultLimit | int | `10` | Maximum task log entries returned per search |
 | openSearch.url | string | `""` | OpenSearch URL |
 | openSearch.username | string | `""` | OpenSearch username |
-| openSearch.version | int | `0` | OpenSearch version |
+| openSearch.version | Legacy | `0` | OpenSearch version value used with `conductor.elasticsearch.version` when indexing.type=opensearch |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
 | podDisruptionBudget.create | bool | `false` | Create a PodDisruptionBudget for high availability |
 | podDisruptionBudget.maxUnavailable | string | `""` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
@@ -264,8 +301,13 @@ Kubernetes: `>= 1.26.0`
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |
 | podSecurityContext.enabled | bool | `true` | Enable pod security context |
-| postgres | object | `{"database":"","externalPayloadStorage":{"conductorUrl":"","maxDataDays":0,"maxDataMonths":0,"maxDataRows":9223372036854775807,"maxDataYears":1,"tableName":"external.external_payload"},"host":"","password":"","port":5432,"username":""}` | PostgreSQL configuration |
+| postgres | object | `{"asyncMaxPoolSize":"","asyncWorkerQueueSize":"","database":"","deadlockRetryMax":"","experimentalQueueNotify":"","experimentalQueueNotifyStalePeriod":"","externalPayloadStorage":{"conductorUrl":"","maxDataDays":0,"maxDataMonths":0,"maxDataRows":9223372036854775807,"maxDataYears":1,"tableName":"external.external_payload"},"host":"","onlyIndexOnStatusChange":"","password":"","pollDataCacheValidityPeriod":"","pollDataFlushInterval":"","port":5432,"schema":"","taskDefCacheRefreshInterval":"","username":""}` | PostgreSQL configuration |
+| postgres.asyncMaxPoolSize | string | `""` | Maximum async indexing threads (Postgres persistence) |
+| postgres.asyncWorkerQueueSize | string | `""` | Async indexing task queue depth (Postgres persistence) |
 | postgres.database | string | `""` | PostgreSQL database name |
+| postgres.deadlockRetryMax | string | `""` | PostgreSQL deadlock retry max attempts |
+| postgres.experimentalQueueNotify | string | `""` | Enable LISTEN/NOTIFY based queues (experimental) |
+| postgres.experimentalQueueNotifyStalePeriod | string | `""` | LISTEN/NOTIFY stale period in ms (e.g., 5000) |
 | postgres.externalPayloadStorage | object | `{"conductorUrl":"","maxDataDays":0,"maxDataMonths":0,"maxDataRows":9223372036854775807,"maxDataYears":1,"tableName":"external.external_payload"}` | External payload storage configuration for PostgreSQL |
 | postgres.externalPayloadStorage.conductorUrl | string | `""` | Conductor URL |
 | postgres.externalPayloadStorage.maxDataDays | int | `0` | Max data days |
@@ -274,12 +316,17 @@ Kubernetes: `>= 1.26.0`
 | postgres.externalPayloadStorage.maxDataYears | int | `1` | Max data years |
 | postgres.externalPayloadStorage.tableName | string | `"external.external_payload"` | Table name |
 | postgres.host | string | `""` | PostgreSQL host |
+| postgres.onlyIndexOnStatusChange | string | `""` | Only index workflow on status change |
 | postgres.password | string | `""` | PostgreSQL password |
+| postgres.pollDataCacheValidityPeriod | string | `""` | Poll data cache validity period in ms (e.g., 5000) |
+| postgres.pollDataFlushInterval | string | `""` | Poll data flush interval in ms (e.g., 5000) |
 | postgres.port | int | `5432` | PostgreSQL port |
+| postgres.schema | string | `""` | PostgreSQL schema |
+| postgres.taskDefCacheRefreshInterval | string | `""` | Task definition cache refresh interval (e.g., 60s) |
 | postgres.username | string | `""` | PostgreSQL username |
 | priorityClassName | string | `""` | Pod priority class name |
 | queue | object | `{"type":"redis_standalone"}` | Queue configuration |
-| queue.type | string | `"redis_standalone"` | Queue type (redis_standalone, redis_cluster, redis_sentinel, postgres, memory) |
+| queue.type | string | `"redis_standalone"` | Queue type (redis_standalone, redis_cluster, redis_sentinel, postgres, sqlite, memory) |
 | queues | object | `{"dynomiteThreads":10}` | Queues configuration |
 | queues.dynomiteThreads | int | `10` | Number of threads allocated to Dynomite queues |
 | readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health","port":8080},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
@@ -305,6 +352,10 @@ Kubernetes: `>= 1.26.0`
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"3Gi"},"requests":{"cpu":"300m","memory":"2Gi"}}` | Main container requests/limits  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + maxDirectMemorySizeMB (JVM DirectMemory max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
+| s3 | object | `{"externalPayloadStorage":{"bucketName":"","signedUrlExpirationDuration":5}}` | Amazon S3 configuration |
+| s3.externalPayloadStorage | object | `{"bucketName":"","signedUrlExpirationDuration":5}` | External payload storage configuration for Amazon S3 |
+| s3.externalPayloadStorage.bucketName | string | `""` | Bucket name where payloads will be stored |
+| s3.externalPayloadStorage.signedUrlExpirationDuration | int | `5` | Signed URL expiration duration in seconds |
 | security | object | `{"auth":{"basic":{"enabled":false,"principal":"","realm":"","role":""},"oidc":{"audience":"","clientID":"","clientSecret":"","discoveryUri":"","enabled":false,"groupsClaim":"groups"}},"enabled":false}` | Security configuration (IAM/Auth) |
 | security.auth.basic.enabled | bool | `false` | Enable Basic authentication |
 | security.auth.basic.principal | string | `""` | Basic Auth Principal |
@@ -360,7 +411,12 @@ Kubernetes: `>= 1.26.0`
 | workflowArchival.ttl | string | `"30d"` | Time to live for archived workflows |
 | workflowArchival.type | string | `"elasticsearch"` | Archival type (e.g., elasticsearch, opensearch) |
 | workflowExecutionLock | object | `{"type":"redis"}` | Workflow execution lock configuration |
-| workflowExecutionLock.type | string | `"redis"` | Workflow execution lock type (redis, postgres, local_only, noop_lock) |
+| workflowExecutionLock.type | string | `"redis"` | Workflow execution lock type (redis, postgres, zookeeper, local_only, noop_lock) |
+| zookeeperLock | object | `{"connectionString":"","connectionTimeoutMs":"","namespace":"","sessionTimeoutMs":""}` | Zookeeper lock configuration |
+| zookeeperLock.connectionString | string | `""` | Zookeeper connection string for workflow execution lock (e.g., zk1:2181,zk2:2181) |
+| zookeeperLock.connectionTimeoutMs | string | `""` | Zookeeper lock connection timeout in ms |
+| zookeeperLock.namespace | string | `""` | Zookeeper namespace/key prefix |
+| zookeeperLock.sessionTimeoutMs | string | `""` | Zookeeper lock session timeout in ms |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)
