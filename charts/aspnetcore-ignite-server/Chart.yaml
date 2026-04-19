@@ -1,9 +1,9 @@
 apiVersion: v2
-appVersion: "2.17.0"
+appVersion: "2.18.0"
 description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 name: aspnetcore-ignite-server
 type: application
-version: 2.17.0
+version: 2.18.0
 keywords:
   - ignite
   - csharp

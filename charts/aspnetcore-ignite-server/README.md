@@ -1,6 +1,6 @@
 # aspnetcore-ignite-server
 
-![Version: 2.17.0](https://img.shields.io/badge/Version-2.17.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.17.0](https://img.shields.io/badge/AppVersion-2.17.0-informational?style=flat-square)
+![Version: 2.18.0](https://img.shields.io/badge/Version-2.18.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 
@@ -34,7 +34,7 @@ Kubernetes: `>= 1.26.0`
 | container.ports | object | `{"jdbc":11211,"jmx":49112,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800,"thinClients":10900}` | Container ports used by the Pod spec and as Service targetPort values |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":false,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
-| env | object | `{"DEFAULT_OFF_HEAP_MEMORY":"2048","DEFAULT_ON_HEAP_MEMORY":"1024","ENABLE_AUTHENTICATION":"true","ENABLE_OFF_HEAP_METRICS":"false","METRICS_EXPIRE_TIME_IN_HOURS":"24","METRICS_LOG_FREQUENCY_IN_MINUTES":"5","METRICS_UPDATE_FREQUENCY_IN_SECONDS":"60","SSL_CLIENT_CERTIFICATE_PATH":"","SSL_KEY_STORE_FILE_PATH":"","SSL_TRUST_STORE_FILE_PATH":"","USE_CLIENT_SSL":"false","USE_SSL":"false"}` | Environment variables |
+| env | object | `{"DEFAULT_OFF_HEAP_MEMORY":2048,"DEFAULT_ON_HEAP_MEMORY":1024,"ENABLE_AUTHENTICATION":true,"ENABLE_OFF_HEAP_METRICS":false,"METRICS_EXPIRE_TIME_IN_HOURS":24,"METRICS_LOG_FREQUENCY_IN_MINUTES":5,"METRICS_UPDATE_FREQUENCY_IN_SECONDS":60,"SSL_CLIENT_CERTIFICATE_PATH":"","SSL_KEY_STORE_FILE_PATH":"","SSL_TRUST_STORE_FILE_PATH":"","USE_CLIENT_SSL":false,"USE_SSL":false}` | Environment variables |
 | extraContainers | list | `[]` | Extra sidecar containers to inject into the main Pod spec |
 | extraEnvFrom | list | `[]` | Extra envFrom entries to inject into the main container |
 | extraEnvVars | list | `[]` | Extra environment variables to inject into the main container |
@@ -47,13 +47,13 @@ Kubernetes: `>= 1.26.0`
 | global.imagePullSecrets | list | `[]` | Global pod image pull secrets |
 | global.imageRegistry | string | `""` | Global container image registry override |
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
-| image.registry | string | `"docker.io"` | Main container image registry |
+| image.registry | string | `"ghcr.io"` | Main container image registry |
 | image.repository | string | `"dradoaica/aspnetcore.ignite-server"` | Main container image repository |
 | image.tag | string | `""` | Main container image tag |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
-| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":8080}]}]` | List of Ingress hosts with paths configuration |
+| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":8080}]}]` | List of Ingress hosts with path configuration |
 | ingress.tls | list | `[]` | TLS configuration for Ingress |
 | labels | object | `{}` | Additional labels to add to all resources |
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |

@@ -38,7 +38,7 @@ extraEnvVarsSecret: ""
 
 image:
   # -- Main container image registry
-  registry: docker.io
+  registry: ghcr.io
   # -- Main container image repository
   repository: dradoaica/aspnetcore.ignite-server
   # -- Main container image tag
@@ -97,7 +97,7 @@ containerSecurityContext:
   capabilities:
     drop: [ "ALL" ]
   seccompProfile:
-    type: "RuntimeDefault"
+    type: RuntimeDefault
 
 # -- Main container requests/limits with guaranteed QoS (requests = limits)
 #  memory calculation: DEFAULT_ON_HEAP_MEMORY (JVM Heap max size)
@@ -263,7 +263,7 @@ ingress:
   className: ""
   # -- Additional annotations for the Ingress
   annotations: { }
-  # -- List of Ingress hosts with paths configuration
+  # -- List of Ingress hosts with path configuration
   hosts:
     - host: ignite.local
       paths:
@@ -279,22 +279,22 @@ replicaCount: 1
 
 # -- Secrets
 secrets:
-  igniteUserPassword: "ignite"
+  igniteUserPassword: ignite
   sslKeyStorePassword: ""
   sslTrustStorePassword: ""
   sslClientCertificatePassword: ""
 
 # -- Environment variables
 env:
-  DEFAULT_ON_HEAP_MEMORY: "1024"
-  DEFAULT_OFF_HEAP_MEMORY: "2048"
-  ENABLE_AUTHENTICATION: "true"
-  USE_SSL: "false"
+  DEFAULT_ON_HEAP_MEMORY: 1024
+  DEFAULT_OFF_HEAP_MEMORY: 2048
+  ENABLE_AUTHENTICATION: true
+  USE_SSL: false
   SSL_KEY_STORE_FILE_PATH: ""
   SSL_TRUST_STORE_FILE_PATH: ""
-  USE_CLIENT_SSL: "false"
+  USE_CLIENT_SSL: false
   SSL_CLIENT_CERTIFICATE_PATH: ""
-  METRICS_EXPIRE_TIME_IN_HOURS: "24"
-  METRICS_LOG_FREQUENCY_IN_MINUTES: "5"
-  METRICS_UPDATE_FREQUENCY_IN_SECONDS: "60"
-  ENABLE_OFF_HEAP_METRICS: "false"
+  METRICS_EXPIRE_TIME_IN_HOURS: 24
+  METRICS_LOG_FREQUENCY_IN_MINUTES: 5
+  METRICS_UPDATE_FREQUENCY_IN_SECONDS: 60
+  ENABLE_OFF_HEAP_METRICS: false

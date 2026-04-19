@@ -97,7 +97,7 @@ containerSecurityContext:
   capabilities:
     drop: [ "ALL" ]
   seccompProfile:
-    type: "RuntimeDefault"
+    type: RuntimeDefault
 
 # -- Main container requests/limits with guaranteed QoS (requests = limits)
 #  memory calculation: onHeapMB (JVM Heap max size)
@@ -278,7 +278,7 @@ ingress:
   className: ""
   # -- Additional annotations for the Ingress
   annotations: { }
-  # -- List of Ingress hosts with paths configuration
+  # -- List of Ingress hosts with path configuration
   hosts:
     - host: ignite.local
       paths:

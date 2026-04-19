@@ -89,7 +89,7 @@ containerSecurityContext:
   capabilities:
     drop: [ "ALL" ]
   seccompProfile:
-    type: "RuntimeDefault"
+    type: RuntimeDefault
 
 # -- Main container requests/limits
 #  memory calculation: onHeapMB (JVM Heap max size)
@@ -316,10 +316,10 @@ app:
   systemTaskWorkerExecutionNamespace: ""
   # -- The number of threads to be used within the threadpool for system task workers in each isolation group
   isolatedSystemTaskWorkerThreadCount: ""
-  # -- After this many polls, begin exponential backoff for system tasks (e.g., 200)
+  # -- After these many polls, begin exponential backoff for system tasks (e.g., 200)
   systemTaskPostponeThreshold: ""
   # -- The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (e.g., 30s)
-  asyncUpdateShortRunningWorkflowDuration: "10m"
+  asyncUpdateShortRunningWorkflowDuration: 10m
   # -- The delay with which short-running workflows will be updated in Elasticsearch when async indexing is enabled (e.g., 60s)
   asyncUpdateDelay: ""
   # -- Whether to validate the owner email field as mandatory within workflow and task definitions
@@ -337,23 +337,23 @@ app:
   # -- Whether to enable summary input/output JSON serialization
   summaryInputOutputJsonSerializationEnabled: ""
   # -- The threshold of the workflow input payload size beyond which the payload will be stored in ExternalPayloadStorage
-  workflowInputPayloadSizeThreshold: "1MB"
+  workflowInputPayloadSizeThreshold: 1MB
   # -- The maximum threshold of the workflow input payload size beyond which input will be rejected and the workflow marked as FAILED
-  maxWorkflowInputPayloadSizeThreshold: "4GB"
+  maxWorkflowInputPayloadSizeThreshold: 4GB
   # -- The threshold of the workflow output payload size beyond which the payload will be stored in ExternalPayloadStorage
-  workflowOutputPayloadSizeThreshold: "1MB"
+  workflowOutputPayloadSizeThreshold: 1MB
   # -- The maximum threshold of the workflow output payload size beyond which output will be rejected and the workflow marked as FAILED
-  maxWorkflowOutputPayloadSizeThreshold: "4GB"
+  maxWorkflowOutputPayloadSizeThreshold: 4GB
   # -- The threshold of the task input payload size beyond which the payload will be stored in ExternalPayloadStorage
-  taskInputPayloadSizeThreshold: "1MB"
+  taskInputPayloadSizeThreshold: 1MB
   # -- The maximum threshold of the task input payload size beyond which the task input will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxTaskInputPayloadSizeThreshold: "4GB"
+  maxTaskInputPayloadSizeThreshold: 4GB
   # -- The threshold of the task output payload size beyond which the payload will be stored in ExternalPayloadStorage
-  taskOutputPayloadSizeThreshold: "1MB"
+  taskOutputPayloadSizeThreshold: 1MB
   # -- The maximum threshold of the task output payload size beyond which the task output will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxTaskOutputPayloadSizeThreshold: "4GB"
+  maxTaskOutputPayloadSizeThreshold: 4GB
   # -- The maximum threshold of the workflow variables payload size beyond which the task changes will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxWorkflowVariablesPayloadSizeThreshold: "100MB"
+  maxWorkflowVariablesPayloadSizeThreshold: 100MB
   # -- The maximum size of task execution logs
   taskExecLogSizeLimit: ""
   # -- Whether to enable the workflow repair service
@@ -376,7 +376,7 @@ queue:
 # -- Default event queue configuration
 defaultEventQueue:
   # -- Default event queue type (e.g., amqp, nats_stream, kafka)
-  type: "amqp"
+  type: amqp
 
 # -- Queues configuration
 queues:
@@ -405,11 +405,11 @@ workflowArchival:
   # -- Enable workflow archival
   enabled: false
   # -- Archival type (e.g., elasticsearch, opensearch)
-  type: "elasticsearch"
+  type: elasticsearch
   # -- Time to live for archived workflows
-  ttl: "30d"
+  ttl: 30d
   # -- Delay before archiving a completed workflow
-  delay: "1h"
+  delay: 1h
 
 # -- Redis configuration
 redis:
@@ -428,13 +428,13 @@ redis:
   # -- Task definition cache refresh interval
   taskDefCacheRefreshInterval: 1
   # -- Workflow namespace prefix
-  workflowNamespacePrefix: "conductor"
+  workflowNamespacePrefix: conductor
   # -- Queue namespace prefix
-  queueNamespacePrefix: "conductor_queues"
+  queueNamespacePrefix: conductor_queues
   # -- Non-quorum port used to connect to local Redis (used by Dynomite queues)
   queuesNonQuorumPort: 22122
   # -- Availability zone/rack for the Redis node
-  availabilityZone: "us-east-1c"
+  availabilityZone: us-east-1c
   # -- Maximum idle connections in the pool
   maxIdleConnections: ""
   # -- Minimum idle connections in the pool
@@ -449,7 +449,7 @@ redis:
   numTestsPerEvictionRun: ""
 
 # -- MySQL configuration
-mySQL:
+mySql:
   # -- MySQL host
   host: ""
   # -- MySQL port
@@ -502,7 +502,7 @@ postgres:
     # -- Conductor URL
     conductorUrl: ""
     # -- Table name
-    tableName: "external.external_payload"
+    tableName: external.external_payload
     # -- Max data rows
     maxDataRows: 9223372036854775807
     # -- Max data days
@@ -519,7 +519,7 @@ cassandra:
   # -- Cassandra port
   port: 9042
   # -- Cassandra keyspace
-  keyspace: "conductor"
+  keyspace: conductor
   # -- Cassandra local datacenter (recommended when using the DataStax driver)
   localDatacenter: ""
   # -- Cassandra username
@@ -538,7 +538,7 @@ amqpEventQueues:
   # -- RabbitMQ password
   password: ""
   # -- RabbitMQ virtual host
-  virtualHost: "/"
+  virtualHost: /
   # -- RabbitMQ port
   port: 5672
   # -- Whether to use NIO
@@ -546,9 +546,9 @@ amqpEventQueues:
   # -- Batch size for message consumption
   batchSize: 1
   # -- Poll time duration (e.g., 100ms)
-  pollTimeDuration: "100ms"
+  pollTimeDuration: 100ms
   # -- Queue type (classic, quorum)
-  queueType: "classic"
+  queueType: classic
   # -- Whether to process messages sequentially
   sequentialMsgProcessing: true
   # -- Connection timeout in ms
@@ -566,7 +566,7 @@ amqpEventQueues:
   # -- Rate limit duration in ms
   duration: 1000
   # -- Retry type (REGULARINTERVALS, EXPONENTIALBACKOFF)
-  retryType: "REGULARINTERVALS"
+  retryType: REGULARINTERVALS
   # -- Whether to use exchange (true) or queue (false)
   useExchange: true
   # -- Listener queue prefix
@@ -584,11 +584,11 @@ natsEventQueues:
   enabled: false
   natsStream:
     # -- NATS streaming cluster ID
-    clusterID: "test-cluster"
+    clusterID: test-cluster
     # -- NATS streaming durable name
     durableName: ""
     # -- NATS streaming URL
-    url: "nats://localhost:4222"
+    url: nats://localhost:4222
     # -- Listener queue prefix
     listenerQueuePrefix: ""
 
@@ -597,13 +597,13 @@ kafkaEventQueues:
   # -- Enable Kafka event queue support
   enabled: false
   # -- Kafka bootstrap servers
-  bootstrapServers: "kafka:29092"
+  bootstrapServers: kafka:29092
   # -- Dead letter queue topic
-  dlqTopic: "conductor-dlq"
+  dlqTopic: conductor-dlq
   # -- Listener queue prefix
-  listenerQueuePrefix: "conductor_"
+  listenerQueuePrefix: conductor_
   # -- Poll time duration (e.g., 500ms)
-  pollTimeDuration: "500ms"
+  pollTimeDuration: 500ms
   # -- Kafka consumer client properties
   consumer: { }
   # -- Kafka producer client properties
@@ -645,7 +645,7 @@ elasticsearch:
   # -- Maximum async indexing threads
   asyncMaxPoolSize: 12
   # -- Maximum time an async buffer is held before flushing (e.g., 10s)
-  asyncBufferFlushTimeout: "10s"
+  asyncBufferFlushTimeout: 10s
   # -- Elasticsearch version
   version: 7
   # -- Elasticsearch cluster health color
@@ -684,7 +684,7 @@ openSearch:
   # -- Maximum async indexing threads
   asyncMaxPoolSize: 12
   # -- Maximum time async buffer is held before flushing (e.g., 10s)
-  asyncBufferFlushTimeout: "10s"
+  asyncBufferFlushTimeout: 10s
   # -- Maximum task log entries returned per search
   taskLogResultLimit: 10
   # -- REST client connection request timeout in ms (-1 means unlimited)
@@ -705,7 +705,7 @@ s3:
 
 # -- Azure Blob configuration
 azureBlob:
-# -- External payload storage configuration for Azure Blob
+  # -- External payload storage configuration for Azure Blob
   externalPayloadStorage:
     # -- Storage connection string (required to sign URLs)
     connectionString: ""
@@ -714,17 +714,17 @@ azureBlob:
     # -- Storage SAS token (optional if connectionString is set)
     sasToken: ""
     # -- Storage container name
-    containerName: "conductor-payloads"
+    containerName: conductor-payloads
     # -- Signed URL expiration in seconds
     signedUrlExpirationSeconds: 5
     # -- Path prefix for workflow input payloads
-    workflowInputPath: "workflow/input/"
+    workflowInputPath: workflow/input/
     # -- Path prefix for workflow output payloads
-    workflowOutputPath: "workflow/output/"
+    workflowOutputPath: workflow/output/
     # -- Path prefix for task input payloads
-    taskInputPath: "task/input/"
+    taskInputPath: task/input/
     # -- Path prefix for task output payloads
-    taskOutputPath: "task/output/"
+    taskOutputPath: task/output/
 
 # -- Status listener configuration (webhook notifications)
 statusListener:
@@ -814,17 +814,17 @@ ai:
     # -- AWS Secret Access Key
     secretKey: ""
     # -- AWS Region
-    region: "us-east-1"
+    region: us-east-1
   # -- Google Gemini configuration
   gemini:
     # -- Google Cloud Project ID
     projectID: ""
     # -- Google Cloud Location
-    location: "us-central1"
+    location: us-central1
   # -- Ollama configuration
   ollama:
     # -- Ollama Base URL
-    baseUrl: "http://localhost:11434"
+    baseUrl: http://localhost:11434
 
 # -- Metrics configuration
 metrics:
@@ -840,11 +840,11 @@ management:
   # -- Enable Redis health check
   healthRedisEnabled: true
   # -- Actuator endpoints to expose (comma-separated)
-  endpointsWebExposureInclude: "health,info,metrics,prometheus"
+  endpointsWebExposureInclude: health,info,metrics,prometheus
   # -- Request metrics percentiles (comma-separated)
-  metricsPercentiles: "0.50,0.75,0.90,0.95,0.99"
+  metricsPercentiles: 0.50,0.75,0.90,0.95,0.99
   # -- Health endpoint detail level (never, when_authorized, always)
-  healthShowDetails: "always"
+  healthShowDetails: always
   # -- Metrics export backends
   metricsExport:
     # -- Enable Atlas metrics export
@@ -872,7 +872,7 @@ management:
     # -- Enable CloudWatch metrics export
     cloudWatch: false
     # -- CloudWatch Namespace
-    cloudWatchNamespace: "conductor"
+    cloudWatchNamespace: conductor
     # -- Enable Azure Monitor metrics export
     azureMonitor: false
     # -- Azure Monitor Instrumentation Key
@@ -907,7 +907,7 @@ security:
       # -- OIDC Audience
       audience: ""
       # -- OIDC Groups Claim
-      groupsClaim: "groups"
+      groupsClaim: groups
     basic:
       # -- Enable Basic authentication
       enabled: false
@@ -921,9 +921,9 @@ security:
 # -- Spring configuration
 spring:
   # -- Profiles passed via SPRING_PROFILES_ACTIVE
-  profilesActive: "logrotate"
+  profilesActive: logrotate
   # -- Path to the API docs endpoint
-  apiDocsPath: "/api-docs"
+  apiDocsPath: /api-docs
 
 # -- Logging configuration
 logging:

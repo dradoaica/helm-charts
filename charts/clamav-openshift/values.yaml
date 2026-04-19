@@ -38,9 +38,9 @@ extraEnvVarsSecret: ""
 
 image:
   # -- Main container image registry
-  registry: docker.io
+  registry: ghcr.io
   # -- Main container image repository
-  repository: dradoaica/clamav-openshift
+  repository: dradoaica/clamav-docker-openshift
   # -- Main container image tag
   tag: ""
   # -- Main container image pull policy
@@ -93,7 +93,7 @@ containerSecurityContext:
   capabilities:
     drop: [ "ALL" ]
   seccompProfile:
-    type: "RuntimeDefault"
+    type: RuntimeDefault
 
 # -- Main container requests/limits
 resources:

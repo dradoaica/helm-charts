@@ -97,7 +97,7 @@ containerSecurityContext:
   capabilities:
     drop: [ "ALL" ]
   seccompProfile:
-    type: "RuntimeDefault"
+    type: RuntimeDefault
 
 # -- Main container requests/limits with guaranteed QoS (requests = limits)
 #  memory calculation: onHeapMB (JVM Heap max size)

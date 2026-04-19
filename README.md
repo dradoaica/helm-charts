@@ -8,11 +8,11 @@ Please refer to the [developer notes](./DEV_NOTES.md) to get started.
 
 ## Available Charts
 
-- [aspnetcore-ignite-server](./charts/aspnetcore-ignite-server/README.md)
-- [clamav-openshift](./charts/clamav-openshift/README.md)
-- [conductor-oss-conductor](./charts/conductor-oss-conductor/README.md)
-- [ignite](./charts/ignite/README.md)
-- [ignite-3](./charts/ignite-3/README.md)
+- [aspnetcore-ignite-server](./charts/aspnetcore-ignite-server/README.md) — Stable: 2.17.x · Preview: 2.18.x
+- [clamav-openshift](./charts/clamav-openshift/README.md) — Stable: 1.5.2 · Preview: 1.5.3
+- [conductor-oss-conductor](./charts/conductor-oss-conductor/README.md) — Stable: 3.23.x · Preview: 3.30.x
+- [ignite](./charts/ignite/README.md) — Stable: 2.17.x · Preview: 2.18.x
+- [ignite-3](./charts/ignite-3/README.md) — Stable: 3.1.x · Preview: 3.2.x
 
 ## License
 

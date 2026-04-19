@@ -360,21 +360,21 @@ spec:
             {{- end }}
             {{- if eq .Values.db.type "mysql" }}
             - name: spring.datasource.url
-              value: "jdbc:mysql://{{ .Values.mySQL.host }}:{{ .Values.mySQL.port }}/{{ .Values.mySQL.database }}"
+              value: "jdbc:mysql://{{ .Values.mySql.host }}:{{ .Values.mySql.port }}/{{ .Values.mySql.database }}"
             - name: spring.datasource.username
-              value: {{ .Values.mySQL.username | quote }}
+              value: {{ .Values.mySql.username | quote }}
             - name: spring.datasource.password
               valueFrom:
                 secretKeyRef:
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: my-sql-password
-            {{- if .Values.mySQL.deadlockRetryMax }}
+            {{- if .Values.mySql.deadlockRetryMax }}
             - name: conductor.mysql.deadlockRetryMax
-              value: {{ .Values.mySQL.deadlockRetryMax | quote }}
+              value: {{ .Values.mySql.deadlockRetryMax | quote }}
             {{- end }}
-            {{- if .Values.mySQL.taskDefCacheRefreshInterval }}
+            {{- if .Values.mySql.taskDefCacheRefreshInterval }}
             - name: conductor.mysql.taskDefCacheRefreshInterval
-              value: {{ .Values.mySQL.taskDefCacheRefreshInterval | quote }}
+              value: {{ .Values.mySql.taskDefCacheRefreshInterval | quote }}
             {{- end }}
             {{- end }}
             {{- if or (eq .Values.db.type "postgres") (eq .Values.workflowExecutionLock.type "postgres") (eq .Values.indexing.type "postgres") (and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "postgres")) }}

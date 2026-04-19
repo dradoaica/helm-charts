@@ -1,6 +1,6 @@
 # clamav-openshift
 
-![Version: 1.5.2](https://img.shields.io/badge/Version-1.5.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.2](https://img.shields.io/badge/AppVersion-1.5.2-informational?style=flat-square)
+![Version: 1.5.3](https://img.shields.io/badge/Version-1.5.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.3](https://img.shields.io/badge/AppVersion-1.5.3-informational?style=flat-square)
 
 ClamAV is an open-source antivirus engine for detecting trojans, viruses, malware & other malicious threats. This chart deploys ClamAV as a StatefulSet with persistence support.
 
@@ -60,8 +60,8 @@ Kubernetes: `>= 1.26.0`
 | global.imagePullSecrets | list | `[]` | Global pod image pull secrets |
 | global.imageRegistry | string | `""` | Global container image registry override |
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
-| image.registry | string | `"docker.io"` | Main container image registry |
-| image.repository | string | `"dradoaica/clamav-openshift"` | Main container image repository |
+| image.registry | string | `"ghcr.io"` | Main container image registry |
+| image.repository | string | `"dradoaica/clamav-docker-openshift"` | Main container image repository |
 | image.tag | string | `""` | Main container image tag |
 | labels | object | `{}` | Additional labels to add to all resources |
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |

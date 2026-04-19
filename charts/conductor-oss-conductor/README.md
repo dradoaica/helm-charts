@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.23.4](https://img.shields.io/badge/Version-3.23.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.22.3](https://img.shields.io/badge/AppVersion-3.22.3-informational?style=flat-square)
+![Version: 3.30.0](https://img.shields.io/badge/Version-3.30.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.30.0](https://img.shields.io/badge/AppVersion-3.30.0-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -114,7 +114,7 @@ Kubernetes: `>= 1.26.0`
 | app.sweeperThreadCount | string | `""` | The number of threads to use for background sweeping on active workflows |
 | app.sweeperWorkflowPollTimeout | string | `""` | The timeout for polling workflows to be swept (e.g., 2000ms, 2s) |
 | app.systemTaskMaxPollCount | int | `20` | The maximum number of threads to be polled within the threadpool for system task workers |
-| app.systemTaskPostponeThreshold | string | `""` | After this many polls, begin exponential backoff for system tasks (e.g., 200) |
+| app.systemTaskPostponeThreshold | string | `""` | After these many polls, begin exponential backoff for system tasks (e.g., 200) |
 | app.systemTaskQueuePopTimeout | string | `""` | Queue pop timeout in ms for system tasks (e.g., 100ms) |
 | app.systemTaskWorkerCallbackDuration | string | `""` | The interval after which a system task will be checked by the system task worker for completion (e.g., 30s) |
 | app.systemTaskWorkerExecutionNamespace | string | `""` | The namespace for the system task workers to provide instance-level isolation |
@@ -255,14 +255,14 @@ Kubernetes: `>= 1.26.0`
 | metrics.loggerEnabled | bool | `false` | Enable metrics logging |
 | metrics.loggerReportPeriodSeconds | int | `1` | Metrics logging a report period in seconds |
 | metrics.prometheusEnabled | bool | `false` | Enable Prometheus metrics |
-| mySQL | object | `{"database":"","deadlockRetryMax":"","host":"","password":"","port":3306,"taskDefCacheRefreshInterval":"","username":""}` | MySQL configuration |
-| mySQL.database | string | `""` | MySQL database name |
-| mySQL.deadlockRetryMax | string | `""` | MySQL deadlock retry max attempts |
-| mySQL.host | string | `""` | MySQL host |
-| mySQL.password | string | `""` | MySQL password |
-| mySQL.port | int | `3306` | MySQL port |
-| mySQL.taskDefCacheRefreshInterval | string | `""` | Task definition cache refresh interval (e.g., 60s) |
-| mySQL.username | string | `""` | MySQL username |
+| mySql | object | `{"database":"","deadlockRetryMax":"","host":"","password":"","port":3306,"taskDefCacheRefreshInterval":"","username":""}` | MySQL configuration |
+| mySql.database | string | `""` | MySQL database name |
+| mySql.deadlockRetryMax | string | `""` | MySQL deadlock retry max attempts |
+| mySql.host | string | `""` | MySQL host |
+| mySql.password | string | `""` | MySQL password |
+| mySql.port | int | `3306` | MySQL port |
+| mySql.taskDefCacheRefreshInterval | string | `""` | Task definition cache refresh interval (e.g., 60s) |
+| mySql.username | string | `""` | MySQL username |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | natsEventQueues | object | `{"enabled":false,"natsStream":{"clusterID":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
 | natsEventQueues.enabled | bool | `false` | Enable NATS event queue support |

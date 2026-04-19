@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.18.0](https://img.shields.io/badge/Version-2.18.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.18.1](https://img.shields.io/badge/Version-2.18.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -73,7 +73,7 @@ Kubernetes: `>= 1.26.0`
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access to REST API |
-| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":8080}]}]` | List of Ingress hosts with paths configuration |
+| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":8080}]}]` | List of Ingress hosts with path configuration |
 | ingress.tls | list | `[]` | TLS configuration for Ingress |
 | labels | object | `{}` | Additional labels to add to all resources |
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |
