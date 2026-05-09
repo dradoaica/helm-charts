@@ -262,8 +262,10 @@ spec:
               value: {{ .Values.db.type | quote }}
             - name: conductor.queue.type
               value: {{ .Values.queue.type | quote }}
+            {{- if .Values.defaultEventQueue.enabled }}
             - name: conductor.default-event-queue.type
               value: {{ .Values.defaultEventQueue.type | quote }}
+            {{- end }}
             - name: queues.dynomite.threads
               value: {{ .Values.queues.dynomiteThreads | quote }}
             - name: conductor.workflow-execution-lock.type
@@ -621,9 +623,9 @@ spec:
             - name: conductor.external-payload-storage.postgres.max-data-years
               value: {{ .Values.postgres.externalPayloadStorage.maxDataYears | quote }}
             {{- end }}
-            {{- if .Values.amqpEventQueues.enabled }}
+            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "amqp") }}
             - name: conductor.event-queues.amqp.enabled
-              value: {{ .Values.amqpEventQueues.enabled | quote }}
+              value: 'true'
             - name: conductor.event-queues.amqp.hosts
               value: {{ .Values.amqpEventQueues.hosts | quote }}
             - name: conductor.event-queues.amqp.username
@@ -676,9 +678,9 @@ spec:
             - name: conductor.event-queues.amqp.maxPriority
               value: {{ .Values.amqpEventQueues.maxPriority | quote }}
             {{- end }}
-            {{- if .Values.natsEventQueues.enabled }}
+            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "nats_stream") }}
             - name: conductor.event-queues.nats.enabled
-              value: {{ .Values.natsEventQueues.enabled | quote }}
+              value: 'true'
             - name: conductor.event-queues.nats-stream.clusterId
               value: {{ .Values.natsEventQueues.natsStream.clusterId | quote }}
             - name: conductor.event-queues.nats-stream.durableName
@@ -688,9 +690,9 @@ spec:
             - name: conductor.event-queues.nats-stream.listenerQueuePrefix
               value: {{ .Values.natsEventQueues.natsStream.listenerQueuePrefix | quote }}
             {{- end }}
-            {{- if .Values.kafkaEventQueues.enabled }}
+            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "kafka") }}
             - name: conductor.event-queues.kafka.enabled
-              value: {{ .Values.kafkaEventQueues.enabled | quote }}
+              value: 'true'
             - name: conductor.event-queues.kafka.bootstrap-servers
               value: {{ .Values.kafkaEventQueues.bootstrapServers | quote }}
             - name: conductor.event-queues.kafka.dlq-topic

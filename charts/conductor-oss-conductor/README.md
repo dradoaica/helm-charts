@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.30.0](https://img.shields.io/badge/Version-3.30.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.30.0](https://img.shields.io/badge/AppVersion-3.30.0-informational?style=flat-square)
+![Version: 3.30.1](https://img.shields.io/badge/Version-3.30.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.30.0](https://img.shields.io/badge/AppVersion-3.30.0-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -56,12 +56,11 @@ Kubernetes: `>= 1.26.0`
 | ai.perplexity.apiKey | string | `""` | Perplexity API Key |
 | ai.stabilityAI | object | `{"apiKey":""}` | StabilityAI configuration |
 | ai.stabilityAI.apiKey | string | `""` | StabilityAI API Key |
-| amqpEventQueues | object | `{"batchSize":1,"connectionTimeoutInMilliSecs":180000,"durable":false,"duration":1000,"enabled":false,"exclusive":false,"handshakeTimeoutInMilliSecs":180000,"hosts":"","limit":50,"listenerQueuePrefix":"","maxChannelCount":5000,"maxPriority":-1,"networkRecoveryIntervalInMilliSecs":5000,"password":"","pollTimeDuration":"100ms","port":5672,"queueType":"classic","requestHeartbeatTimeoutInSecs":30,"retryType":"REGULARINTERVALS","sequentialMsgProcessing":true,"useExchange":true,"useNio":false,"username":"","virtualHost":"/"}` | AMQP (RabbitMQ) Event Queues configuration |
+| amqpEventQueues | object | `{"batchSize":1,"connectionTimeoutInMilliSecs":180000,"durable":false,"duration":1000,"exclusive":false,"handshakeTimeoutInMilliSecs":180000,"hosts":"","limit":50,"listenerQueuePrefix":"","maxChannelCount":5000,"maxPriority":-1,"networkRecoveryIntervalInMilliSecs":5000,"password":"","pollTimeDuration":"100ms","port":5672,"queueType":"classic","requestHeartbeatTimeoutInSecs":30,"retryType":"REGULARINTERVALS","sequentialMsgProcessing":true,"useExchange":true,"useNio":false,"username":"","virtualHost":"/"}` | AMQP (RabbitMQ) Event Queues configuration |
 | amqpEventQueues.batchSize | int | `1` | Batch size for message consumption |
 | amqpEventQueues.connectionTimeoutInMilliSecs | int | `180000` | Connection timeout in ms |
 | amqpEventQueues.durable | bool | `false` | Whether queues are durable |
 | amqpEventQueues.duration | int | `1000` | Rate limit duration in ms |
-| amqpEventQueues.enabled | bool | `false` | Enable AMQP event queue support |
 | amqpEventQueues.exclusive | bool | `false` | Whether queues are exclusive |
 | amqpEventQueues.handshakeTimeoutInMilliSecs | int | `180000` | Handshake timeout in ms |
 | amqpEventQueues.hosts | string | `""` | RabbitMQ server host(s) |
@@ -163,7 +162,8 @@ Kubernetes: `>= 1.26.0`
 | cors.allowedOrigins | string | `"*"` | Allowed origins for CORS (comma-separated, or * for all) |
 | db | object | `{"type":"redis_standalone"}` | DB configuration |
 | db.type | string | `"redis_standalone"` | DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory) |
-| defaultEventQueue | object | `{"type":"amqp"}` | Default event queue configuration |
+| defaultEventQueue | object | `{"enabled":true,"type":"amqp"}` | Default event queue configuration |
+| defaultEventQueue.enabled | bool | `true` | Enable default event queue |
 | defaultEventQueue.type | string | `"amqp"` | Default event queue type (e.g., amqp, nats_stream, kafka) |
 | elasticsearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"clusterHealthColor":"yellow","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
 | elasticsearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time an async buffer is held before flushing (e.g., 10s) |
@@ -209,12 +209,11 @@ Kubernetes: `>= 1.26.0`
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
 | ingress.hosts | list | `[{"host":"conductor-api.local","paths":[{"path":"/","pathType":"Prefix","port":8080}]},{"host":"conductor-ui.local","paths":[{"path":"/","pathType":"Prefix","port":5000}]}]` | List of Ingress hosts with paths for API and UI |
 | ingress.tls | list | `[]` | TLS configuration for Ingress |
-| kafkaEventQueues | object | `{"admin":{},"bootstrapServers":"kafka:29092","consumer":{},"dlqTopic":"conductor-dlq","enabled":false,"listenerQueuePrefix":"conductor_","pollTimeDuration":"500ms","producer":{}}` | Kafka Event Queues configuration |
+| kafkaEventQueues | object | `{"admin":{},"bootstrapServers":"kafka:29092","consumer":{},"dlqTopic":"conductor-dlq","listenerQueuePrefix":"conductor_","pollTimeDuration":"500ms","producer":{}}` | Kafka Event Queues configuration |
 | kafkaEventQueues.admin | object | `{}` | Kafka admin client properties |
 | kafkaEventQueues.bootstrapServers | string | `"kafka:29092"` | Kafka bootstrap servers |
 | kafkaEventQueues.consumer | object | `{}` | Kafka consumer client properties |
 | kafkaEventQueues.dlqTopic | string | `"conductor-dlq"` | Dead letter queue topic |
-| kafkaEventQueues.enabled | bool | `false` | Enable Kafka event queue support |
 | kafkaEventQueues.listenerQueuePrefix | string | `"conductor_"` | Listener queue prefix |
 | kafkaEventQueues.pollTimeDuration | string | `"500ms"` | Poll time duration (e.g., 500ms) |
 | kafkaEventQueues.producer | object | `{}` | Kafka producer client properties |
@@ -264,8 +263,7 @@ Kubernetes: `>= 1.26.0`
 | mySql.taskDefCacheRefreshInterval | string | `""` | Task definition cache refresh interval (e.g., 60s) |
 | mySql.username | string | `""` | MySQL username |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
-| natsEventQueues | object | `{"enabled":false,"natsStream":{"clusterID":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
-| natsEventQueues.enabled | bool | `false` | Enable NATS event queue support |
+| natsEventQueues | object | `{"natsStream":{"clusterID":"test-cluster","durableName":"","listenerQueuePrefix":"","url":"nats://localhost:4222"}}` | NATS Event Queues configuration |
 | natsEventQueues.natsStream.clusterID | string | `"test-cluster"` | NATS streaming cluster ID |
 | natsEventQueues.natsStream.durableName | string | `""` | NATS streaming durable name |
 | natsEventQueues.natsStream.listenerQueuePrefix | string | `""` | Listener queue prefix |

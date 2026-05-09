@@ -375,6 +375,8 @@ queue:
 
 # -- Default event queue configuration
 defaultEventQueue:
+  # -- Enable default event queue
+  enabled: false
   # -- Default event queue type (e.g., amqp, nats_stream, kafka)
   type: amqp
 
@@ -529,8 +531,6 @@ cassandra:
 
 # -- AMQP (RabbitMQ) Event Queues configuration
 amqpEventQueues:
-  # -- Enable AMQP event queue support
-  enabled: false
   # -- RabbitMQ server host(s)
   hosts: ""
   # -- RabbitMQ username
@@ -580,8 +580,6 @@ amqpEventQueues:
 
 # -- NATS Event Queues configuration
 natsEventQueues:
-  # -- Enable NATS event queue support
-  enabled: false
   natsStream:
     # -- NATS streaming cluster ID
     clusterID: test-cluster
@@ -594,8 +592,6 @@ natsEventQueues:
 
 # -- Kafka Event Queues configuration
 kafkaEventQueues:
-  # -- Enable Kafka event queue support
-  enabled: false
   # -- Kafka bootstrap servers
   bootstrapServers: kafka:29092
   # -- Dead letter queue topic
