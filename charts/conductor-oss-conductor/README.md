@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.30.1](https://img.shields.io/badge/Version-3.30.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.30.0](https://img.shields.io/badge/AppVersion-3.30.0-informational?style=flat-square)
+![Version: 3.30.2](https://img.shields.io/badge/Version-3.30.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.30.1](https://img.shields.io/badge/AppVersion-3.30.1-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -162,8 +162,8 @@ Kubernetes: `>= 1.26.0`
 | cors.allowedOrigins | string | `"*"` | Allowed origins for CORS (comma-separated, or * for all) |
 | db | object | `{"type":"redis_standalone"}` | DB configuration |
 | db.type | string | `"redis_standalone"` | DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory) |
-| defaultEventQueue | object | `{"enabled":true,"type":"amqp"}` | Default event queue configuration |
-| defaultEventQueue.enabled | bool | `true` | Enable default event queue |
+| defaultEventQueue | object | `{"enabled":false,"type":"amqp"}` | Default event queue configuration |
+| defaultEventQueue.enabled | bool | `false` | Enable default event queue |
 | defaultEventQueue.type | string | `"amqp"` | Default event queue type (e.g., amqp, nats_stream, kafka) |
 | elasticsearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"clusterHealthColor":"yellow","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
 | elasticsearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time an async buffer is held before flushing (e.g., 10s) |
