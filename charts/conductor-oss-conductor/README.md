@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.31.0](https://img.shields.io/badge/Version-3.31.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.31.0](https://img.shields.io/badge/AppVersion-3.31.0-informational?style=flat-square)
+![Version: 3.31.1](https://img.shields.io/badge/Version-3.31.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.31.0](https://img.shields.io/badge/AppVersion-3.31.0-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -354,6 +354,32 @@ Kubernetes: `>= 1.26.0`
 | s3.externalPayloadStorage | object | `{"bucketName":"","signedUrlExpirationDuration":5}` | External payload storage configuration for Amazon S3 |
 | s3.externalPayloadStorage.bucketName | string | `""` | Bucket name where payloads will be stored |
 | s3.externalPayloadStorage.signedUrlExpirationDuration | int | `5` | Signed URL expiration duration in seconds |
+| secrets | object | `{"existingSecret":{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""},"manageSecret":true}` | Secrets |
+| secrets.existingSecret | object | `{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
+| secrets.existingSecret.keys | object | `{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""}` | Optional mapping to override the expected key names in the existing Secret |
+| secrets.existingSecret.keys.aiAnthropicApiKey | string | `""` | Key name for Anthropic API key (defaults to 'ai-anthropic-api-key') |
+| secrets.existingSecret.keys.aiAzureOpenAiApiKey | string | `""` | Key name for Azure OpenAI API key (defaults to 'ai-azure-open-ai-api-key') |
+| secrets.existingSecret.keys.aiBedrockAccessKey | string | `""` | Key name for Bedrock access key (defaults to 'ai-bedrock-access-key') |
+| secrets.existingSecret.keys.aiBedrockSecretKey | string | `""` | Key name for Bedrock secret key (defaults to 'ai-bedrock-secret-key') |
+| secrets.existingSecret.keys.aiCohereApiKey | string | `""` | Key name for Cohere API key (defaults to 'ai-cohere-api-key') |
+| secrets.existingSecret.keys.aiGrokApiKey | string | `""` | Key name for Grok API key (defaults to 'ai-grok-api-key') |
+| secrets.existingSecret.keys.aiHuggingFaceApiKey | string | `""` | Key name for Hugging Face API key (defaults to 'ai-hugging-face-api-key') |
+| secrets.existingSecret.keys.aiMistralApiKey | string | `""` | Key name for Mistral API key (defaults to 'ai-mistral-api-key') |
+| secrets.existingSecret.keys.aiOpenAiApiKey | string | `""` | Key name for OpenAI API key (defaults to 'ai-open-ai-api-key') |
+| secrets.existingSecret.keys.aiPerplexityApiKey | string | `""` | Key name for Perplexity API key (defaults to 'ai-perplexity-api-key') |
+| secrets.existingSecret.keys.aiStabilityAiApiKey | string | `""` | Key name for Stability AI API key (defaults to 'ai-stability-ai-api-key') |
+| secrets.existingSecret.keys.amqpPassword | string | `""` | Key name for AMQP password (defaults to 'amqp-password') |
+| secrets.existingSecret.keys.authOidcClientSecret | string | `""` | OIDC client secret (defaults to 'auth-oidc-client-secret') |
+| secrets.existingSecret.keys.azureBlobConnectionString | string | `""` | Key name for Azure Blob connection string (defaults to 'azure-blob-connection-string') |
+| secrets.existingSecret.keys.azureBlobSasToken | string | `""` | Key name for Azure Blob SAS token (defaults to 'azure-blob-sas-token') |
+| secrets.existingSecret.keys.cassandraPassword | string | `""` | Key name for Cassandra password (defaults to 'cassandra-password') |
+| secrets.existingSecret.keys.elasticsearchPassword | string | `""` | Key name for Elasticsearch password (defaults to 'elasticsearch-password') |
+| secrets.existingSecret.keys.mySqlPassword | string | `""` | Key name for MySQL password (defaults to 'my-sql-password') |
+| secrets.existingSecret.keys.openSearchPassword | string | `""` | Key name for OpenSearch password (defaults to 'open-search-password') |
+| secrets.existingSecret.keys.postgresPassword | string | `""` | Key name for PostgreSQL password (defaults to 'postgres-password') |
+| secrets.existingSecret.keys.redisPassword | string | `""` | Key name for Redis password (defaults to 'redis-password') |
+| secrets.existingSecret.name | string | `""` | Name of the existing Secret containing the credentials |
+| secrets.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | security | object | `{"auth":{"basic":{"enabled":false,"principal":"","realm":"","role":""},"oidc":{"audience":"","clientID":"","clientSecret":"","discoveryUri":"","enabled":false,"groupsClaim":"groups"}},"enabled":false}` | Security configuration (IAM/Auth) |
 | security.auth.basic.enabled | bool | `false` | Enable Basic authentication |
 | security.auth.basic.principal | string | `""` | Basic Auth Principal |

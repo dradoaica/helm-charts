@@ -927,6 +927,59 @@ logging:
     # -- Root log level
     root: INFO
 
+# -- Secrets
+secrets:
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for all credential keys instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing the credentials
+    name: ""
+    # -- Optional mapping to override the expected key names in the existing Secret
+    keys:
+      # -- Key name for Redis password (defaults to 'redis-password')
+      redisPassword: ""
+      # -- Key name for Elasticsearch password (defaults to 'elasticsearch-password')
+      elasticsearchPassword: ""
+      # -- Key name for MySQL password (defaults to 'my-sql-password')
+      mySqlPassword: ""
+      # -- Key name for PostgreSQL password (defaults to 'postgres-password')
+      postgresPassword: ""
+      # -- Key name for OpenSearch password (defaults to 'open-search-password')
+      openSearchPassword: ""
+      # -- Key name for Cassandra password (defaults to 'cassandra-password')
+      cassandraPassword: ""
+      # -- Key name for Azure Blob connection string (defaults to 'azure-blob-connection-string')
+      azureBlobConnectionString: ""
+      # -- Key name for Azure Blob SAS token (defaults to 'azure-blob-sas-token')
+      azureBlobSasToken: ""
+      # -- Key name for AMQP password (defaults to 'amqp-password')
+      amqpPassword: ""
+      # -- Key name for OpenAI API key (defaults to 'ai-open-ai-api-key')
+      aiOpenAiApiKey: ""
+      # -- Key name for Anthropic API key (defaults to 'ai-anthropic-api-key')
+      aiAnthropicApiKey: ""
+      # -- Key name for Mistral API key (defaults to 'ai-mistral-api-key')
+      aiMistralApiKey: ""
+      # -- Key name for Cohere API key (defaults to 'ai-cohere-api-key')
+      aiCohereApiKey: ""
+      # -- Key name for Grok API key (defaults to 'ai-grok-api-key')
+      aiGrokApiKey: ""
+      # -- Key name for Perplexity API key (defaults to 'ai-perplexity-api-key')
+      aiPerplexityApiKey: ""
+      # -- Key name for Hugging Face API key (defaults to 'ai-hugging-face-api-key')
+      aiHuggingFaceApiKey: ""
+      # -- Key name for Stability AI API key (defaults to 'ai-stability-ai-api-key')
+      aiStabilityAiApiKey: ""
+      # -- Key name for Azure OpenAI API key (defaults to 'ai-azure-open-ai-api-key')
+      aiAzureOpenAiApiKey: ""
+      # -- Key name for Bedrock access key (defaults to 'ai-bedrock-access-key')
+      aiBedrockAccessKey: ""
+      # -- Key name for Bedrock secret key (defaults to 'ai-bedrock-secret-key')
+      aiBedrockSecretKey: ""
+      # -- OIDC client secret (defaults to 'auth-oidc-client-secret')
+      authOidcClientSecret: ""
+
 # -- Environment variables
 env:
   EXTRA_JVM_OPTS: ""

@@ -37,6 +37,9 @@ spec:
         {{- if .Values.jmx.enabled }}
         checksum/jmx-config: {{ include (print $.Template.BasePath "/config-map-jmx.yaml") . | sha256sum }}
         {{- end }}
+        # Rollout on secret reference changes
+        creds/ignite-auth-secret: {{ (default (printf "%s-auth" (include "ignite.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
+        creds/ignite-ssl-secret: {{ (default (printf "%s-ssl" (include "ignite.fullname" .)) .Values.ssl.existingSecret.name) | quote }}
         {{- with (include "ignite.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
@@ -130,44 +133,79 @@ spec:
             - name: IGNITE_USER_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.authentication.existingSecret.name }}
+                  name: {{ .Values.authentication.existingSecret.name }}
+                  key: {{ default "ignite-user-password" .Values.authentication.existingSecret.key }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-auth
                   key: ignite-user-password
+                  {{- end }}
                   optional: true
             - name: CLIENT_CONNECTOR_KS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "client-connector-ks-pass" .Values.ssl.existingSecret.keys.clientConnectorKsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: client-connector-ks-pass
+                  {{- end }}
                   optional: true
             - name: CLIENT_CONNECTOR_TS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "client-connector-ts-pass" .Values.ssl.existingSecret.keys.clientConnectorTsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: client-connector-ts-pass
+                  {{- end }}
                   optional: true
             - name: NETWORK_KS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "network-ks-pass" .Values.ssl.existingSecret.keys.networkKsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: network-ks-pass
+                  {{- end }}
                   optional: true
             - name: NETWORK_TS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "network-ts-pass" .Values.ssl.existingSecret.keys.networkTsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: network-ts-pass
+                  {{- end }}
                   optional: true
             - name: REST_KS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "rest-ks-pass" .Values.ssl.existingSecret.keys.restKsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: rest-ks-pass
+                  {{- end }}
                   optional: true
             - name: REST_TS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "rest-ts-pass" .Values.ssl.existingSecret.keys.restTsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: rest-ts-pass
+                  {{- end }}
                   optional: true
             #endregion
             {{- range $name, $value := .Values.env }}

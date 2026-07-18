@@ -33,6 +33,9 @@ spec:
         {{- include "ignite.podLabels" . | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        # Rollout on secret reference changes
+        creds/ignite-auth-secret: {{ (default (printf "%s-auth" (include "ignite.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
+        creds/ignite-ssl-secret: {{ (default (printf "%s-ssl" (include "ignite.fullname" .)) .Values.ssl.existingSecret.name) | quote }}
         {{- with (include "ignite.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
@@ -110,14 +113,24 @@ spec:
             - name: IGNITE_SSL_KS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "ignite-ssl-ks-pass" .Values.ssl.existingSecret.keys.ksPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: ignite-ssl-ks-pass
+                  {{- end }}
                   optional: true
             - name: IGNITE_SSL_TS_PASS
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.ssl.existingSecret.name }}
+                  name: {{ .Values.ssl.existingSecret.name }}
+                  key: {{ default "ignite-ssl-ts-pass" .Values.ssl.existingSecret.keys.tsPass }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-ssl
                   key: ignite-ssl-ts-pass
+                  {{- end }}
                   optional: true
             #endregion
             {{- range $name, $value := .Values.env }}

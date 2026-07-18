@@ -1,7 +1,7 @@
 # Contributing to helm-charts
 
-Thank you for your interest in contributing to helm-charts! We're excited to collaborate with you and see
-how together we can improve and evolve this application.
+Thank you for your interest in contributing to helm-charts! We're excited to collaborate with you and see how together
+we can improve and evolve this application.
 
 ## Getting Started
 
@@ -41,12 +41,12 @@ When considering contributions, we're guided by several principles that align wi
 
 - **Enhancing Reliability and Scalability**: We welcome contributions that improve the application's reliability and
   scalability. These could include updates to error handling, redundancy mechanisms, data access, and any other changes
-  that help helm-charts operate more robustly under load. We'd love to see relevant test scenarios or
-  metrics for these contributions.
+  that help helm-charts operate more robustly under load. We'd love to see relevant test scenarios or metrics for these
+  contributions.
 
-- **Performance Enhancements**: If you're looking to speed up helm-charts, we're all for it! Please include
-  benchmark comparisons to demonstrate the improvements. Performance improvements that make the code less readable or
-  canonical may have more scrutiny applied.
+- **Performance Enhancements**: If you're looking to speed up helm-charts, we're all for it! Please include benchmark
+  comparisons to demonstrate the improvements. Performance improvements that make the code less readable or canonical
+  may have more scrutiny applied.
 
 ## Code of Conduct
 

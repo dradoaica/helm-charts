@@ -31,8 +31,10 @@ spec:
     metadata:
       labels:
         {{- include "aspnetcore-ignite-server.podLabels" . | nindent 8 }}
-      {{- with (include "aspnetcore-ignite-server.podAnnotations" .) }}
       annotations:
+        # Rollout on secret reference changes
+        creds/aspnetcore-ignite-server-secret: {{ (default (include "aspnetcore-ignite-server.fullname" .) .Values.secrets.existingSecret.name) | quote }}
+      {{- with (include "aspnetcore-ignite-server.podAnnotations" .) }}
         {{- . | nindent 8 }}
       {{- end }}
     spec:
@@ -75,23 +77,43 @@ spec:
             - name: IGNITE_USER_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ignite-user-password" .Values.secrets.existingSecret.keys.igniteUserPassword }}
+                  {{- else }}
                   name: {{ include "aspnetcore-ignite-server.fullname" . }}
                   key: ignite-user-password
+                  {{- end }}
             - name: SSL_KEY_STORE_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ssl-key-store-password" .Values.secrets.existingSecret.keys.sslKeyStorePassword }}
+                  {{- else }}
                   name: {{ include "aspnetcore-ignite-server.fullname" . }}
                   key: ssl-key-store-password
+                  {{- end }}
             - name: SSL_TRUST_STORE_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ssl-trust-store-password" .Values.secrets.existingSecret.keys.sslTrustStorePassword }}
+                  {{- else }}
                   name: {{ include "aspnetcore-ignite-server.fullname" . }}
                   key: ssl-trust-store-password
+                  {{- end }}
             - name: SSL_CLIENT_CERTIFICATE_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ssl-client-certificate-password" .Values.secrets.existingSecret.keys.sslClientCertificatePassword }}
+                  {{- else }}
                   name: {{ include "aspnetcore-ignite-server.fullname" . }}
                   key: ssl-client-certificate-password
+                  {{- end }}
             {{- range $name, $value := .Values.env }}
             - name: "{{ $name }}"
               value: "{{ $value }}"

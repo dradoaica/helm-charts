@@ -293,6 +293,14 @@ authentication:
   enabled: true
   # -- Password for the ignite user (defaults to ignite when empty)
   igniteUserPassword: ""
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for the ignite user password instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing the ignite user password
+    name: ""
+    # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
+    key: ""
 
 dataStorage:
   # -- Storage engine to use (aipersist for persistence mode, aimem for in-memory mode)
@@ -356,6 +364,26 @@ ssl:
     trustStorePassword: ""
     # -- Truststore type for the REST endpoint
     trustStoreType: PKCS12
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing SSL passphrase keys
+    name: ""
+    # -- Optional mapping to override the expected key names in the existing Secret
+    keys:
+      # -- Key name for the client connector keystore password (defaults to 'client-connector-ks-pass')
+      clientConnectorKsPass: ""
+      # -- Key name for the client connector truststore password (defaults to 'client-connector-ts-pass')
+      clientConnectorTsPass: ""
+      # -- Key name for the network keystore password (defaults to 'network-ks-pass')
+      networkKsPass: ""
+      # -- Key name for the network truststore password (defaults to 'network-ts-pass')
+      networkTsPass: ""
+      # -- Key name for the REST keystore password (defaults to 'rest-ks-pass')
+      restKsPass: ""
+      # -- Key name for the REST truststore password (defaults to 'rest-ts-pass')
+      restTsPass: ""
 
 jmx:
   # -- Enable JMX agent sidecar for Prometheus scraping

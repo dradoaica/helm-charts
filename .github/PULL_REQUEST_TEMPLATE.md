@@ -1,7 +1,7 @@
 Thank you for submitting the pull request.
 
-To streamline the review process of the patch and ensure better code quality
-we ask both an author and a reviewer to verify the following:
+To streamline the review process of the patch and ensure better code quality we ask both an author and a reviewer to
+verify the following:
 
 ### The Review Checklist
 

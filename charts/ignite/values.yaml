@@ -314,6 +314,14 @@ authentication:
   enabled: true
   # -- Password for the ignite user (defaults to ignite when empty)
   igniteUserPassword: ""
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for the ignite user password instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing the ignite user password
+    name: ""
+    # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
+    key: ""
 
 # -- Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading)
 peerClassLoadingEnabled: false
@@ -407,6 +415,18 @@ ssl:
     enabled: false
     # -- Client authentication for the client connector
     clientAuth: false
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for SSL keystore/truststore passphrases instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing SSL passphrase keys
+    name: ""
+    # -- Optional mapping to override the expected key names in the existing Secret
+    keys:
+      # -- Key for the keystore password (defaults to 'ignite-ssl-ks-pass')
+      ksPass: ""
+      # -- Key for the truststore password (defaults to 'ignite-ssl-ts-pass')
+      tsPass: ""
 
 # -- Collision SPI
 collisionSpi: |-

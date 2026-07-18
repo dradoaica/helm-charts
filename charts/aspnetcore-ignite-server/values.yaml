@@ -283,6 +283,22 @@ secrets:
   sslKeyStorePassword: ""
   sslTrustStorePassword: ""
   sslClientCertificatePassword: ""
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for all credential keys instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing the credentials
+    name: ""
+    # -- Optional mapping to override the expected key names in the existing Secret
+    keys:
+      # -- Key name for the ignite user password (defaults to 'ignite-user-password')
+      igniteUserPassword: ""
+      # -- Key name for the SSL keystore password (defaults to 'ssl-key-store-password')
+      sslKeyStorePassword: ""
+      # -- Key name for the SSL truststore password (defaults to 'ssl-trust-store-password')
+      sslTrustStorePassword: ""
+      # -- Key name for the SSL client certificate password (defaults to 'ssl-client-certificate-password')
+      sslClientCertificatePassword: ""
 
 # -- Environment variables
 env:

@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.2](https://img.shields.io/badge/Version-3.2.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.3](https://img.shields.io/badge/Version-3.2.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -27,7 +27,11 @@ Kubernetes: `>= 1.26.0`
 | affinity | object | `{}` | Node affinity |
 | annotations | object | `{}` | Annotations to add to all resources |
 | authentication.enabled | bool | `true` | Enable authentication |
+| authentication.existingSecret | object | `{"key":"","name":""}` | Use an existing Secret for the ignite user password instead of a chart-managed Secret |
+| authentication.existingSecret.key | string | `""` | Key in the existing Secret that holds the password (defaults to 'ignite-user-password') |
+| authentication.existingSecret.name | string | `""` | Name of the existing Secret containing the ignite user password |
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
+| authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
 | autoscaling.minReplicas | int | `1` | Minimum number of replicas |
@@ -118,6 +122,16 @@ Kubernetes: `>= 1.26.0`
 | ssl.clientConnector.trustStoreFilePath | string | `""` | Path to the truststore used by the client connector |
 | ssl.clientConnector.trustStorePassword | string | `""` | Password for the client connector truststore |
 | ssl.clientConnector.trustStoreType | string | `"PKCS12"` | Truststore type for the client connector |
+| ssl.existingSecret | object | `{"keys":{"clientConnectorKsPass":"","clientConnectorTsPass":"","networkKsPass":"","networkTsPass":"","restKsPass":"","restTsPass":""},"name":""}` | Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret |
+| ssl.existingSecret.keys | object | `{"clientConnectorKsPass":"","clientConnectorTsPass":"","networkKsPass":"","networkTsPass":"","restKsPass":"","restTsPass":""}` | Optional mapping to override the expected key names in the existing Secret |
+| ssl.existingSecret.keys.clientConnectorKsPass | string | `""` | Key name for the client connector keystore password (defaults to 'client-connector-ks-pass') |
+| ssl.existingSecret.keys.clientConnectorTsPass | string | `""` | Key name for the client connector truststore password (defaults to 'client-connector-ts-pass') |
+| ssl.existingSecret.keys.networkKsPass | string | `""` | Key name for the network keystore password (defaults to 'network-ks-pass') |
+| ssl.existingSecret.keys.networkTsPass | string | `""` | Key name for the network truststore password (defaults to 'network-ts-pass') |
+| ssl.existingSecret.keys.restKsPass | string | `""` | Key name for the REST keystore password (defaults to 'rest-ks-pass') |
+| ssl.existingSecret.keys.restTsPass | string | `""` | Key name for the REST truststore password (defaults to 'rest-ts-pass') |
+| ssl.existingSecret.name | string | `""` | Name of the existing Secret containing SSL passphrase keys |
+| ssl.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | ssl.network.ciphers | string | `""` | Optional cipher suite list for the network interface |
 | ssl.network.clientAuth | string | `"none"` | Client authentication mode for the network interface (e.g., none, require) |
 | ssl.network.enabled | bool | `false` | Enable SSL for the internal network interface |

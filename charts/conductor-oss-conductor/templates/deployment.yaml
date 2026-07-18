@@ -24,10 +24,12 @@ spec:
     metadata:
       labels:
         {{- include "conductor-oss-conductor.podLabels" . | nindent 8 }}
-      {{- with (include "conductor-oss-conductor.podAnnotations" .) }}
       annotations:
+        # Rollout on secret reference changes
+        creds/conductor-secret: {{ (default (include "conductor-oss-conductor.fullname" .) .Values.secrets.existingSecret.name) | quote }}
+        {{- with (include "conductor-oss-conductor.podAnnotations" .) }}
         {{- . | nindent 8 }}
-      {{- end }}
+        {{- end }}
     spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       serviceAccountName: {{ include "conductor-oss-conductor.serviceAccountName" . }}
@@ -311,8 +313,13 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "redis-password" .Values.secrets.existingSecret.keys.redisPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: redis-password
+                  {{- end }}
             - name: conductor.redis.password
               value: "$(REDIS_PASSWORD)"
             - name: conductor.redis-lock.serverAddress
@@ -368,8 +375,13 @@ spec:
             - name: spring.datasource.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "my-sql-password" .Values.secrets.existingSecret.keys.mySqlPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: my-sql-password
+                  {{- end }}
             {{- if .Values.mySql.deadlockRetryMax }}
             - name: conductor.mysql.deadlockRetryMax
               value: {{ .Values.mySql.deadlockRetryMax | quote }}
@@ -387,8 +399,13 @@ spec:
             - name: spring.datasource.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "postgres-password" .Values.secrets.existingSecret.keys.postgresPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: postgres-password
+                  {{- end }}
             {{- if .Values.postgres.schema }}
             - name: conductor.postgres.schema
               value: {{ .Values.postgres.schema | quote }}
@@ -449,8 +466,13 @@ spec:
             - name: CASSANDRA_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "cassandra-password" .Values.secrets.existingSecret.keys.cassandraPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: cassandra-password
+                  {{- end }}
             - name: conductor.cassandra.password
               value: "$(CASSANDRA_PASSWORD)"
             {{- end }}
@@ -463,8 +485,13 @@ spec:
             - name: conductor.elasticsearch.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "elasticsearch-password" .Values.secrets.existingSecret.keys.elasticsearchPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: elasticsearch-password
+                  {{- end }}
             - name: conductor.elasticsearch.indexName
               value: {{ .Values.elasticsearch.indexName | quote }}
             - name: conductor.elasticsearch.indexPrefix
@@ -500,8 +527,13 @@ spec:
             - name: conductor.opensearch.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "open-search-password" .Values.secrets.existingSecret.keys.openSearchPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: open-search-password
+                  {{- end }}
             - name: conductor.opensearch.indexPrefix
               value: {{ .Values.openSearch.indexPrefix | quote }}
             - name: conductor.opensearch.indexShardCount
@@ -537,8 +569,13 @@ spec:
             - name: conductor.elasticsearch.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "open-search-password" .Values.secrets.existingSecret.keys.openSearchPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: open-search-password
+                  {{- end }}
             - name: conductor.elasticsearch.indexName
               value: {{ .Values.openSearch.indexName | quote }}
             - name: conductor.elasticsearch.indexPrefix
@@ -569,8 +606,13 @@ spec:
             - name: workflow.external.payload.storage.azure_blob.connection_string
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "azure-blob-connection-string" .Values.secrets.existingSecret.keys.azureBlobConnectionString }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: azure-blob-connection-string
+                  {{- end }}
             {{- end }}
             {{- if .Values.azureBlob.externalPayloadStorage.endpoint }}
             - name: workflow.external.payload.storage.azure_blob.endpoint
@@ -580,8 +622,13 @@ spec:
             - name: workflow.external.payload.storage.azure_blob.sas_token
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "azure-blob-sas-token" .Values.secrets.existingSecret.keys.azureBlobSasToken }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: azure-blob-sas-token
+                  {{- end }}
             {{- end }}
             - name: workflow.external.payload.storage.azure_blob.container_name
               value: {{ .Values.azureBlob.externalPayloadStorage.containerName | quote }}
@@ -610,8 +657,13 @@ spec:
             - name: conductor.external-payload-storage.postgres.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "postgres-password" .Values.secrets.existingSecret.keys.postgresPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: postgres-password
+                  {{- end }}
             - name: conductor.external-payload-storage.postgres.table-name
               value: {{ .Values.postgres.externalPayloadStorage.tableName | quote }}
             - name: conductor.external-payload-storage.postgres.max-data-rows
@@ -633,8 +685,13 @@ spec:
             - name: conductor.event-queues.amqp.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "amqp-password" .Values.secrets.existingSecret.keys.amqpPassword }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: amqp-password
+                  {{- end }}
             - name: conductor.event-queues.amqp.virtualHost
               value: {{ .Values.amqpEventQueues.virtualHost | quote }}
             - name: conductor.event-queues.amqp.port
@@ -780,8 +837,13 @@ spec:
             - name: conductor.ai.openai.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-open-ai-api-key" .Values.secrets.existingSecret.keys.aiOpenAiApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-open-ai-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.openAI.organizationID }}
             - name: conductor.ai.openai.organization-id
@@ -791,57 +853,97 @@ spec:
             - name: conductor.ai.anthropic.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-anthropic-api-key" .Values.secrets.existingSecret.keys.aiAnthropicApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-anthropic-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.mistral.apiKey }}
             - name: conductor.ai.mistral.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-mistral-api-key" .Values.secrets.existingSecret.keys.aiMistralApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-mistral-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.cohere.apiKey }}
             - name: conductor.ai.cohere.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-cohere-api-key" .Values.secrets.existingSecret.keys.aiCohereApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-cohere-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.grok.apiKey }}
             - name: conductor.ai.grok.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-grok-api-key" .Values.secrets.existingSecret.keys.aiGrokApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-grok-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.perplexity.apiKey }}
             - name: conductor.ai.perplexity.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-perplexity-api-key" .Values.secrets.existingSecret.keys.aiPerplexityApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-perplexity-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.huggingFace.apiKey }}
             - name: conductor.ai.huggingface.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-hugging-face-api-key" .Values.secrets.existingSecret.keys.aiHuggingFaceApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-hugging-face-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.stabilityAI.apiKey }}
             - name: conductor.ai.stabilityai.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-stability-ai-api-key" .Values.secrets.existingSecret.keys.aiStabilityAiApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-stability-ai-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.azureOpenAI.apiKey }}
             - name: conductor.ai.azureopenai.api-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-azure-open-ai-api-key" .Values.secrets.existingSecret.keys.aiAzureOpenAiApiKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-azure-open-ai-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.azureOpenAI.baseUrl }}
             - name: conductor.ai.azureopenai.base-url
@@ -855,15 +957,25 @@ spec:
             - name: conductor.ai.bedrock.access-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-bedrock-access-key" .Values.secrets.existingSecret.keys.aiBedrockAccessKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-bedrock-access-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.bedrock.secretKey }}
             - name: conductor.ai.bedrock.secret-key
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-bedrock-secret-key" .Values.secrets.existingSecret.keys.aiBedrockSecretKey }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: ai-bedrock-secret-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.bedrock.region }}
             - name: conductor.ai.bedrock.region
@@ -950,8 +1062,13 @@ spec:
             - name: conductor.security.auth.oidc.client-secret
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "auth-oidc-client-secret" .Values.secrets.existingSecret.keys.authOidcClientSecret }}
+                  {{- else }}
                   name: {{ include "conductor-oss-conductor.fullname" . }}
                   key: auth-oidc-client-secret
+                  {{- end }}
             {{- end }}
             - name: conductor.security.auth.oidc.audience
               value: {{ .Values.security.auth.oidc.audience | quote }}

@@ -162,8 +162,13 @@ spec:
             - name: IGNITE_USER_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.authentication.existingSecret.name }}
+                  name: {{ .Values.authentication.existingSecret.name }}
+                  key: {{ default "ignite-user-password" .Values.authentication.existingSecret.key }}
+                  {{- else }}
                   name: {{ include "ignite.fullname" . }}-auth
                   key: ignite-user-password
+                  {{- end }}
                   optional: true
       restartPolicy: Never
       {{- with .Values.nodeSelector }}

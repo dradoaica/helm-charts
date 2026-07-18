@@ -1,6 +1,6 @@
 # aspnetcore-ignite-server
 
-![Version: 2.18.0](https://img.shields.io/badge/Version-2.18.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.18.1](https://img.shields.io/badge/Version-2.18.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 
@@ -89,7 +89,15 @@ Kubernetes: `>= 1.26.0`
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: DEFAULT_ON_HEAP_MEMORY (JVM Heap max size)   + 256MB (JVM Metaspace max size)   + 240MB (JVM ReservedCodeCache size)   + DEFAULT_OFF_HEAP_MEMORY (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, DEFAULT_OFF_HEAP_MEMORY) (DEFAULT_OFF_HEAP_MEMORY < 1 GB)     || DEFAULT_OFF_HEAP_MEMORY/4 (DEFAULT_OFF_HEAP_MEMORY between 1 GB and 8 GB)     || 2GB (DEFAULT_OFF_HEAP_MEMORY > 8 GB)       (default region checkpointing buffer size)   + 100MB (sysMemPlc region max size)   + 100MB (metastoreMemPlc region max size)   + 100MB (TxLog region max size)   + 100MB (volatileDsMemPlc region max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
-| secrets | object | `{"igniteUserPassword":"ignite","sslClientCertificatePassword":"","sslKeyStorePassword":"","sslTrustStorePassword":""}` | Secrets |
+| secrets | object | `{"existingSecret":{"keys":{"igniteUserPassword":"","sslClientCertificatePassword":"","sslKeyStorePassword":"","sslTrustStorePassword":""},"name":""},"igniteUserPassword":"ignite","manageSecret":true,"sslClientCertificatePassword":"","sslKeyStorePassword":"","sslTrustStorePassword":""}` | Secrets |
+| secrets.existingSecret | object | `{"keys":{"igniteUserPassword":"","sslClientCertificatePassword":"","sslKeyStorePassword":"","sslTrustStorePassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
+| secrets.existingSecret.keys | object | `{"igniteUserPassword":"","sslClientCertificatePassword":"","sslKeyStorePassword":"","sslTrustStorePassword":""}` | Optional mapping to override the expected key names in the existing Secret |
+| secrets.existingSecret.keys.igniteUserPassword | string | `""` | Key name for the ignite user password (defaults to 'ignite-user-password') |
+| secrets.existingSecret.keys.sslClientCertificatePassword | string | `""` | Key name for the SSL client certificate password (defaults to 'ssl-client-certificate-password') |
+| secrets.existingSecret.keys.sslKeyStorePassword | string | `""` | Key name for the SSL keystore password (defaults to 'ssl-key-store-password') |
+| secrets.existingSecret.keys.sslTrustStorePassword | string | `""` | Key name for the SSL truststore password (defaults to 'ssl-trust-store-password') |
+| secrets.existingSecret.name | string | `""` | Name of the existing Secret containing the credentials |
+| secrets.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | service.ports | object | `{"jdbc":11211,"jmx":49112,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800,"thinClients":10900}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
