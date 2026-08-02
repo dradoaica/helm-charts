@@ -4,7 +4,8 @@ A curated collection of production-ready Community Helm Charts for underrated op
 
 ## Usage
 
-Please refer to the [developer notes](./DEV_NOTES.md) to get started.
+Please refer to the [developer notes](./DEV_NOTES.md) or deploy them via the
+available [packages](https://github.com/dradoaica?tab=packages&repo_name=helm-charts) to get started.
 
 ## Available Charts
 
