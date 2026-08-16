@@ -363,6 +363,33 @@ app:
   # -- TTL for Redis key expiration
   ttlRedisKeyExpire: ""
 
+# -- Scheduler configuration
+scheduler:
+  # -- Enable the scheduler
+  enabled: true
+
+# -- Workflow archival configuration
+workflowArchival:
+  # -- Enable workflow archival
+  enabled: false
+  # -- Archival type (e.g., elasticsearch, opensearch)
+  type: elasticsearch
+  # -- Time to live for archived workflows
+  ttl: 30d
+  # -- Delay before archiving a completed workflow
+  delay: 1h
+
+# -- Workflow message queue configuration
+workflowMessageQueue:
+  # -- Enable the workflow message queue
+  enabled: false
+  # -- Maximum number of messages in the queue
+  maxQueueSize: 1000
+  # -- Message time-to-live in seconds
+  ttlSeconds: 86400
+  # -- Maximum messages processed in a batch
+  maxBatchSize: 100
+
 # -- DB configuration
 db:
   # -- DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory)
@@ -401,17 +428,6 @@ indexing:
 externalPayloadStorage:
   # -- External payload storage type (postgres, s3, azure_blob, null)
   type: null
-
-# -- Workflow archival configuration
-workflowArchival:
-  # -- Enable workflow archival
-  enabled: false
-  # -- Archival type (e.g., elasticsearch, opensearch)
-  type: elasticsearch
-  # -- Time to live for archived workflows
-  ttl: 30d
-  # -- Delay before archiving a completed workflow
-  delay: 1h
 
 # -- Redis configuration
 redis:
@@ -763,64 +779,75 @@ ai:
   enabled: true
   # -- OpenAI configuration
   openAI:
-    # -- OpenAI API Key
+    # -- OpenAI API key
     apiKey: ""
-    # -- OpenAI Organization ID
+    # -- OpenAI organization ID
     organizationID: ""
   # -- Anthropic configuration
   anthropic:
-    # -- Anthropic API Key
+    # -- Anthropic API key
     apiKey: ""
   # -- Mistral configuration
   mistral:
-    # -- Mistral API Key
+    # -- Mistral API key
     apiKey: ""
   # -- Cohere configuration
   cohere:
-    # -- Cohere API Key
+    # -- Cohere API key
     apiKey: ""
   # -- Grok configuration
   grok:
-    # -- Grok API Key
+    # -- Grok API key
     apiKey: ""
   # -- Perplexity configuration
   perplexity:
-    # -- Perplexity API Key
+    # -- Perplexity API key
     apiKey: ""
   # -- HuggingFace configuration
   huggingFace:
-    # -- HuggingFace API Key
+    # -- HuggingFace API key
     apiKey: ""
   # -- StabilityAI configuration
   stabilityAI:
-    # -- StabilityAI API Key
+    # -- StabilityAI API key
     apiKey: ""
   # -- Azure OpenAI configuration
   azureOpenAI:
-    # -- Azure OpenAI API Key
+    # -- Azure OpenAI API key
     apiKey: ""
-    # -- Azure OpenAI Base URL
+    # -- Azure OpenAI base URL
     baseUrl: ""
-    # -- Azure OpenAI Deployment Name
+    # -- Azure OpenAI deployment name
     deploymentName: ""
   # -- AWS Bedrock configuration
   bedrock:
-    # -- AWS Access Key ID
+    # -- AWS access key ID
     accessKey: ""
-    # -- AWS Secret Access Key
+    # -- AWS secret access key
     secretKey: ""
-    # -- AWS Region
+    # -- AWS Bedrock bearer token
+    bearerToken: ""
+    # -- AWS region
     region: us-east-1
   # -- Google Gemini configuration
   gemini:
-    # -- Google Cloud Project ID
+    # -- Google Gemini API key
+    apiKey: ""
+    # -- Google Cloud project ID
     projectID: ""
-    # -- Google Cloud Location
+    # -- Google Cloud location
     location: us-central1
+    # -- Path to Google application credentials inside the container
+    applicationCredentials: ""
   # -- Ollama configuration
   ollama:
-    # -- Ollama Base URL
+    # -- Ollama base URL
     baseUrl: http://localhost:11434
+
+# -- Document access policy configuration
+documentAccessPolicy:
+  # -- Disable document access policy checks (not recommended for production)
+  disabled: false
 
 # -- Metrics configuration
 metrics:
@@ -916,6 +943,10 @@ security:
 
 # -- Spring configuration
 spring:
+  # -- Spring application name
+  applicationName: conductor
+  # -- Allow Spring bean definition overriding
+  allowBeanDefinitionOverriding: true
   # -- Profiles passed via SPRING_PROFILES_ACTIVE
   profilesActive: logrotate
   # -- Path to the API docs endpoint
@@ -977,6 +1008,10 @@ secrets:
       aiBedrockAccessKey: ""
       # -- Key name for Bedrock secret key (defaults to 'ai-bedrock-secret-key')
       aiBedrockSecretKey: ""
+      # -- Key name for Bedrock bearer token (defaults to 'ai-bedrock-bearer-token')
+      aiBedrockBearerToken: ""
+      # -- Key name for Gemini API key (defaults to 'ai-gemini-api-key')
+      aiGeminiApiKey: ""
       # -- OIDC client secret (defaults to 'auth-oidc-client-secret')
       authOidcClientSecret: ""
 

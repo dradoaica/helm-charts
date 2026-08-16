@@ -238,6 +238,8 @@ spec:
             {{- end }}
             - name: conductor.app.workflowRepairServiceEnabled
               value: {{ .Values.app.workflowRepairServiceEnabled | quote }}
+            - name: conductor.scheduler.enabled
+              value: {{ .Values.scheduler.enabled | quote }}
             {{- if .Values.workflowArchival.enabled }}
             - name: conductor.workflow.workflowArchival.enabled
               value: {{ .Values.workflowArchival.enabled | quote }}
@@ -247,6 +249,16 @@ spec:
               value: {{ .Values.workflowArchival.ttl | quote }}
             - name: conductor.workflow.workflowArchival.delay
               value: {{ .Values.workflowArchival.delay | quote }}
+            {{- end }}
+            {{- if .Values.workflowMessageQueue.enabled }}
+            - name: conductor.workflow-message-queue.enabled
+              value: {{ .Values.workflowMessageQueue.enabled | quote }}
+            - name: conductor.workflow-message-queue.maxQueueSize
+              value: {{ .Values.workflowMessageQueue.maxQueueSize | quote }}
+            - name: conductor.workflow-message-queue.ttlSeconds
+              value: {{ .Values.workflowMessageQueue.ttlSeconds | quote }}
+            - name: conductor.workflow-message-queue.maxBatchSize
+              value: {{ .Values.workflowMessageQueue.maxBatchSize | quote }}
             {{- end }}
             - name: conductor.app.enableRemoveRedisKey
               value: {{ .Values.app.enableRemoveRedisKey | quote }}
@@ -977,9 +989,33 @@ spec:
                   key: ai-bedrock-secret-key
                   {{- end }}
             {{- end }}
+            {{- if .Values.ai.bedrock.bearerToken }}
+            - name: conductor.ai.bedrock.bearerToken
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-bedrock-bearer-token" .Values.secrets.existingSecret.keys.aiBedrockBearerToken }}
+                  {{- else }}
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: ai-bedrock-bearer-token
+                  {{- end }}
+            {{- end }}
             {{- if .Values.ai.bedrock.region }}
             - name: conductor.ai.bedrock.region
               value: {{ .Values.ai.bedrock.region | quote }}
+            {{- end }}
+            {{- if .Values.ai.gemini.apiKey }}
+            - name: conductor.ai.gemini.api-key
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-gemini-api-key" .Values.secrets.existingSecret.keys.aiGeminiApiKey }}
+                  {{- else }}
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: ai-gemini-api-key
+                  {{- end }}
             {{- end }}
             {{- if .Values.ai.gemini.projectID }}
             - name: conductor.ai.gemini.project-id
@@ -989,10 +1025,16 @@ spec:
             - name: conductor.ai.gemini.location
               value: {{ .Values.ai.gemini.location | quote }}
             {{- end }}
+            {{- if .Values.ai.gemini.applicationCredentials }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: {{ .Values.ai.gemini.applicationCredentials | quote }}
+            {{- end }}
             {{- if .Values.ai.ollama.baseUrl }}
             - name: conductor.ai.ollama.base-url
               value: {{ .Values.ai.ollama.baseUrl | quote }}
             {{- end }}
+            - name: conductor.document-access-policy.disabled
+              value: {{ .Values.documentAccessPolicy.disabled | quote }}
             - name: conductor.metrics-logger.enabled
               value: {{ .Values.metrics.loggerEnabled | quote }}
             - name: conductor.metrics-logger.reportPeriodSeconds
@@ -1085,6 +1127,10 @@ spec:
             {{- end }}
             - name: loadSample
               value: 'false'
+            - name: spring.application.name
+              value: {{ .Values.spring.applicationName | quote }}
+            - name: spring.main.allow-bean-definition-overriding
+              value: {{ .Values.spring.allowBeanDefinitionOverriding | quote }}
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.spring.profilesActive | quote }}
             - name: springdoc.api-docs.path

@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.31.1](https://img.shields.io/badge/Version-3.31.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.31.0](https://img.shields.io/badge/AppVersion-3.31.0-informational?style=flat-square)
+![Version: 3.32.0](https://img.shields.io/badge/Version-3.32.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.32.1](https://img.shields.io/badge/AppVersion-3.32.1-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -25,37 +25,40 @@ Kubernetes: `>= 1.26.0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node affinity |
-| ai | object | `{"anthropic":{"apiKey":""},"azureOpenAI":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"enabled":true,"gemini":{"location":"us-central1","projectID":""},"grok":{"apiKey":""},"huggingFace":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openAI":{"apiKey":"","organizationID":""},"perplexity":{"apiKey":""},"stabilityAI":{"apiKey":""}}` | AI configuration |
+| ai | object | `{"anthropic":{"apiKey":""},"azureOpenAI":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","bearerToken":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"enabled":true,"gemini":{"apiKey":"","applicationCredentials":"","location":"us-central1","projectID":""},"grok":{"apiKey":""},"huggingFace":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openAI":{"apiKey":"","organizationID":""},"perplexity":{"apiKey":""},"stabilityAI":{"apiKey":""}}` | AI configuration |
 | ai.anthropic | object | `{"apiKey":""}` | Anthropic configuration |
-| ai.anthropic.apiKey | string | `""` | Anthropic API Key |
+| ai.anthropic.apiKey | string | `""` | Anthropic API key |
 | ai.azureOpenAI | object | `{"apiKey":"","baseUrl":"","deploymentName":""}` | Azure OpenAI configuration |
-| ai.azureOpenAI.apiKey | string | `""` | Azure OpenAI API Key |
-| ai.azureOpenAI.baseUrl | string | `""` | Azure OpenAI Base URL |
-| ai.azureOpenAI.deploymentName | string | `""` | Azure OpenAI Deployment Name |
-| ai.bedrock | object | `{"accessKey":"","region":"us-east-1","secretKey":""}` | AWS Bedrock configuration |
-| ai.bedrock.accessKey | string | `""` | AWS Access Key ID |
-| ai.bedrock.region | string | `"us-east-1"` | AWS Region |
-| ai.bedrock.secretKey | string | `""` | AWS Secret Access Key |
+| ai.azureOpenAI.apiKey | string | `""` | Azure OpenAI API key |
+| ai.azureOpenAI.baseUrl | string | `""` | Azure OpenAI base URL |
+| ai.azureOpenAI.deploymentName | string | `""` | Azure OpenAI deployment name |
+| ai.bedrock | object | `{"accessKey":"","bearerToken":"","region":"us-east-1","secretKey":""}` | AWS Bedrock configuration |
+| ai.bedrock.accessKey | string | `""` | AWS access key ID |
+| ai.bedrock.bearerToken | string | `""` | AWS Bedrock bearer token |
+| ai.bedrock.region | string | `"us-east-1"` | AWS region |
+| ai.bedrock.secretKey | string | `""` | AWS secret access key |
 | ai.cohere | object | `{"apiKey":""}` | Cohere configuration |
-| ai.cohere.apiKey | string | `""` | Cohere API Key |
-| ai.gemini | object | `{"location":"us-central1","projectID":""}` | Google Gemini configuration |
-| ai.gemini.location | string | `"us-central1"` | Google Cloud Location |
-| ai.gemini.projectID | string | `""` | Google Cloud Project ID |
+| ai.cohere.apiKey | string | `""` | Cohere API key |
+| ai.gemini | object | `{"apiKey":"","applicationCredentials":"","location":"us-central1","projectID":""}` | Google Gemini configuration |
+| ai.gemini.apiKey | string | `""` | Google Gemini API key |
+| ai.gemini.applicationCredentials | string | `""` | Path to Google application credentials inside the container |
+| ai.gemini.location | string | `"us-central1"` | Google Cloud location |
+| ai.gemini.projectID | string | `""` | Google Cloud project ID |
 | ai.grok | object | `{"apiKey":""}` | Grok configuration |
-| ai.grok.apiKey | string | `""` | Grok API Key |
+| ai.grok.apiKey | string | `""` | Grok API key |
 | ai.huggingFace | object | `{"apiKey":""}` | HuggingFace configuration |
-| ai.huggingFace.apiKey | string | `""` | HuggingFace API Key |
+| ai.huggingFace.apiKey | string | `""` | HuggingFace API key |
 | ai.mistral | object | `{"apiKey":""}` | Mistral configuration |
-| ai.mistral.apiKey | string | `""` | Mistral API Key |
+| ai.mistral.apiKey | string | `""` | Mistral API key |
 | ai.ollama | object | `{"baseUrl":"http://localhost:11434"}` | Ollama configuration |
-| ai.ollama.baseUrl | string | `"http://localhost:11434"` | Ollama Base URL |
+| ai.ollama.baseUrl | string | `"http://localhost:11434"` | Ollama base URL |
 | ai.openAI | object | `{"apiKey":"","organizationID":""}` | OpenAI configuration |
-| ai.openAI.apiKey | string | `""` | OpenAI API Key |
-| ai.openAI.organizationID | string | `""` | OpenAI Organization ID |
+| ai.openAI.apiKey | string | `""` | OpenAI API key |
+| ai.openAI.organizationID | string | `""` | OpenAI organization ID |
 | ai.perplexity | object | `{"apiKey":""}` | Perplexity configuration |
-| ai.perplexity.apiKey | string | `""` | Perplexity API Key |
+| ai.perplexity.apiKey | string | `""` | Perplexity API key |
 | ai.stabilityAI | object | `{"apiKey":""}` | StabilityAI configuration |
-| ai.stabilityAI.apiKey | string | `""` | StabilityAI API Key |
+| ai.stabilityAI.apiKey | string | `""` | StabilityAI API key |
 | amqpEventQueues | object | `{"batchSize":1,"connectionTimeoutInMilliSecs":180000,"durable":false,"duration":1000,"exclusive":false,"handshakeTimeoutInMilliSecs":180000,"hosts":"","limit":50,"listenerQueuePrefix":"","maxChannelCount":5000,"maxPriority":-1,"networkRecoveryIntervalInMilliSecs":5000,"password":"","pollTimeDuration":"100ms","port":5672,"queueType":"classic","requestHeartbeatTimeoutInSecs":30,"retryType":"REGULARINTERVALS","sequentialMsgProcessing":true,"useExchange":true,"useNio":false,"username":"","virtualHost":"/"}` | AMQP (RabbitMQ) Event Queues configuration |
 | amqpEventQueues.batchSize | int | `1` | Batch size for message consumption |
 | amqpEventQueues.connectionTimeoutInMilliSecs | int | `180000` | Connection timeout in ms |
@@ -165,6 +168,8 @@ Kubernetes: `>= 1.26.0`
 | defaultEventQueue | object | `{"enabled":false,"type":"amqp"}` | Default event queue configuration |
 | defaultEventQueue.enabled | bool | `false` | Enable default event queue |
 | defaultEventQueue.type | string | `"amqp"` | Default event queue type (e.g., amqp, nats_stream, kafka) |
+| documentAccessPolicy | object | `{"disabled":false}` | Document access policy configuration |
+| documentAccessPolicy.disabled | bool | `false` | Disable document access policy checks (not recommended for production) |
 | elasticsearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"clusterHealthColor":"yellow","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
 | elasticsearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time an async buffer is held before flushing (e.g., 10s) |
 | elasticsearch.asyncMaxPoolSize | int | `12` | Maximum async indexing threads |
@@ -354,14 +359,18 @@ Kubernetes: `>= 1.26.0`
 | s3.externalPayloadStorage | object | `{"bucketName":"","signedUrlExpirationDuration":5}` | External payload storage configuration for Amazon S3 |
 | s3.externalPayloadStorage.bucketName | string | `""` | Bucket name where payloads will be stored |
 | s3.externalPayloadStorage.signedUrlExpirationDuration | int | `5` | Signed URL expiration duration in seconds |
-| secrets | object | `{"existingSecret":{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""},"manageSecret":true}` | Secrets |
-| secrets.existingSecret | object | `{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
-| secrets.existingSecret.keys | object | `{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""}` | Optional mapping to override the expected key names in the existing Secret |
+| scheduler | object | `{"enabled":true}` | Scheduler configuration |
+| scheduler.enabled | bool | `true` | Enable the scheduler |
+| secrets | object | `{"existingSecret":{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""},"manageSecret":true}` | Secrets |
+| secrets.existingSecret | object | `{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
+| secrets.existingSecret.keys | object | `{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""}` | Optional mapping to override the expected key names in the existing Secret |
 | secrets.existingSecret.keys.aiAnthropicApiKey | string | `""` | Key name for Anthropic API key (defaults to 'ai-anthropic-api-key') |
 | secrets.existingSecret.keys.aiAzureOpenAiApiKey | string | `""` | Key name for Azure OpenAI API key (defaults to 'ai-azure-open-ai-api-key') |
 | secrets.existingSecret.keys.aiBedrockAccessKey | string | `""` | Key name for Bedrock access key (defaults to 'ai-bedrock-access-key') |
+| secrets.existingSecret.keys.aiBedrockBearerToken | string | `""` | Key name for Bedrock bearer token (defaults to 'ai-bedrock-bearer-token') |
 | secrets.existingSecret.keys.aiBedrockSecretKey | string | `""` | Key name for Bedrock secret key (defaults to 'ai-bedrock-secret-key') |
 | secrets.existingSecret.keys.aiCohereApiKey | string | `""` | Key name for Cohere API key (defaults to 'ai-cohere-api-key') |
+| secrets.existingSecret.keys.aiGeminiApiKey | string | `""` | Key name for Gemini API key (defaults to 'ai-gemini-api-key') |
 | secrets.existingSecret.keys.aiGrokApiKey | string | `""` | Key name for Grok API key (defaults to 'ai-grok-api-key') |
 | secrets.existingSecret.keys.aiHuggingFaceApiKey | string | `""` | Key name for Hugging Face API key (defaults to 'ai-hugging-face-api-key') |
 | secrets.existingSecret.keys.aiMistralApiKey | string | `""` | Key name for Mistral API key (defaults to 'ai-mistral-api-key') |
@@ -403,8 +412,10 @@ Kubernetes: `>= 1.26.0`
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
 | serviceAccount.name | string | `""` | Name for the ServiceAccount (autogenerated when empty) |
-| spring | object | `{"apiDocsPath":"/api-docs","profilesActive":"logrotate"}` | Spring configuration |
+| spring | object | `{"allowBeanDefinitionOverriding":true,"apiDocsPath":"/api-docs","applicationName":"conductor","profilesActive":"logrotate"}` | Spring configuration |
+| spring.allowBeanDefinitionOverriding | bool | `true` | Allow Spring bean definition overriding |
 | spring.apiDocsPath | string | `"/api-docs"` | Path to the API docs endpoint |
+| spring.applicationName | string | `"conductor"` | Spring application name |
 | spring.profilesActive | string | `"logrotate"` | Profiles passed via SPRING_PROFILES_ACTIVE |
 | startupProbe | object | `{"enabled":true,"failureThreshold":15,"httpGet":{"path":"/health","port":8080},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1}` | Startup probe configuration |
 | startupProbe.enabled | bool | `true` | Enable startup probe |
@@ -436,6 +447,11 @@ Kubernetes: `>= 1.26.0`
 | workflowArchival.type | string | `"elasticsearch"` | Archival type (e.g., elasticsearch, opensearch) |
 | workflowExecutionLock | object | `{"type":"redis"}` | Workflow execution lock configuration |
 | workflowExecutionLock.type | string | `"redis"` | Workflow execution lock type (redis, postgres, zookeeper, local_only, noop_lock) |
+| workflowMessageQueue | object | `{"enabled":false,"maxBatchSize":100,"maxQueueSize":1000,"ttlSeconds":86400}` | Workflow message queue configuration |
+| workflowMessageQueue.enabled | bool | `false` | Enable the workflow message queue |
+| workflowMessageQueue.maxBatchSize | int | `100` | Maximum messages processed in a batch |
+| workflowMessageQueue.maxQueueSize | int | `1000` | Maximum number of messages in the queue |
+| workflowMessageQueue.ttlSeconds | int | `86400` | Message time-to-live in seconds |
 | zookeeperLock | object | `{"connectionString":"","connectionTimeoutMs":"","namespace":"","sessionTimeoutMs":""}` | Zookeeper lock configuration |
 | zookeeperLock.connectionString | string | `""` | Zookeeper connection string for workflow execution lock (e.g., zk1:2181,zk2:2181) |
 | zookeeperLock.connectionTimeoutMs | string | `""` | Zookeeper lock connection timeout in ms |
