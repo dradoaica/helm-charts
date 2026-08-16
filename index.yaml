@@ -175,6 +175,29 @@ entries:
     version: 1.5.1
   conductor-oss-conductor:
   - apiVersion: v2
+    appVersion: 3.32.1
+    created: "2026-08-16T19:25:26.033753475Z"
+    description: Conductor OSS Conductor is a platform originally created at Netflix
+      to orchestrate workflows that span across microservices. This chart deploys
+      Conductor OSS Conductor as a Deployment.
+    digest: 1ebec99b6efe0a156b09852ce5b4960653c28ba719b7d3a60e675e2707bbd829
+    home: https://docs.conductor-oss.org/
+    icon: https://docs.conductor-oss.org/home/icons/conductor.svg
+    keywords:
+    - conductor
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: conductor-oss-conductor
+    sources:
+    - https://github.com/conductor-oss/conductor
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/conductor-oss-conductor-3.32.0/conductor-oss-conductor-3.32.0.tgz
+    version: 3.32.0
+  - apiVersion: v2
     appVersion: 3.31.0
     created: "2026-07-18T08:15:24.915258598Z"
     description: Conductor OSS Conductor is a platform originally created at Netflix
@@ -725,4 +748,4 @@ entries:
     urls:
     - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.0/ignite-3-3.1.0.tgz
     version: 3.1.0
-generated: "2026-07-18T08:15:25.337059255Z"
+generated: "2026-08-16T19:25:26.033828025Z"
