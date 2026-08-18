@@ -93,6 +93,33 @@ entries:
     version: 2.17.0
   clamav-openshift:
   - apiVersion: v2
+    appVersion: 1.5.4
+    created: "2026-08-18T18:00:08.37528895Z"
+    description: ClamAV is an open-source antivirus engine for detecting trojans,
+      viruses, malware & other malicious threats. This chart deploys ClamAV as a StatefulSet
+      with persistence support.
+    digest: 52a04a91221aeccba4502e281d0172b8da43ec6666cae6b15d899ce8f6cf3658
+    home: https://github.com/dradoaica/clamav-docker-openshift/
+    icon: https://www.clamav.net/assets/clamav-trademark.png
+    keywords:
+    - clamav
+    - antivirus
+    - malware
+    - security
+    - scanning
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: clamav-openshift
+    sources:
+    - https://github.com/dradoaica/clamav-docker-openshift/
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/clamav-openshift-1.5.4/clamav-openshift-1.5.4.tgz
+    version: 1.5.4
+  - apiVersion: v2
     appVersion: 1.5.3
     created: "2026-04-19T21:44:43.923241267Z"
     description: ClamAV is an open-source antivirus engine for detecting trojans,
@@ -748,4 +775,4 @@ entries:
     urls:
     - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.0/ignite-3-3.1.0.tgz
     version: 3.1.0
-generated: "2026-08-16T19:25:26.033828025Z"
+generated: "2026-08-18T18:00:08.37533196Z"
