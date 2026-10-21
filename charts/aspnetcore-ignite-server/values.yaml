@@ -221,7 +221,9 @@ networkPolicy:
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
-  # -- NetworkPolicy ingress rules
+  # -- Allow ingress/egress traffic between the pods of this release (required for cluster communication)
+  allowIntraCluster: true
+  # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
   # -- NetworkPolicy egress rules
   egress:
@@ -232,6 +234,14 @@ networkPolicy:
         - port: 53
           protocol: UDP
         - port: 53
+          protocol: TCP
+    # Allow access to the Kubernetes API server (required by the Kubernetes IP finder for discovery)
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 6443
           protocol: TCP
 
 podDisruptionBudget:

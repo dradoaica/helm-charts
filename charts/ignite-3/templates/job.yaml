@@ -133,7 +133,32 @@ spec:
               echo "[INFO] Replica count: $REPLICA_COUNT"
               echo "[INFO] CMG size: $CMG_SIZE"
               echo "[INFO] CMG nodes: $CMG_NODES"
-              INIT_RES=$(/opt/ignite3cli/bin/ignite3 cluster init --name={{ include "ignite.fullname" . }} --metastorage-group $CMG_NODES --url=$CLUSTER_URL --config-files=/cluster-config.conf 2>&1)
+
+              # Render the cluster configuration here (instead of in the ConfigMap) so the password comes from the Secret
+              ESCAPED_PASSWORD=$(printf '%s' "$DEFAULT_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+              cat > /cluster-config/cluster-config.conf <<EOF
+              ignite {
+                security {
+                  enabled:{{ .Values.authentication.enabled }}
+                  authentication {
+                    providers=[
+                      {
+                        name=default
+                        type=basic
+                        users=[
+                          {
+                            password="$ESCAPED_PASSWORD"
+                            username=$DEFAULT_USER
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+              EOF
+
+              INIT_RES=$(/opt/ignite3cli/bin/ignite3 cluster init --name={{ include "ignite.fullname" . }} --metastorage-group $CMG_NODES --url=$CLUSTER_URL --config-files=/cluster-config/cluster-config.conf 2>&1)
               EXIT_CODE=$?
               if [ $EXIT_CODE -ne 0 ]; then
                 echo "[ERROR] Failed to initialize the cluster (exit code $EXIT_CODE): $INIT_RES"
@@ -191,13 +216,11 @@ spec:
                   {{- end }}
                   optional: true
           volumeMounts:
-            - name: config-map-vol
-              mountPath: /cluster-config.conf
-              subPath: cluster-config.conf
+            - name: cluster-config-vol
+              mountPath: /cluster-config
       volumes:
-        - name: config-map-vol
-          configMap:
-            name: {{ include "ignite.fullname" . }}
+        - name: cluster-config-vol
+          emptyDir: { }
       restartPolicy: Never
       {{- with .Values.nodeSelector }}
       nodeSelector:

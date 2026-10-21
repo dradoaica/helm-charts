@@ -3,3 +3,10 @@ CHART VERSION: {{ .Chart.Version }}
 APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
+{{- if .Values.autoscaling.create }}
+
+WARNING: autoscaling.create is enabled. Autoscaling is NOT recommended for Ignite 3 clusters:
+  - The CMG/metastorage group is fixed at initialization; scaling down below its majority makes the cluster unavailable.
+  - Scaling down removes nodes without draining them; partitions with fewer replicas than removed nodes become lost or unavailable.
+  - Every `helm upgrade` resets the replicas to replicaCount, overriding the HPA.
+{{- end }}

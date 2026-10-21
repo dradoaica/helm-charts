@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.32.0](https://img.shields.io/badge/Version-3.32.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.32.1](https://img.shields.io/badge/AppVersion-3.32.1-informational?style=flat-square)
+![Version: 3.32.1](https://img.shields.io/badge/Version-3.32.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.32.1](https://img.shields.io/badge/AppVersion-3.32.1-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -274,8 +274,8 @@ Kubernetes: `>= 1.26.0`
 | natsEventQueues.natsStream.listenerQueuePrefix | string | `""` | Listener queue prefix |
 | natsEventQueues.natsStream.url | string | `"nats://localhost:4222"` | NATS streaming URL |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
-| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules (add rules for the configured backends, e.g., Redis, Elasticsearch/OpenSearch, PostgreSQL/MySQL) |
+| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the API/UI) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
 | openSearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"autoIndexManagementEnabled":true,"clusterHealthColor":"green","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionRequestTimeout":-1,"restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"taskLogResultLimit":10,"url":"","username":"","version":0}` | OpenSearch configuration |

@@ -1138,8 +1138,10 @@ spec:
             - name: logging.level.root
               value: {{ .Values.logging.level.root | quote }}
             {{- range $name, $value := .Values.env }}
-            - name: "{{ $name }}"
-              value: "{{ $value }}"
+            {{- if ne $name "EXTRA_JVM_OPTS" }}
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
             {{- end }}
             {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}

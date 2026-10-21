@@ -9,26 +9,6 @@ metadata:
     {{- . | nindent 4 }}
   {{- end }}
 data:
-  cluster-config.conf: |
-    ignite {
-      security {
-        enabled:{{ .Values.authentication.enabled }}
-        authentication {
-          providers=[
-            {
-              name=default
-              type=basic
-              users=[
-                {
-                  password="{{ .Values.authentication.igniteUserPassword | default "ignite" }}"
-                  username=ignite
-                }
-              ]
-            }
-          ]
-        }
-      }
-    }
   ignite-config.conf: |
     ignite {
         clientConnector {

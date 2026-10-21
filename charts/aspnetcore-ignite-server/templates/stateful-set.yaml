@@ -115,8 +115,8 @@ spec:
                   key: ssl-client-certificate-password
                   {{- end }}
             {{- range $name, $value := .Values.env }}
-            - name: "{{ $name }}"
-              value: "{{ $value }}"
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
             {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- toYaml .Values.extraEnvVars | nindent 12 }}

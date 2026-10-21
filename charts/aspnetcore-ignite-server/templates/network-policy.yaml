@@ -16,13 +16,25 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  {{- with .Values.networkPolicy.ingress }}
   ingress:
+    {{- if .Values.networkPolicy.allowIntraCluster }}
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    - from:
+        - podSelector:
+            matchLabels: {{- include "aspnetcore-ignite-server.selectorLabels" . | nindent 14 }}
+    {{- end }}
+    {{- with .Values.networkPolicy.ingress }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with .Values.networkPolicy.egress }}
+    {{- end }}
   egress:
+    {{- if .Values.networkPolicy.allowIntraCluster }}
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    - to:
+        - podSelector:
+            matchLabels: {{- include "aspnetcore-ignite-server.selectorLabels" . | nindent 14 }}
+    {{- end }}
+    {{- with .Values.networkPolicy.egress }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 {{- end }}
 

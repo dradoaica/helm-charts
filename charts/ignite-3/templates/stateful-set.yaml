@@ -209,8 +209,10 @@ spec:
                   optional: true
             #endregion
             {{- range $name, $value := .Values.env }}
-            - name: "{{ $name }}"
-              value: "{{ $value }}"
+            {{- if ne $name "EXTRA_JVM_OPTS" }}
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
             {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- toYaml .Values.extraEnvVars | nindent 12 }}

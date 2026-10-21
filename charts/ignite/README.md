@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.18.2](https://img.shields.io/badge/Version-2.18.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.18.3](https://img.shields.io/badge/Version-2.18.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -35,7 +35,7 @@ Kubernetes: `>= 1.26.0`
 | authentication.existingSecret.name | string | `""` | Name of the existing Secret containing the ignite user password |
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
-| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler |
+| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data, and new pods hold no data until added to the baseline topology - see the values.yaml comments) |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
 | autoscaling.minReplicas | int | `1` | Minimum number of replicas |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
@@ -93,9 +93,10 @@ Kubernetes: `>= 1.26.0`
 | memoryConfiguration | string | `""` | Memory configuration |
 | metrics.enabled | bool | `false` | Enable metrics |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
+| networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
-| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
+| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
 | peerClassLoadingEnabled | bool | `false` | Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading) |

@@ -11,8 +11,26 @@ metadata:
     {{- . | nindent 4 }}
   {{- end }}
 spec:
-  egress: {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
-  ingress: {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+  egress:
+    {{- if .Values.networkPolicy.allowIntraCluster }}
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    - to:
+        - podSelector:
+            matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}
+    {{- end }}
+    {{- with .Values.networkPolicy.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  ingress:
+    {{- if .Values.networkPolicy.allowIntraCluster }}
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    - from:
+        - podSelector:
+            matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}
+    {{- end }}
+    {{- with .Values.networkPolicy.ingress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   podSelector:
     matchLabels: {{- include "ignite.selectorLabels" . | nindent 6 }}
   policyTypes:

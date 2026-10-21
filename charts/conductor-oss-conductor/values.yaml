@@ -187,9 +187,9 @@ networkPolicy:
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
-  # -- NetworkPolicy ingress rules
+  # -- NetworkPolicy ingress rules (add rules for clients that need access to the API/UI)
   ingress: [ ]
-  # -- NetworkPolicy egress rules
+  # -- NetworkPolicy egress rules (add rules for the configured backends, e.g., Redis, Elasticsearch/OpenSearch, PostgreSQL/MySQL)
   egress:
     # Allow DNS resolution
     - to:

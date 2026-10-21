@@ -1,6 +1,6 @@
 # aspnetcore-ignite-server
 
-![Version: 2.18.1](https://img.shields.io/badge/Version-2.18.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.18.2](https://img.shields.io/badge/Version-2.18.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 
@@ -60,9 +60,10 @@ Kubernetes: `>= 1.26.0`
 | livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/ignite?cmd=version","port":8080},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
+| networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
-| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
+| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
 | persistence.accessModes | list | `["ReadWriteOnce"]` | Persistent volume access modes |

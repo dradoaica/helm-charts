@@ -35,12 +35,12 @@ spec:
         - /bin/sh
         - -c
         - |
-          echo "Testing connection to {{ include "ignite.fullname" . }}:{{ .Values.service.ports.rest }}..."
+          echo "Testing connection to {{ include "ignite.fullname" . }}:{{ .Values.service.ports.management }}..."
           wget --spider --timeout=10 \
             {{- if .Values.authentication.enabled }}
-            --header "Authorization: Basic {{ printf "ignite:%s" (.Values.authentication.igniteUserPassword | default "ignite") | b64enc }}" \
+            --header "Authorization: Basic $(printf 'ignite:%s' "${IGNITE_USER_PASSWORD:-ignite}" | base64 | tr -d '\n')" \
             {{- end }}
-            http://{{ include "ignite.fullname" . }}:{{ .Values.service.ports.rest }}/management/v1/cluster/state
+            http://{{ include "ignite.fullname" . }}:{{ .Values.service.ports.management }}/management/v1/cluster/state
           exit_code=$?
           if [ $exit_code -eq 0 ]; then
             echo "Connection test PASSED"
@@ -48,6 +48,20 @@ spec:
             echo "Connection test FAILED"
           fi
           exit $exit_code
+      {{- if .Values.authentication.enabled }}
+      env:
+        - name: IGNITE_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.authentication.existingSecret.name }}
+              name: {{ .Values.authentication.existingSecret.name }}
+              key: {{ default "ignite-user-password" .Values.authentication.existingSecret.key }}
+              {{- else }}
+              name: {{ include "ignite.fullname" . }}-auth
+              key: ignite-user-password
+              {{- end }}
+              optional: true
+      {{- end }}
       resources:
         requests:
           cpu: 50m

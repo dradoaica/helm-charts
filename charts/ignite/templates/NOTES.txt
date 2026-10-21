@@ -3,3 +3,10 @@ CHART VERSION: {{ .Chart.Version }}
 APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
+{{- if .Values.autoscaling.create }}
+
+WARNING: autoscaling.create is enabled. Autoscaling is NOT recommended for Ignite clusters:
+  - With persistence, new pods hold no data until they are added to the baseline topology.
+  - Scaling down removes nodes without draining them; partitions without backups become lost or unavailable.
+  - Every `helm upgrade` resets the replicas to replicaCount, overriding the HPA.
+{{- end }}

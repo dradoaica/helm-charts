@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.3](https://img.shields.io/badge/Version-3.2.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.4](https://img.shields.io/badge/Version-3.2.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -32,7 +32,7 @@ Kubernetes: `>= 1.26.0`
 | authentication.existingSecret.name | string | `""` | Name of the existing Secret containing the ignite user password |
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
-| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler |
+| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data or the CMG/metastorage majority - see the values.yaml comments) |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
 | autoscaling.minReplicas | int | `1` | Minimum number of replicas |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
@@ -60,7 +60,7 @@ Kubernetes: `>= 1.26.0`
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
-| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":10800}]}]` | List of Ingress hosts with paths for REST and Management APIs |
+| ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":10300}]}]` | List of Ingress hosts with paths for REST and Management APIs |
 | ingress.tls | list | `[]` | TLS configuration for Ingress |
 | initializationJob.enabled | bool | `true` | Enable the cluster initialization job with topology verification and intelligent CMG sizing |
 | initializationJob.resources | object | `{"limits":{"cpu":"1","memory":"2Gi"},"requests":{"cpu":"500m","memory":"2Gi"}}` | Resources for the cluster initialization job |
@@ -80,9 +80,10 @@ Kubernetes: `>= 1.26.0`
 | memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
+| networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
 | networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
-| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules |
+| networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
 | persistence.accessModes | list | `["ReadWriteOnce"]` | Persistent volume access modes |

@@ -162,16 +162,22 @@ lifecycleHooks: { }
 container:
   # -- Container ports used by the Pod spec and as Service targetPort values
   ports:
+    # REST/Management API (HTTP)
     management: 10300
+    # REST/Management API (HTTPS)
     managementSsl: 10400
+    # Client connector (binary protocol for thin clients and JDBC; not HTTP)
     rest: 10800
     cluster: 3344
 
 service:
   # -- Service ports used by the Service spec. targetPort fields reference container.ports.*
   ports:
+    # REST/Management API (HTTP)
     management: 10300
+    # REST/Management API (HTTPS)
     managementSsl: 10400
+    # Client connector (binary protocol for thin clients and JDBC; not HTTP)
     rest: 10800
     cluster: 3344
     jmx: 9404
@@ -212,7 +218,9 @@ networkPolicy:
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
-  # -- NetworkPolicy ingress rules
+  # -- Allow ingress/egress traffic between the pods of this release (required for cluster communication)
+  allowIntraCluster: true
+  # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
   # -- NetworkPolicy egress rules
   egress:
@@ -241,8 +249,16 @@ podDisruptionBudget:
   # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
   # maxUnavailable: "50%"
 
+# Autoscaling is NOT recommended for Ignite 3 clusters:
+#  - The CMG/metastorage group is chosen once at initialization from `replicaCount` (the lowest pod ordinals);
+#    scaling down below its majority makes the cluster unavailable.
+#  - Scaling down removes nodes without draining them; partitions with fewer replicas than removed nodes
+#    become lost or unavailable.
+#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`, overriding the HPA (an implicit scale-down).
+#  - Memory-based scaling does not fit the JVM (heap is pre-touched and rarely returned), so pods rarely scale back down.
+# Prefer scaling manually via `replicaCount`, one node at a time, and only with backups/replicas configured.
 autoscaling:
-  # -- Create a HorizontalPodAutoscaler
+  # -- Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data or the CMG/metastorage majority - see the values.yaml comments)
   create: false
   # -- Minimum number of replicas
   minReplicas: 1
@@ -266,7 +282,8 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          port: 10800
+          # REST/Management API (HTTP); the client connector port (10800) is a binary protocol and cannot be exposed via Ingress
+          port: 10300
   # -- TLS configuration for Ingress
   tls: [ ]
 
