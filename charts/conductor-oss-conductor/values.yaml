@@ -318,6 +318,8 @@ app:
   isolatedSystemTaskWorkerThreadCount: ""
   # -- After these many polls, begin exponential backoff for system tasks (e.g., 200)
   systemTaskPostponeThreshold: ""
+  # -- Per-task-type system task worker settings, rendered as `conductor.app.taskWorkerConfigs.<TASK>.<setting>` (e.g., HTTP: { threadCount: 20 })
+  taskWorkerConfigs: { }
   # -- The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (e.g., 30s)
   asyncUpdateShortRunningWorkflowDuration: 10m
   # -- The delay with which short-running workflows will be updated in Elasticsearch when async indexing is enabled (e.g., 60s)
@@ -465,6 +467,15 @@ redis:
   testWhileIdle: ""
   # -- Number of connections to test per eviction run
   numTestsPerEvictionRun: ""
+
+# -- Redis lock configuration (used when workflowExecutionLock.type is redis)
+redisLock:
+  # -- Redis lock server type (single, cluster, sentinel). Set this when Redis is not a single server
+  serverType: ""
+  # -- Redis Sentinel master name for the lock
+  serverMasterName: ""
+  # -- Redis lock namespace/key prefix
+  namespace: ""
 
 # -- MySQL configuration
 mySql:
@@ -777,6 +788,20 @@ statusNotifier:
 # -- AI configuration
 ai:
   enabled: true
+  # -- Outbound access for external MCP servers and Conductor-Agents OpenAPI discovery (default-deny)
+  outbound:
+    # -- Exact origins allowed for outbound access (comma-separated, e.g., https://tools.example.com)
+    allowedOrigins: ""
+    # -- Allow private network addresses for listed origins (development only)
+    allowPrivateNetworks: false
+  # -- Structured decision inference configuration
+  decision:
+    # -- Decision inference API key
+    apiKey: ""
+    # -- Decision inference provider (e.g., openrouter)
+    provider: ""
+    # -- Decision inference API shape (e.g., system-one)
+    apiShape: ""
   # -- OpenAI configuration
   openAI:
     # -- OpenAI API key
@@ -848,6 +873,14 @@ ai:
 documentAccessPolicy:
   # -- Disable document access policy checks (not recommended for production)
   disabled: false
+  # -- Additional directories allowed for local filesystem access (comma-separated)
+  allowedDirectories: ""
+  # -- Path prefixes added to the built-in blocklist (comma-separated)
+  blockedPathPrefixes: ""
+  # -- File names added to the built-in blocklist (comma-separated)
+  blockedFileNames: ""
+  # -- Hosts added to the built-in blocklist (comma-separated)
+  blockedHosts: ""
 
 # -- Metrics configuration
 metrics:
@@ -856,7 +889,7 @@ metrics:
   # -- Metrics logging a report period in seconds
   loggerReportPeriodSeconds: 1
   # -- Enable Prometheus metrics
-  prometheusEnabled: false
+  prometheusEnabled: true
 
 # -- Management configuration
 management:
@@ -986,6 +1019,8 @@ secrets:
       azureBlobSasToken: ""
       # -- Key name for AMQP password (defaults to 'amqp-password')
       amqpPassword: ""
+      # -- Key name for decision inference API key (defaults to 'ai-decision-api-key')
+      aiDecisionApiKey: ""
       # -- Key name for OpenAI API key (defaults to 'ai-open-ai-api-key')
       aiOpenAiApiKey: ""
       # -- Key name for Anthropic API key (defaults to 'ai-anthropic-api-key')

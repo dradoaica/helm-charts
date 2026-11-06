@@ -236,6 +236,12 @@ spec:
             - name: conductor.app.taskExecLogSizeLimit
               value: {{ .Values.app.taskExecLogSizeLimit | quote }}
             {{- end }}
+            {{- range $task, $config := .Values.app.taskWorkerConfigs }}
+            {{- range $name, $value := $config }}
+            - name: conductor.app.taskWorkerConfigs.{{ $task }}.{{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
             - name: conductor.app.workflowRepairServiceEnabled
               value: {{ .Values.app.workflowRepairServiceEnabled | quote }}
             - name: conductor.scheduler.enabled
@@ -340,6 +346,18 @@ spec:
               {{- else }}
               value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}"
               {{- end }}
+            {{- if .Values.redisLock.serverType }}
+            - name: conductor.redis-lock.serverType
+              value: {{ .Values.redisLock.serverType | quote }}
+            {{- end }}
+            {{- if .Values.redisLock.serverMasterName }}
+            - name: conductor.redis-lock.serverMasterName
+              value: {{ .Values.redisLock.serverMasterName | quote }}
+            {{- end }}
+            {{- if .Values.redisLock.namespace }}
+            - name: conductor.redis-lock.namespace
+              value: {{ .Values.redisLock.namespace | quote }}
+            {{- end }}
             - name: conductor.redis.ssl
               value: {{ .Values.redis.ssl | quote }}
             - name: conductor.redis.taskDefCacheRefreshInterval
@@ -845,6 +863,34 @@ spec:
             {{- end }}
             - name: conductor.integrations.ai.enabled
               value: {{ .Values.ai.enabled | quote }}
+            {{- if .Values.ai.outbound.allowedOrigins }}
+            - name: conductor.ai.outbound.allowed-origins
+              value: {{ .Values.ai.outbound.allowedOrigins | quote }}
+            {{- end }}
+            {{- if .Values.ai.outbound.allowPrivateNetworks }}
+            - name: conductor.ai.outbound.allow-private-networks
+              value: {{ .Values.ai.outbound.allowPrivateNetworks | quote }}
+            {{- end }}
+            {{- if and .Values.ai.enabled .Values.ai.decision.apiKey }}
+            - name: conductor.ai.decision.api-key
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.secrets.existingSecret.name }}
+                  name: {{ .Values.secrets.existingSecret.name }}
+                  key: {{ default "ai-decision-api-key" .Values.secrets.existingSecret.keys.aiDecisionApiKey }}
+                  {{- else }}
+                  name: {{ include "conductor-oss-conductor.fullname" . }}
+                  key: ai-decision-api-key
+                  {{- end }}
+            {{- end }}
+            {{- if .Values.ai.decision.provider }}
+            - name: conductor.ai.decision.provider
+              value: {{ .Values.ai.decision.provider | quote }}
+            {{- end }}
+            {{- if .Values.ai.decision.apiShape }}
+            - name: conductor.ai.decision.api-shape
+              value: {{ .Values.ai.decision.apiShape | quote }}
+            {{- end }}
             {{- if .Values.ai.openAI.apiKey }}
             - name: conductor.ai.openai.api-key
               valueFrom:
@@ -1035,6 +1081,22 @@ spec:
             {{- end }}
             - name: conductor.document-access-policy.disabled
               value: {{ .Values.documentAccessPolicy.disabled | quote }}
+            {{- if .Values.documentAccessPolicy.allowedDirectories }}
+            - name: conductor.document-access-policy.allowed-directories
+              value: {{ .Values.documentAccessPolicy.allowedDirectories | quote }}
+            {{- end }}
+            {{- if .Values.documentAccessPolicy.blockedPathPrefixes }}
+            - name: conductor.document-access-policy.blocked-path-prefixes
+              value: {{ .Values.documentAccessPolicy.blockedPathPrefixes | quote }}
+            {{- end }}
+            {{- if .Values.documentAccessPolicy.blockedFileNames }}
+            - name: conductor.document-access-policy.blocked-file-names
+              value: {{ .Values.documentAccessPolicy.blockedFileNames | quote }}
+            {{- end }}
+            {{- if .Values.documentAccessPolicy.blockedHosts }}
+            - name: conductor.document-access-policy.blocked-hosts
+              value: {{ .Values.documentAccessPolicy.blockedHosts | quote }}
+            {{- end }}
             - name: conductor.metrics-logger.enabled
               value: {{ .Values.metrics.loggerEnabled | quote }}
             - name: conductor.metrics-logger.reportPeriodSeconds
@@ -1043,7 +1105,7 @@ spec:
               value: {{ .Values.metrics.prometheusEnabled | quote }}
             - name: management.endpoints.web.exposure.include
               value: {{ .Values.management.endpointsWebExposureInclude | quote }}
-            - name: management.metrics.web.server.request.autotime.percentiles
+            - name: management.metrics.distribution.percentiles.http.server.requests
               value: {{ .Values.management.metricsPercentiles | quote }}
             - name: management.endpoint.health.show-details
               value: {{ .Values.management.healthShowDetails | quote }}
@@ -1071,8 +1133,8 @@ spec:
             - name: management.datadog.metrics.export.apiKey
               value: {{ .Values.management.metricsExport.datadogApiKey | quote }}
             {{- end }}
-            - name: management.statsD.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.statsd | quote }}
+            - name: management.statsd.metrics.export.enabled
+              value: {{ .Values.management.metricsExport.statsD | quote }}
             - name: management.cloudwatch.metrics.export.enabled
               value: {{ .Values.management.metricsExport.cloudWatch | quote }}
             - name: management.cloudwatch.metrics.export.namespace

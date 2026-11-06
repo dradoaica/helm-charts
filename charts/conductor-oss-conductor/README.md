@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.33.0](https://img.shields.io/badge/Version-3.33.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.33.0](https://img.shields.io/badge/AppVersion-3.33.0-informational?style=flat-square)
+![Version: 3.33.1](https://img.shields.io/badge/Version-3.33.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.33.0](https://img.shields.io/badge/AppVersion-3.33.0-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -25,7 +25,7 @@ Kubernetes: `>= 1.26.0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node affinity |
-| ai | object | `{"anthropic":{"apiKey":""},"azureOpenAI":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","bearerToken":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"enabled":true,"gemini":{"apiKey":"","applicationCredentials":"","location":"us-central1","projectID":""},"grok":{"apiKey":""},"huggingFace":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openAI":{"apiKey":"","organizationID":""},"perplexity":{"apiKey":""},"stabilityAI":{"apiKey":""}}` | AI configuration |
+| ai | object | `{"anthropic":{"apiKey":""},"azureOpenAI":{"apiKey":"","baseUrl":"","deploymentName":""},"bedrock":{"accessKey":"","bearerToken":"","region":"us-east-1","secretKey":""},"cohere":{"apiKey":""},"decision":{"apiKey":"","apiShape":"","provider":""},"enabled":true,"gemini":{"apiKey":"","applicationCredentials":"","location":"us-central1","projectID":""},"grok":{"apiKey":""},"huggingFace":{"apiKey":""},"mistral":{"apiKey":""},"ollama":{"baseUrl":"http://localhost:11434"},"openAI":{"apiKey":"","organizationID":""},"outbound":{"allowPrivateNetworks":false,"allowedOrigins":""},"perplexity":{"apiKey":""},"stabilityAI":{"apiKey":""}}` | AI configuration |
 | ai.anthropic | object | `{"apiKey":""}` | Anthropic configuration |
 | ai.anthropic.apiKey | string | `""` | Anthropic API key |
 | ai.azureOpenAI | object | `{"apiKey":"","baseUrl":"","deploymentName":""}` | Azure OpenAI configuration |
@@ -39,6 +39,10 @@ Kubernetes: `>= 1.26.0`
 | ai.bedrock.secretKey | string | `""` | AWS secret access key |
 | ai.cohere | object | `{"apiKey":""}` | Cohere configuration |
 | ai.cohere.apiKey | string | `""` | Cohere API key |
+| ai.decision | object | `{"apiKey":"","apiShape":"","provider":""}` | Structured decision inference configuration |
+| ai.decision.apiKey | string | `""` | Decision inference API key |
+| ai.decision.apiShape | string | `""` | Decision inference API shape (e.g., system-one) |
+| ai.decision.provider | string | `""` | Decision inference provider (e.g., openrouter) |
 | ai.gemini | object | `{"apiKey":"","applicationCredentials":"","location":"us-central1","projectID":""}` | Google Gemini configuration |
 | ai.gemini.apiKey | string | `""` | Google Gemini API key |
 | ai.gemini.applicationCredentials | string | `""` | Path to Google application credentials inside the container |
@@ -55,6 +59,9 @@ Kubernetes: `>= 1.26.0`
 | ai.openAI | object | `{"apiKey":"","organizationID":""}` | OpenAI configuration |
 | ai.openAI.apiKey | string | `""` | OpenAI API key |
 | ai.openAI.organizationID | string | `""` | OpenAI organization ID |
+| ai.outbound | object | `{"allowPrivateNetworks":false,"allowedOrigins":""}` | Outbound access for external MCP servers and Conductor-Agents OpenAPI discovery (default-deny) |
+| ai.outbound.allowPrivateNetworks | bool | `false` | Allow private network addresses for listed origins (development only) |
+| ai.outbound.allowedOrigins | string | `""` | Exact origins allowed for outbound access (comma-separated, e.g., https://tools.example.com) |
 | ai.perplexity | object | `{"apiKey":""}` | Perplexity configuration |
 | ai.perplexity.apiKey | string | `""` | Perplexity API key |
 | ai.stabilityAI | object | `{"apiKey":""}` | StabilityAI configuration |
@@ -84,7 +91,7 @@ Kubernetes: `>= 1.26.0`
 | amqpEventQueues.username | string | `""` | RabbitMQ username |
 | amqpEventQueues.virtualHost | string | `"/"` | RabbitMQ virtual host |
 | annotations | object | `{}` | Annotations to add to all resources |
-| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperQueuePopTimeout":"","sweeperSweepBatchSize":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskPostponeThreshold":"","systemTaskQueuePopTimeout":"","systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
+| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"10m","enableRemoveRedisKey":false,"eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"4GB","maxTaskOutputPayloadSizeThreshold":"4GB","maxWorkflowInputPayloadSizeThreshold":"4GB","maxWorkflowOutputPayloadSizeThreshold":"4GB","maxWorkflowVariablesPayloadSizeThreshold":"100MB","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperQueuePopTimeout":"","sweeperSweepBatchSize":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskPostponeThreshold":"","systemTaskQueuePopTimeout":"","systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"1MB","taskOutputPayloadSizeThreshold":"1MB","taskWorkerConfigs":{},"ttlRedisKeyExpire":"","workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"1MB","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"1MB","workflowRepairServiceEnabled":false}` | App configuration |
 | app.activeWorkerLastPollTimeout | string | `""` | The time to consider if a worker is actively polling for a task (e.g., 10s) |
 | app.appID | string | `""` | The ID with which the app has been registered (e.g., conductor, myApp) |
 | app.asyncIndexingEnabled | string | `""` | Whether to enable asynchronous indexing to Elasticsearch |
@@ -128,6 +135,7 @@ Kubernetes: `>= 1.26.0`
 | app.taskIndexingEnabled | string | `""` | Whether to enable indexing of tasks |
 | app.taskInputPayloadSizeThreshold | string | `"1MB"` | The threshold of the task input payload size beyond which the payload will be stored in ExternalPayloadStorage |
 | app.taskOutputPayloadSizeThreshold | string | `"1MB"` | The threshold of the task output payload size beyond which the payload will be stored in ExternalPayloadStorage |
+| app.taskWorkerConfigs | object | `{}` | Per-task-type system task worker settings, rendered as `conductor.app.taskWorkerConfigs.<TASK>.<setting>` (e.g., HTTP: { threadCount: 20 }) |
 | app.ttlRedisKeyExpire | string | `""` | TTL for Redis key expiration |
 | app.workflowExecutionLockEnabled | bool | `true` | Whether to enable the workflow execution lock |
 | app.workflowInputPayloadSizeThreshold | string | `"1MB"` | The threshold of the workflow input payload size beyond which the payload will be stored in ExternalPayloadStorage |
@@ -168,7 +176,11 @@ Kubernetes: `>= 1.26.0`
 | defaultEventQueue | object | `{"enabled":false,"type":"amqp"}` | Default event queue configuration |
 | defaultEventQueue.enabled | bool | `false` | Enable default event queue |
 | defaultEventQueue.type | string | `"amqp"` | Default event queue type (e.g., amqp, nats_stream, kafka) |
-| documentAccessPolicy | object | `{"disabled":false}` | Document access policy configuration |
+| documentAccessPolicy | object | `{"allowedDirectories":"","blockedFileNames":"","blockedHosts":"","blockedPathPrefixes":"","disabled":false}` | Document access policy configuration |
+| documentAccessPolicy.allowedDirectories | string | `""` | Additional directories allowed for local filesystem access (comma-separated) |
+| documentAccessPolicy.blockedFileNames | string | `""` | File names added to the built-in blocklist (comma-separated) |
+| documentAccessPolicy.blockedHosts | string | `""` | Hosts added to the built-in blocklist (comma-separated) |
+| documentAccessPolicy.blockedPathPrefixes | string | `""` | Path prefixes added to the built-in blocklist (comma-separated) |
 | documentAccessPolicy.disabled | bool | `false` | Disable document access policy checks (not recommended for production) |
 | elasticsearch | object | `{"asyncBufferFlushTimeout":"10s","asyncMaxPoolSize":12,"asyncWorkerQueueSize":100,"clusterHealthColor":"yellow","indexBatchSize":1,"indexName":"","indexPrefix":"","indexReplicasCount":0,"indexShardCount":5,"password":"","restClientConnectionTimeout":5000,"restClientReadTimeout":30000,"url":"","username":"","version":7}` | Elasticsearch configuration |
 | elasticsearch.asyncBufferFlushTimeout | string | `"10s"` | Maximum time an async buffer is held before flushing (e.g., 10s) |
@@ -255,10 +267,10 @@ Kubernetes: `>= 1.26.0`
 | memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
 | memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 2048 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
-| metrics | object | `{"loggerEnabled":false,"loggerReportPeriodSeconds":1,"prometheusEnabled":false}` | Metrics configuration |
+| metrics | object | `{"loggerEnabled":false,"loggerReportPeriodSeconds":1,"prometheusEnabled":true}` | Metrics configuration |
 | metrics.loggerEnabled | bool | `false` | Enable metrics logging |
 | metrics.loggerReportPeriodSeconds | int | `1` | Metrics logging a report period in seconds |
-| metrics.prometheusEnabled | bool | `false` | Enable Prometheus metrics |
+| metrics.prometheusEnabled | bool | `true` | Enable Prometheus metrics |
 | mySql | object | `{"database":"","deadlockRetryMax":"","host":"","password":"","port":3306,"taskDefCacheRefreshInterval":"","username":""}` | MySQL configuration |
 | mySql.database | string | `""` | MySQL database name |
 | mySql.deadlockRetryMax | string | `""` | MySQL deadlock retry max attempts |
@@ -352,6 +364,10 @@ Kubernetes: `>= 1.26.0`
 | redis.testWhileIdle | string | `""` | Whether to validate connections while idle |
 | redis.timeBetweenEvictionRunsMillis | string | `""` | Time between eviction runs (ms, -1 to disable) |
 | redis.workflowNamespacePrefix | string | `"conductor"` | Workflow namespace prefix |
+| redisLock | object | `{"namespace":"","serverMasterName":"","serverType":""}` | Redis lock configuration (used when workflowExecutionLock.type is redis) |
+| redisLock.namespace | string | `""` | Redis lock namespace/key prefix |
+| redisLock.serverMasterName | string | `""` | Redis Sentinel master name for the lock |
+| redisLock.serverType | string | `""` | Redis lock server type (single, cluster, sentinel). Set this when Redis is not a single server |
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"3Gi"},"requests":{"cpu":"300m","memory":"2Gi"}}` | Main container requests/limits  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + maxDirectMemorySizeMB (JVM DirectMemory max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
@@ -361,15 +377,16 @@ Kubernetes: `>= 1.26.0`
 | s3.externalPayloadStorage.signedUrlExpirationDuration | int | `5` | Signed URL expiration duration in seconds |
 | scheduler | object | `{"enabled":true}` | Scheduler configuration |
 | scheduler.enabled | bool | `true` | Enable the scheduler |
-| secrets | object | `{"existingSecret":{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""},"manageSecret":true}` | Secrets |
-| secrets.existingSecret | object | `{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
-| secrets.existingSecret.keys | object | `{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""}` | Optional mapping to override the expected key names in the existing Secret |
+| secrets | object | `{"existingSecret":{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiDecisionApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""},"manageSecret":true}` | Secrets |
+| secrets.existingSecret | object | `{"keys":{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiDecisionApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""},"name":""}` | Use an existing Secret for all credential keys instead of a chart-managed Secret |
+| secrets.existingSecret.keys | object | `{"aiAnthropicApiKey":"","aiAzureOpenAiApiKey":"","aiBedrockAccessKey":"","aiBedrockBearerToken":"","aiBedrockSecretKey":"","aiCohereApiKey":"","aiDecisionApiKey":"","aiGeminiApiKey":"","aiGrokApiKey":"","aiHuggingFaceApiKey":"","aiMistralApiKey":"","aiOpenAiApiKey":"","aiPerplexityApiKey":"","aiStabilityAiApiKey":"","amqpPassword":"","authOidcClientSecret":"","azureBlobConnectionString":"","azureBlobSasToken":"","cassandraPassword":"","elasticsearchPassword":"","mySqlPassword":"","openSearchPassword":"","postgresPassword":"","redisPassword":""}` | Optional mapping to override the expected key names in the existing Secret |
 | secrets.existingSecret.keys.aiAnthropicApiKey | string | `""` | Key name for Anthropic API key (defaults to 'ai-anthropic-api-key') |
 | secrets.existingSecret.keys.aiAzureOpenAiApiKey | string | `""` | Key name for Azure OpenAI API key (defaults to 'ai-azure-open-ai-api-key') |
 | secrets.existingSecret.keys.aiBedrockAccessKey | string | `""` | Key name for Bedrock access key (defaults to 'ai-bedrock-access-key') |
 | secrets.existingSecret.keys.aiBedrockBearerToken | string | `""` | Key name for Bedrock bearer token (defaults to 'ai-bedrock-bearer-token') |
 | secrets.existingSecret.keys.aiBedrockSecretKey | string | `""` | Key name for Bedrock secret key (defaults to 'ai-bedrock-secret-key') |
 | secrets.existingSecret.keys.aiCohereApiKey | string | `""` | Key name for Cohere API key (defaults to 'ai-cohere-api-key') |
+| secrets.existingSecret.keys.aiDecisionApiKey | string | `""` | Key name for decision inference API key (defaults to 'ai-decision-api-key') |
 | secrets.existingSecret.keys.aiGeminiApiKey | string | `""` | Key name for Gemini API key (defaults to 'ai-gemini-api-key') |
 | secrets.existingSecret.keys.aiGrokApiKey | string | `""` | Key name for Grok API key (defaults to 'ai-grok-api-key') |
 | secrets.existingSecret.keys.aiHuggingFaceApiKey | string | `""` | Key name for Hugging Face API key (defaults to 'ai-hugging-face-api-key') |
