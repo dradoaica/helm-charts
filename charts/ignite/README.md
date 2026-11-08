@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.18.3](https://img.shields.io/badge/Version-2.18.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.18.4](https://img.shields.io/badge/Version-2.18.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -20,20 +20,39 @@ Apache Ignite is a distributed database for high-performance computing with in-m
 
 Kubernetes: `>= 1.26.0`
 
+## Upgrading from 2.18.3
+
+Chart 2.18.3 kept the work directory (binary metadata, marshaller mappings, snapshots) out of the storage volume, so
+data stored as binary objects (e.g., SQL rows) could not be read after the whole cluster had restarted. With
+persistence, the upgrade moves it to the storage volume: the pods restart one by one and receive the metadata from the
+others. A single node has no others, so copy its metadata first:
+
+```shell
+kubectl exec <release>-ignite-cluster-0 -- sh -c 'mkdir -p /storage/work && cp -r /opt/ignite/apache-ignite/work/db /storage/work/'
+helm upgrade <release> <chart> --version 2.18.4 --reset-then-reuse-values
+```
+
+Nodes of different Ignite minor versions cannot form one cluster, so the chart refuses to replace running pods with pods
+of another minor version: deactivate the cluster (`control.sh --set-state INACTIVE`) and scale the StatefulSet to 0
+first.
+
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| activationJob.activeDeadlineSeconds | int | `1800` | Maximum duration of the job in seconds (it waits for every pod) |
 | activationJob.enabled | bool | `true` | Enable the cluster activation job |
 | activationJob.image | object | `{"pullPolicy":"IfNotPresent","registry":"docker.io","repository":"curlimages/curl","tag":"8.17.0"}` | Image for the cluster activation job |
 | activationJob.resources | object | `{"limits":{"cpu":"100m","memory":"128Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Resources for the cluster activation job |
 | affinity | object | `{}` | Node affinity |
 | annotations | object | `{}` | Annotations to add to all resources |
-| authentication.enabled | bool | `true` | Enable authentication |
-| authentication.existingSecret | object | `{"key":"","name":""}` | Use an existing Secret for the ignite user password instead of a chart-managed Secret |
+| authentication.enabled | bool | `true` | Enable authentication (requires persistence.enabled, as Ignite keeps the users in its persistent metastorage) |
+| authentication.existingSecret | object | `{"key":"","name":"","previousKey":""}` | Use an existing Secret for the ignite user password instead of a chart-managed Secret |
 | authentication.existingSecret.key | string | `""` | Key in the existing Secret that holds the password (defaults to 'ignite-user-password') |
 | authentication.existingSecret.name | string | `""` | Name of the existing Secret containing the ignite user password |
-| authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
+| authentication.existingSecret.previousKey | string | `""` | Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional) |
+| authentication.igniteUserPassword | string | `""` | Password for the ignite user, set by the activation job (defaults to ignite when empty) |
+| authentication.igniteUserPreviousPassword | string | `""` | Current password of the ignite user, when rotating it to igniteUserPassword |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data, and new pods hold no data until added to the baseline topology - see the values.yaml comments) |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
@@ -47,7 +66,11 @@ Kubernetes: `>= 1.26.0`
 | clientConnector.extraConfiguration | string | `""` | Extra configuration for org.apache.ignite.configuration.ClientConnectorConfiguration bean |
 | collisionSpi | string | `""` | Collision SPI |
 | communicationSpi | string | `"<bean class=\"org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi\">\n    <property name=\"messageQueueLimit\" value=\"2048\"/>\n    <property name=\"slowClientQueueLimit\" value=\"2048\"/>\n    <property name=\"socketWriteTimeout\" value=\"5000\"/>\n    <property name=\"connectTimeout\" value=\"10000\"/>\n</bean>"` | Communication SPI |
-| container.ports | object | `{"jdbc":11211,"jmx":49112,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800,"thinClients":10900}` | Container ports used by the Pod spec and as Service targetPort values |
+| container.ports | object | `{"jdbc":11211,"metrics":9464,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800}` | Container ports used by the Pod spec and as Service targetPort values |
+| container.ports.jdbc | int | `11211` | TCP binary protocol of the REST connector (e.g., the legacy JDBC driver) |
+| container.ports.metrics | int | `9464` | Prometheus metrics (only with metrics.enabled) |
+| container.ports.rest | int | `8080` | REST API (unencrypted) |
+| container.ports.sql | int | `10800` | Thin clients, JDBC, ODBC and the control utility (client connector) |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":false,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | dataStorage | object | `{"extraConfiguration":"","pageEvictionMode":""}` | Data storage configuration |
@@ -73,7 +96,7 @@ Kubernetes: `>= 1.26.0`
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
 | image.registry | string | `"docker.io"` | Main container image registry |
 | image.repository | string | `"apacheignite/ignite"` | Main container image repository |
-| image.tag | string | `""` | Main container image tag |
+| image.tag | string | `""` | Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.18.0-arm64) |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access to REST API |
@@ -91,7 +114,8 @@ Kubernetes: `>= 1.26.0`
 | memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | memoryConfiguration | string | `""` | Memory configuration |
-| metrics.enabled | bool | `false` | Enable metrics |
+| metrics.enabled | bool | `false` | Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations) |
+| minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not wait for rebalancing; raise it for large data sets) |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
@@ -100,7 +124,7 @@ Kubernetes: `>= 1.26.0`
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
 | peerClassLoadingEnabled | bool | `false` | Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading) |
-| persistence.enabled | bool | `true` | Enable persistent settings - both storage and WAL |
+| persistence.enabled | bool | `true` | Enable persistent settings - both storage and WAL (the work directory, with the binary metadata, marshaller mappings and snapshots, is kept in the storage volume at /storage/work) |
 | persistence.persistentVolumeClaimRetentionPolicy.enabled | bool | `false` | Enable persistent volume retention policy |
 | persistence.persistentVolumeClaimRetentionPolicy.whenDeleted | string | `"Retain"` | Volume retention behavior that applies when the StatefulSet is deleted |
 | persistence.persistentVolumeClaimRetentionPolicy.whenScaled | string | `"Retain"` | Volume retention behavior when the replica count of the StatefulSet is reduced |
@@ -117,9 +141,9 @@ Kubernetes: `>= 1.26.0`
 | persistence.walVolume.size | string | `"8Gi"` | Persistent volume size for WAL |
 | persistence.walVolume.storageClass | string | `""` | Persistent volume storage class for WAL (empty string uses cluster default) |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
-| podDisruptionBudget.create | bool | `false` | Create a PodDisruptionBudget for high availability |
-| podDisruptionBudget.maxUnavailable | string | `""` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
-| podDisruptionBudget.minAvailable | int | `1` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
+| podDisruptionBudget.create | bool | `true` | Create a PodDisruptionBudget (only with more than one replica) |
+| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podManagementPolicy | string | `"OrderedReady"` | StatefulSet pod management policy |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |
@@ -131,12 +155,13 @@ Kubernetes: `>= 1.26.0`
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default region checkpointing buffer size)   + 100MB (sysMemPlc region max size)   + 100MB (metastoreMemPlc region max size)   + 100MB (TxLog region max size)   + 100MB (volatileDsMemPlc region max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
-| service.ports | object | `{"jdbc":11211,"jmx":49112,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800,"thinClients":10900}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
+| service.ports | object | `{"jdbc":11211,"metrics":9464,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* (spiCommunication and spiDiscovery are on the headless Service only) |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
 | serviceAccount.name | string | `""` | Name for the ServiceAccount (autogenerated when empty) |
 | serviceConfiguration | string | `""` | Service configuration |
 | sqlConfiguration | string | `""` | SQL configuration |
+| sqlQueryHistorySize | int | `0` | Number of SQL queries each node keeps in its history (defaults to 0, as the node that ran the activation job's ALTER USER would keep the new password there until restart, readable by every SQL user; empty uses Ignite's default; ignored with sqlConfiguration) |
 | ssl | object | `{"clientConnector":{"clientAuth":false,"enabled":false},"enabled":false,"existingSecret":{"keys":{"ksPass":"","tsPass":""},"name":""},"keyAlgorithm":"SunX509","keyStoreFilePath":"","keyStorePassword":"","keyStoreType":"JKS","manageSecret":true,"protocol":"TLSv1.2","trustStoreFilePath":"","trustStorePassword":"","trustStoreType":"JKS"}` | SSL configuration |
 | ssl.clientConnector | object | `{"clientAuth":false,"enabled":false}` | SSL client connector configuration |
 | ssl.clientConnector.clientAuth | bool | `false` | Client authentication for the client connector |
@@ -171,10 +196,10 @@ Kubernetes: `>= 1.26.0`
 | timeouts.failureDetectionTimeout | int | `30000` | Failure detection timeout in milliseconds |
 | timeouts.networkTimeout | int | `10000` | Network timeout in milliseconds |
 | tolerations | list | `[]` | Node tolerations |
-| topologySpreadConstraints | list | `[]` | Topology spread constraints |
+| topologySpreadConstraints | list | `[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"{{ .Release.Name }}","app.kubernetes.io/name":"{{ include \"ignite.name\" . }}"}},"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}]` | Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node failure takes as few copies of the same partitions as possible) |
 | tracing.enabled | bool | `false` | Enable tracing |
 | transactionConfiguration | string | `""` | Transaction configuration |
-| updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy |
+| updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to another minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0) |
 | userAttributes | string | `""` | User attributes |
 
 ----------------------------------------------

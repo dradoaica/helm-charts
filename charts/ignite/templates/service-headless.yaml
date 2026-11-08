@@ -25,18 +25,17 @@ spec:
     - name: spi-discovery
       port: {{ .Values.service.ports.spiDiscovery }}
       targetPort: {{ .Values.container.ports.spiDiscovery }}
-    - name: jmx
-      port: {{ .Values.service.ports.jmx }}
-      targetPort: {{ .Values.container.ports.jmx }}
     - name: sql
       port: {{ .Values.service.ports.sql }}
       targetPort: {{ .Values.container.ports.sql }}
     - name: rest
       port: {{ .Values.service.ports.rest }}
       targetPort: {{ .Values.container.ports.rest }}
-    - name: thin-clients
-      port: {{ .Values.service.ports.thinClients }}
-      targetPort: {{ .Values.container.ports.thinClients }}
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      port: {{ .Values.service.ports.metrics }}
+      targetPort: {{ .Values.container.ports.metrics }}
+    {{- end }}
   selector:
     {{- include "ignite.selectorLabels" . | nindent 4 }}
   publishNotReadyAddresses: True

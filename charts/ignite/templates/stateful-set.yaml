@@ -1,3 +1,17 @@
+{{- /* Nodes of different Ignite minor versions cannot form one cluster, so replacing the running pods one by one would
+  leave the new pods out of it (or, as 2.19 nodes do not even recognize 2.18 ones, start a second cluster beside it) */}}
+{{- $statefulSet := lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-cluster" (include "ignite.fullname" .)) }}
+{{- if $statefulSet }}
+{{- if gt (int $statefulSet.spec.replicas) 0 }}
+{{- $target := regexFind "^[0-9]+\\.[0-9]+" (.Values.image.tag | default .Chart.AppVersion | toString) }}
+{{- range $statefulSet.spec.template.spec.containers }}
+{{- $running := regexFind "^[0-9]+\\.[0-9]+" (last (splitList ":" .image)) }}
+{{- if and (eq .name "ignite-node") $running $target (ne $running $target) }}
+{{- fail (printf "The cluster runs Ignite %s, whose nodes cannot form a cluster with Ignite %s nodes. Stop it first (deactivate it with control.sh --set-state INACTIVE when persistent, then scale the StatefulSet %s to 0) and upgrade again" $running $target $statefulSet.metadata.name) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -16,6 +30,9 @@ spec:
   replicas: {{ .Values.replicaCount }}
   {{- if .Values.podManagementPolicy }}
   podManagementPolicy: {{ .Values.podManagementPolicy }}
+  {{- end }}
+  {{- with .Values.minReadySeconds }}
+  minReadySeconds: {{ . }}
   {{- end }}
   {{- if .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
@@ -36,6 +53,13 @@ spec:
         # Rollout on secret reference changes
         creds/ignite-auth-secret: {{ (default (printf "%s-auth" (include "ignite.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
         creds/ignite-ssl-secret: {{ (default (printf "%s-ssl" (include "ignite.fullname" .)) .Values.ssl.existingSecret.name) | quote }}
+        # Rollout on SSL password changes (the activation job reads the ignite password itself)
+        checksum/ssl: {{ include (print $.Template.BasePath "/secret-ssl.yaml") . | sha256sum }}
+        {{- if .Values.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.container.ports.metrics | quote }}
+        prometheus.io/path: /metrics
+        {{- end }}
         {{- with (include "ignite.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
@@ -166,18 +190,17 @@ spec:
             - name: spi-discovery
               containerPort: {{ .Values.container.ports.spiDiscovery }}
               protocol: TCP
-            - name: jmx
-              containerPort: {{ .Values.container.ports.jmx }}
-              protocol: TCP
             - name: sql
               containerPort: {{ .Values.container.ports.sql }}
               protocol: TCP
             - name: rest
               containerPort: {{ .Values.container.ports.rest }}
               protocol: TCP
-            - name: thin-clients
-              containerPort: {{ .Values.container.ports.thinClients }}
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.container.ports.metrics }}
               protocol: TCP
+            {{- end }}
           {{- if .Values.startupProbe.enabled }}
           startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
           {{- end }}
@@ -227,7 +250,7 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:

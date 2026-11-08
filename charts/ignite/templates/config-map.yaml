@@ -1,3 +1,7 @@
+{{- if and .Values.authentication.enabled (not .Values.persistence.enabled) }}
+{{- fail "authentication.enabled requires persistence.enabled (Ignite keeps the users in its persistent metastorage)" }}
+{{- end }}
+{{- $sqlQueryHistorySize := ternary "" (toString .Values.sqlQueryHistorySize) (has (toString .Values.sqlQueryHistorySize) (list "" "<nil>")) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -42,7 +46,24 @@ data:
         {{ .Values.extraBeans | nindent 8 }}
         {{- end }}
 
+        {{- if .Values.metrics.enabled }}
+
+        <!-- Views of the OpenCensus metric exporter (metricExporterSpi below), exposed for Prometheus -->
+        <bean class="org.springframework.beans.factory.config.MethodInvokingBean">
+            <property name="staticMethod" value="io.opencensus.exporter.stats.prometheus.PrometheusStatsCollector.createAndRegister"/>
+        </bean>
+        <!-- Runs on a daemon thread, which ends with the JVM (Ignite 2.18's simpleclient_httpserver has no close method) -->
+        <bean class="io.prometheus.client.exporter.HTTPServer">
+            <constructor-arg type="int" value="{{ .Values.container.ports.metrics }}"/>
+            <constructor-arg type="boolean" value="true"/>
+        </bean>
+        {{- end }}
+
         <bean class="org.apache.ignite.configuration.IgniteConfiguration" id="ignite.cfg">
+            {{- if .Values.persistence.enabled }}
+            <!-- Kept in the storage volume, as the data cannot be read without its binary metadata and marshaller mappings -->
+            <property name="workDirectory" value="/storage/work"/>
+            {{- end }}
             <property name="authenticationEnabled" value="{{ .Values.authentication.enabled }}"/>
             <property name="peerClassLoadingEnabled" value="{{ .Values.peerClassLoadingEnabled }}"/>
             <property name="failureDetectionTimeout" value="{{ .Values.timeouts.failureDetectionTimeout }}"/>
@@ -66,7 +87,8 @@ data:
             {{- if .Values.threadPools.dataStreamerThreadPoolSize }}
             <property name="dataStreamerThreadPoolSize" value="{{ .Values.threadPools.dataStreamerThreadPoolSize }}"/>
             {{- end }}
-            <property name="segmentationPolicy" value="RESTART_JVM" />
+            <!-- The JVM exits and the container restarts (RESTART_JVM needs the restart loop of ignite.sh) -->
+            <property name="segmentationPolicy" value="STOP" />
             <property name="segmentationResolveAttempts" value="5" />
             <property name="shutdownPolicy" value="GRACEFUL"/>
 
@@ -195,6 +217,12 @@ data:
             <property name="sqlConfiguration">
                 {{- .Values.sqlConfiguration | nindent 16 }}
             </property>
+            {{- else if $sqlQueryHistorySize }}
+            <property name="sqlConfiguration">
+                <bean class="org.apache.ignite.configuration.SqlConfiguration">
+                    <property name="sqlQueryHistorySize" value="{{ $sqlQueryHistorySize }}"/>
+                </bean>
+            </property>
             {{- end }}
 
             {{- if .Values.transactionConfiguration }}
@@ -245,8 +273,12 @@ data:
                             Enables Kubernetes IP finder and setting custom namespace and service names.
                         -->
                         <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.kubernetes.TcpDiscoveryKubernetesIpFinder">
-                            <property name="namespace" value="{{ .Release.Namespace }}"/>
-                            <property name="serviceName" value="{{ include "ignite.fullname" . }}-svc-headless"/>
+                            <constructor-arg>
+                                <bean class="org.apache.ignite.kubernetes.configuration.KubernetesConnectionConfiguration">
+                                    <property name="namespace" value="{{ .Release.Namespace }}"/>
+                                    <property name="serviceName" value="{{ include "ignite.fullname" . }}-svc-headless"/>
+                                </bean>
+                            </constructor-arg>
                         </bean>
                     </property>
                 </bean>

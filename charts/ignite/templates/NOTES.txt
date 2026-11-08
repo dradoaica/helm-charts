@@ -3,6 +3,28 @@ CHART VERSION: {{ .Chart.Version }}
 APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
+
+A rolling upgrade waits minReadySeconds after each restarted node, so give `helm upgrade --wait` a longer --timeout.
+
+Thin clients and JDBC:  {{ include "ignite.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.sql }}
+REST API (unencrypted): http://{{ include "ignite.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.rest }}/ignite?cmd=version
+{{- if .Values.metrics.enabled }}
+Metrics:                http://{{ include "ignite.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.metrics }}/metrics
+{{- end }}
+Control utility:        kubectl exec -it -n {{ .Release.Namespace }} {{ include "ignite.fullname" . }}-cluster-0 -- /opt/ignite/apache-ignite/bin/control.sh --state
+{{- if .Values.persistence.enabled }}
+
+Before stopping the whole cluster (helm uninstall, scaling to 0), deactivate it (control.sh --set-state INACTIVE);
+otherwise, its last nodes wait for each other to take over their partitions until they are killed.
+{{- end }}
+{{- if and .Values.authentication.enabled (not .Values.authentication.existingSecret.name) (or (not .Values.authentication.igniteUserPassword) (eq .Values.authentication.igniteUserPassword "ignite")) }}
+
+WARNING: the 'ignite' user keeps its well-known default password: set authentication.igniteUserPassword (or authentication.existingSecret).
+{{- end }}
+{{- if and (not .Values.ssl.enabled) (not .Values.networkPolicy.create) }}
+
+WARNING: without ssl.enabled or networkPolicy.create, any pod can join the cluster.
+{{- end }}
 {{- if .Values.autoscaling.create }}
 
 WARNING: autoscaling.create is enabled. Autoscaling is NOT recommended for Ignite clusters:

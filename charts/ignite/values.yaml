@@ -1,3 +1,5 @@
+# Upgrading from 2.18.3: see the Upgrading section of README.md
+
 global:
   # -- Global container image registry override
   imageRegistry: ""
@@ -41,7 +43,7 @@ image:
   registry: docker.io
   # -- Main container image repository
   repository: apacheignite/ignite
-  # -- Main container image tag
+  # -- Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.18.0-arm64)
   tag: ""
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
@@ -63,11 +65,16 @@ podManagementPolicy: OrderedReady
 # -- Number of old ReplicaSets to retain
 revisionHistoryLimit: 10
 
-# -- StatefulSet update strategy
+# -- StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to
+# another minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0)
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:
     partition: 0
+
+# -- Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not wait
+# for rebalancing; raise it for large data sets)
+minReadySeconds: 60
 
 # -- Pod priority class name
 priorityClassName: ""
@@ -166,27 +173,31 @@ lifecycleHooks: { }
 container:
   # -- Container ports used by the Pod spec and as Service targetPort values
   ports:
+    # -- TCP binary protocol of the REST connector (e.g., the legacy JDBC driver)
     jdbc: 11211
     spiCommunication: 47100
     spiDiscovery: 47500
-    jmx: 49112
+    # -- Thin clients, JDBC, ODBC and the control utility (client connector)
     sql: 10800
+    # -- REST API (unencrypted)
     rest: 8080
-    thinClients: 10900
+    # -- Prometheus metrics (only with metrics.enabled)
+    metrics: 9464
 
 service:
-  # -- Service ports used by the Service spec. targetPort fields reference container.ports.*
+  # -- Service ports used by the Service spec. targetPort fields reference container.ports.* (spiCommunication and
+  # spiDiscovery are on the headless Service only)
   ports:
     jdbc: 11211
     spiCommunication: 47100
     spiDiscovery: 47500
-    jmx: 49112
     sql: 10800
     rest: 8080
-    thinClients: 10900
+    metrics: 9464
 
 persistence:
-  # -- Enable persistent settings - both storage and WAL
+  # -- Enable persistent settings - both storage and WAL (the work directory, with the binary metadata, marshaller
+  # mappings and snapshots, is kept in the storage volume at /storage/work)
   enabled: true
   persistentVolumeClaimRetentionPolicy:
     # -- Enable persistent volume retention policy
@@ -228,8 +239,16 @@ nodeSelector: { }
 tolerations: [ ]
 # -- Node affinity
 affinity: { }
-# -- Topology spread constraints
-topologySpreadConstraints: [ ]
+# -- Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node
+# failure takes as few copies of the same partitions as possible)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: '{{ include "ignite.name" . }}'
+        app.kubernetes.io/instance: '{{ .Release.Name }}'
 
 networkPolicy:
   # -- Create a NetworkPolicy
@@ -260,14 +279,12 @@ networkPolicy:
           protocol: TCP
 
 podDisruptionBudget:
-  # -- Create a PodDisruptionBudget for high availability
-  create: false
+  # -- Create a PodDisruptionBudget (only with more than one replica)
+  create: true
   # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
-  minAvailable: 1
+  minAvailable: ""
   # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
-  maxUnavailable: ""
-  # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
-  # maxUnavailable: "50%"
+  maxUnavailable: 1
 
 # Autoscaling is NOT recommended for Ignite clusters:
 #  - With persistence, baseline auto-adjust is disabled by default; new pods join but hold no data
@@ -328,10 +345,12 @@ memory:
 extraBeans: |-
 
 authentication:
-  # -- Enable authentication
+  # -- Enable authentication (requires persistence.enabled, as Ignite keeps the users in its persistent metastorage)
   enabled: true
-  # -- Password for the ignite user (defaults to ignite when empty)
+  # -- Password for the ignite user, set by the activation job (defaults to ignite when empty)
   igniteUserPassword: ""
+  # -- Current password of the ignite user, when rotating it to igniteUserPassword
+  igniteUserPreviousPassword: ""
   # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
   manageSecret: true
   # -- Use an existing Secret for the ignite user password instead of a chart-managed Secret
@@ -340,6 +359,8 @@ authentication:
     name: ""
     # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
     key: ""
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    previousKey: ""
 
 # -- Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading)
 peerClassLoadingEnabled: false
@@ -403,6 +424,11 @@ serviceConfiguration: |-
 
 # -- SQL configuration
 sqlConfiguration: |-
+
+# -- Number of SQL queries each node keeps in its history (defaults to 0, as the node that ran the activation job's
+# ALTER USER would keep the new password there until restart, readable by every SQL user; empty uses Ignite's default;
+# ignored with sqlConfiguration)
+sqlQueryHistorySize: 0
 
 # -- Transaction configuration
 transactionConfiguration: |-
@@ -471,7 +497,7 @@ failoverSpi: |-
 loadBalancingSpi: |-
 
 metrics:
-  # -- Enable metrics
+  # -- Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations)
   enabled: false
 
 tracing:
@@ -486,6 +512,8 @@ env:
 activationJob:
   # -- Enable the cluster activation job
   enabled: true
+  # -- Maximum duration of the job in seconds (it waits for every pod)
+  activeDeadlineSeconds: 1800
   # -- Image for the cluster activation job
   image:
     registry: docker.io

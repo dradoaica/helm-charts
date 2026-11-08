@@ -1,7 +1,23 @@
-# Minimal values for Apache Ignite 2
-# Use this for development, testing, or resource-constrained environments
+# Minimal values for Apache Ignite 2: one small node, for development and tests
 #
 # Install with:
 #   helm install ignite ./charts/ignite -f ./charts/ignite/examples/minimal-values.yaml
 
 replicaCount: 1
+resources:
+  requests:
+    cpu: 500m
+    memory: 2.5Gi
+  limits:
+    cpu: "2"
+    memory: 2.5Gi
+memory:
+  onHeapMB: 512
+  offHeapMB: 256
+  maxDirectMemorySizeMB: 768
+persistence:
+  storageVolume:
+    size: 1Gi
+  # 10 WAL segments of 256 MB and a WAL archive of up to 1 GB
+  walVolume:
+    size: 4Gi

@@ -10,10 +10,10 @@ metadata:
     {{- . | nindent 4 }}
   {{- end }}
 rules:
+  # Endpoints of the headless Service, read by the Kubernetes IP finder
   - apiGroups:
       - ""
     resources:
-      - pods
       - endpoints
     verbs:
       - get
