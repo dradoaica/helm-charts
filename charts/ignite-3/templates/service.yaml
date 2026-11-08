@@ -15,6 +15,7 @@ spec:
     - IPv4
   ipFamilyPolicy: SingleStack
   ports:
+    # The cluster port is exposed on the headless Service only
     - name: management
       port: {{ .Values.service.ports.management }}
       protocol: TCP
@@ -27,10 +28,6 @@ spec:
       port: {{ .Values.service.ports.rest }}
       protocol: TCP
       targetPort: {{ .Values.container.ports.rest }}
-    - name: cluster
-      port: {{ .Values.service.ports.cluster }}
-      protocol: TCP
-      targetPort: {{ .Values.container.ports.cluster }}
     {{- if .Values.jmx.enabled }}
     - name: jmx
       port: {{ .Values.service.ports.jmx }}

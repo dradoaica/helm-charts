@@ -18,6 +18,9 @@ spec:
   {{- if .Values.podManagementPolicy }}
   podManagementPolicy: {{ .Values.podManagementPolicy }}
   {{- end }}
+  {{- with .Values.minReadySeconds }}
+  minReadySeconds: {{ . }}
+  {{- end }}
   {{- if .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- end }}
@@ -40,6 +43,8 @@ spec:
         # Rollout on secret reference changes
         creds/ignite-auth-secret: {{ (default (printf "%s-auth" (include "ignite.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
         creds/ignite-ssl-secret: {{ (default (printf "%s-ssl" (include "ignite.fullname" .)) .Values.ssl.existingSecret.name) | quote }}
+        # Rollout on SSL password changes (the nodes read them at start)
+        checksum/ssl: {{ include (print $.Template.BasePath "/secret-ssl.yaml") . | sha256sum }}
         {{- with (include "ignite.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
@@ -93,7 +98,7 @@ spec:
               value: "{{ default 1024 .Values.memory.onHeapMB }}M"
             - name: JVM_MAX_MEM
               value: "{{ default 1024 .Values.memory.onHeapMB }}M"
-            - name: JVM_GCL
+            - name: JVM_GC
               value: "G1GC"
             - name: JVM_G1HeapRegionSize
               value: "{{ default 1 .Values.memory.g1HeapRegionSizeMB }}M"
@@ -315,7 +320,7 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:

@@ -1,4 +1,4 @@
-{{- if and .Values.persistence.enabled .Values.initializationJob.enabled }}
+{{- if .Values.initializationJob.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -13,6 +13,9 @@ metadata:
     {{- . | nindent 4 }}
     {{- end }}
 spec:
+  {{- with .Values.initializationJob.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ . }}
+  {{- end }}
   template:
     metadata:
       labels:
@@ -25,6 +28,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 120
       serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      automountServiceAccountToken: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -236,6 +240,6 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}
 {{- end }}

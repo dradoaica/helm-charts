@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.4](https://img.shields.io/badge/Version-3.2.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.5](https://img.shields.io/badge/Version-3.2.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -62,6 +62,7 @@ Kubernetes: `>= 1.26.0`
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
 | ingress.hosts | list | `[{"host":"ignite.local","paths":[{"path":"/","pathType":"Prefix","port":10300}]}]` | List of Ingress hosts with paths for REST and Management APIs |
 | ingress.tls | list | `[]` | TLS configuration for Ingress |
+| initializationJob.activeDeadlineSeconds | int | `1800` | Maximum duration of the job in seconds (it waits for every pod) |
 | initializationJob.enabled | bool | `true` | Enable the cluster initialization job with topology verification and intelligent CMG sizing |
 | initializationJob.resources | object | `{"limits":{"cpu":"1","memory":"2Gi"},"requests":{"cpu":"500m","memory":"2Gi"}}` | Resources for the cluster initialization job |
 | jmx.agent.image | object | `{"pullPolicy":"IfNotPresent","registry":"docker.io","repository":"busybox","tag":1.36}` | JMX agent image (registry/repository:tag and pull policy) |
@@ -79,6 +80,7 @@ Kubernetes: `>= 1.26.0`
 | memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the sizeBytes for the default storage profile (data + indexes) |
 | memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
+| minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (gives the restarted node time to catch up on its replicas; raise it for large data sets) |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
@@ -88,7 +90,7 @@ Kubernetes: `>= 1.26.0`
 | nodeSelector | object | `{}` | Node selector |
 | persistence.accessModes | list | `["ReadWriteOnce"]` | Persistent volume access modes |
 | persistence.annotations | object | `{}` | Annotations to add to the PersistentVolumeClaim |
-| persistence.enabled | bool | `true` | Enable persistent settings |
+| persistence.enabled | bool | `true` | Enable persistent settings (the volume keeps the work directory, with the cluster and metastorage state; without it, a restarted node loses that state) |
 | persistence.labels | object | `{}` | Labels to add to the PersistentVolumeClaim |
 | persistence.persistentVolumeClaimRetentionPolicy.enabled | bool | `false` | Enable persistent volume retention policy |
 | persistence.persistentVolumeClaimRetentionPolicy.whenDeleted | string | `"Retain"` | Volume retention behavior that applies when the StatefulSet is deleted |
@@ -96,9 +98,9 @@ Kubernetes: `>= 1.26.0`
 | persistence.size | string | `"10Gi"` | Persistent volume size |
 | persistence.storageClass | string | `""` | Persistent volume storage class (empty string uses cluster default) |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
-| podDisruptionBudget.create | bool | `false` | Create a PodDisruptionBudget for high availability |
-| podDisruptionBudget.maxUnavailable | string | `""` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
-| podDisruptionBudget.minAvailable | int | `1` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
+| podDisruptionBudget.create | bool | `true` | Create a PodDisruptionBudget (only with more than one replica) |
+| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podManagementPolicy | string | `"OrderedReady"` | StatefulSet pod management policy |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |
@@ -110,7 +112,7 @@ Kubernetes: `>= 1.26.0`
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
-| service.ports | object | `{"cluster":3344,"jmx":9404,"management":10300,"managementSsl":10400,"rest":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* |
+| service.ports | object | `{"cluster":3344,"jmx":9404,"management":10300,"managementSsl":10400,"rest":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* (cluster is on the headless Service only) |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
 | serviceAccount.name | string | `""` | Name for the ServiceAccount (autogenerated when empty) |
@@ -155,7 +157,7 @@ Kubernetes: `>= 1.26.0`
 | startupProbe.enabled | bool | `true` | Enable startup probe |
 | terminationGracePeriodSeconds | int | `60` | Pod termination grace period |
 | tolerations | list | `[]` | Node tolerations |
-| topologySpreadConstraints | list | `[]` | Topology spread constraints |
+| topologySpreadConstraints | list | `[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"{{ .Release.Name }}","app.kubernetes.io/name":"{{ include \"ignite.name\" . }}"}},"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}]` | Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node failure takes as few replicas of the same partitions as possible) |
 | updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy |
 
 ----------------------------------------------

@@ -50,17 +50,12 @@ data:
                     systemWorkerBlocked,
                     systemCriticalOperationTimeout
                 ]
-                type=noop
+                # The node stops and its container restarts (the default since Ignite 3.2)
+                type=stop
             }
             oomBufferSizeBytes=16384
         }
         network {
-            fileTransfer {
-                chunkSizeBytes=1048576
-                maxConcurrentRequests=4
-                responseTimeoutMillis=10000
-                threadPoolSize=8
-            }
             inbound {
                 soBacklog=128
                 soKeepAlive=true
@@ -169,7 +164,6 @@ data:
                         intervalMillis=180000
                         logReadLockThresholdTimeoutMillis=0
                         readLockTimeoutMillis=10000
-                        useAsyncFileIoFactory=true
                     }
                     pageSizeBytes=16384
                 }

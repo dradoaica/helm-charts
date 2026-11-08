@@ -10,6 +10,7 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   restartPolicy: Never
+  automountServiceAccountToken: false
   {{- with .Values.global.imagePullSecrets }}
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
@@ -35,19 +36,22 @@ spec:
         - /bin/sh
         - -c
         - |
-          echo "Testing connection to {{ include "ignite.fullname" . }}:{{ .Values.service.ports.management }}..."
-          wget --spider --timeout=10 \
-            {{- if .Values.authentication.enabled }}
-            --header "Authorization: Basic $(printf 'ignite:%s' "${IGNITE_USER_PASSWORD:-ignite}" | base64 | tr -d '\n')" \
-            {{- end }}
-            http://{{ include "ignite.fullname" . }}:{{ .Values.service.ports.management }}/management/v1/cluster/state
-          exit_code=$?
-          if [ $exit_code -eq 0 ]; then
-            echo "Connection test PASSED"
-          else
-            echo "Connection test FAILED"
-          fi
-          exit $exit_code
+          url="http://{{ include "ignite.fullname" . }}:{{ .Values.service.ports.management }}/management/v1/cluster/state"
+          echo "Testing $url..."
+          # The Service may take a moment to route to the pods that just became ready
+          for attempt in $(seq 1 12); do
+            if wget --spider --timeout=10 \
+              {{- if .Values.authentication.enabled }}
+              --header "Authorization: Basic $(printf 'ignite:%s' "${IGNITE_USER_PASSWORD:-ignite}" | base64 | tr -d '\n')" \
+              {{- end }}
+              "$url"; then
+              echo "Connection test PASSED"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Connection test FAILED"
+          exit 1
       {{- if .Values.authentication.enabled }}
       env:
         - name: IGNITE_USER_PASSWORD

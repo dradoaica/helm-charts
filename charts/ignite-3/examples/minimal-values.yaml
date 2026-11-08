@@ -1,7 +1,27 @@
-# Minimal values for Apache Ignite 3
-# Use this for development, testing, or resource-constrained environments
+# Minimal values for Apache Ignite 3: one small node, for development and tests
 #
 # Install with:
 #   helm install ignite-3 ./charts/ignite-3 -f ./charts/ignite-3/examples/minimal-values.yaml
 
 replicaCount: 1
+resources:
+  requests:
+    cpu: 500m
+    memory: 2.5Gi
+  limits:
+    cpu: "2"
+    memory: 2.5Gi
+memory:
+  onHeapMB: 512
+  offHeapMB: 256
+  maxDirectMemorySizeMB: 512
+persistence:
+  size: 2Gi
+initializationJob:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

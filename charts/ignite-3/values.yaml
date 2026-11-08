@@ -69,6 +69,10 @@ updateStrategy:
   rollingUpdate:
     partition: 0
 
+# -- Seconds a started pod must stay ready before the next one starts or restarts (gives the restarted node time to
+# catch up on its replicas; raise it for large data sets)
+minReadySeconds: 60
+
 # -- Pod priority class name
 priorityClassName: ""
 
@@ -171,7 +175,8 @@ container:
     cluster: 3344
 
 service:
-  # -- Service ports used by the Service spec. targetPort fields reference container.ports.*
+  # -- Service ports used by the Service spec. targetPort fields reference container.ports.* (cluster is on the headless
+  # Service only)
   ports:
     # REST/Management API (HTTP)
     management: 10300
@@ -183,7 +188,8 @@ service:
     jmx: 9404
 
 persistence:
-  # -- Enable persistent settings
+  # -- Enable persistent settings (the volume keeps the work directory, with the cluster and metastorage state; without
+  # it, a restarted node loses that state)
   enabled: true
   persistentVolumeClaimRetentionPolicy:
     # -- Enable persistent volume retention policy
@@ -210,8 +216,16 @@ nodeSelector: { }
 tolerations: [ ]
 # -- Node affinity
 affinity: { }
-# -- Topology spread constraints
-topologySpreadConstraints: [ ]
+# -- Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node
+# failure takes as few replicas of the same partitions as possible)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: '{{ include "ignite.name" . }}'
+        app.kubernetes.io/instance: '{{ .Release.Name }}'
 
 networkPolicy:
   # -- Create a NetworkPolicy
@@ -240,14 +254,12 @@ networkPolicy:
           protocol: TCP
 
 podDisruptionBudget:
-  # -- Create a PodDisruptionBudget for high availability
-  create: false
+  # -- Create a PodDisruptionBudget (only with more than one replica)
+  create: true
   # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
-  minAvailable: 1
+  minAvailable: ""
   # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
-  maxUnavailable: ""
-  # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
-  # maxUnavailable: "50%"
+  maxUnavailable: 1
 
 # Autoscaling is NOT recommended for Ignite 3 clusters:
 #  - The CMG/metastorage group is chosen once at initialization from `replicaCount` (the lowest pod ordinals);
@@ -434,6 +446,8 @@ env:
 initializationJob:
   # -- Enable the cluster initialization job with topology verification and intelligent CMG sizing
   enabled: true
+  # -- Maximum duration of the job in seconds (it waits for every pod)
+  activeDeadlineSeconds: 1800
   # -- Resources for the cluster initialization job
   resources:
     requests:

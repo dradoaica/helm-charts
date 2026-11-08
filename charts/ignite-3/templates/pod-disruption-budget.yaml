@@ -1,4 +1,4 @@
-{{- if .Values.podDisruptionBudget.create }}
+{{- if and .Values.podDisruptionBudget.create (gt (int .Values.replicaCount) 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -13,6 +13,11 @@ spec:
   selector:
     matchLabels:
       {{- include "ignite.selectorLabels" . | nindent 6 }}
+    # Nodes only (the initialization job and test pods have no scalable controller, which maxUnavailable requires)
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: NotIn
+        values: [ cluster-init, test ]
   {{- if .Values.podDisruptionBudget.minAvailable }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   {{- end }}
