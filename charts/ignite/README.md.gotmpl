@@ -13,21 +13,31 @@
 
 {{ template "chart.requirementsSection" . }}
 
-## Upgrading from 2.18.3
+## Upgrading from 2.18.x
 
-Chart 2.18.3 kept the work directory (binary metadata, marshaller mappings, snapshots) out of the storage volume, so
-data stored as binary objects (e.g., SQL rows) could not be read after the whole cluster had restarted. With
-persistence, the upgrade moves it to the storage volume: the pods restart one by one and receive the metadata from the
-others. A single node has no others, so copy its metadata first:
+Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so the
+chart refuses to replace running pods with pods of another minor version. Chart 2.18.3 and earlier also kept the work
+directory (binary metadata, marshaller mappings, snapshots) out of the storage volume, so data stored as binary objects
+(e.g., SQL rows) could not be read after the whole cluster had restarted. With persistence, upgrade in two steps:
 
-```shell
-kubectl exec <release>-ignite-cluster-0 -- sh -c 'mkdir -p /storage/work && cp -r /opt/ignite/apache-ignite/work/db /storage/work/'
-helm upgrade <release> <chart> --version 2.18.4 --reset-then-reuse-values
-```
+1. Move the work directory to the storage volume, still on Ignite 2.18 (not needed from chart 2.18.4): the pods restart
+   one by one and receive the metadata from the others. A single node has no others, so copy its metadata first:
 
-Nodes of different Ignite minor versions cannot form one cluster, so the chart refuses to replace running pods with pods
-of another minor version: deactivate the cluster (`control.sh --set-state INACTIVE`) and scale the StatefulSet to 0
-first.
+   ```shell
+   kubectl exec <release>-ignite-cluster-0 -- sh -c 'mkdir -p /storage/work && cp -r /opt/ignite/apache-ignite/work/db /storage/work/'
+   helm upgrade <release> <chart> --version 2.19.0 --reset-then-reuse-values --set image.tag=2.18.0
+   ```
+
+2. Stop the cluster and start it on Ignite 2.19 (the activation job activates it again):
+
+   ```shell
+   kubectl exec -it <release>-ignite-cluster-0 -- /opt/ignite/apache-ignite/bin/control.sh --set-state INACTIVE
+   kubectl scale statefulset <release>-ignite-cluster --replicas=0
+   helm upgrade <release> <chart> --version 2.19.0 --reset-then-reuse-values --set image.tag=2.19.0
+   ```
+
+Without persistence, only the second step applies (without the deactivation). Values that Ignite 2.19 no longer
+supports (memoryConfiguration, tracing) make the chart fail with a message.
 
 {{ template "chart.valuesSection" . }}
 

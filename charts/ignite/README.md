@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.18.4](https://img.shields.io/badge/Version-2.18.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.18.0](https://img.shields.io/badge/AppVersion-2.18.0-informational?style=flat-square)
+![Version: 2.19.0](https://img.shields.io/badge/Version-2.19.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -20,21 +20,31 @@ Apache Ignite is a distributed database for high-performance computing with in-m
 
 Kubernetes: `>= 1.26.0`
 
-## Upgrading from 2.18.3
+## Upgrading from 2.18.x
 
-Chart 2.18.3 kept the work directory (binary metadata, marshaller mappings, snapshots) out of the storage volume, so
-data stored as binary objects (e.g., SQL rows) could not be read after the whole cluster had restarted. With
-persistence, the upgrade moves it to the storage volume: the pods restart one by one and receive the metadata from the
-others. A single node has no others, so copy its metadata first:
+Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so the
+chart refuses to replace running pods with pods of another minor version. Chart 2.18.3 and earlier also kept the work
+directory (binary metadata, marshaller mappings, snapshots) out of the storage volume, so data stored as binary objects
+(e.g., SQL rows) could not be read after the whole cluster had restarted. With persistence, upgrade in two steps:
 
-```shell
-kubectl exec <release>-ignite-cluster-0 -- sh -c 'mkdir -p /storage/work && cp -r /opt/ignite/apache-ignite/work/db /storage/work/'
-helm upgrade <release> <chart> --version 2.18.4 --reset-then-reuse-values
-```
+1. Move the work directory to the storage volume, still on Ignite 2.18 (not needed from chart 2.18.4): the pods restart
+   one by one and receive the metadata from the others. A single node has no others, so copy its metadata first:
 
-Nodes of different Ignite minor versions cannot form one cluster, so the chart refuses to replace running pods with pods
-of another minor version: deactivate the cluster (`control.sh --set-state INACTIVE`) and scale the StatefulSet to 0
-first.
+   ```shell
+   kubectl exec <release>-ignite-cluster-0 -- sh -c 'mkdir -p /storage/work && cp -r /opt/ignite/apache-ignite/work/db /storage/work/'
+   helm upgrade <release> <chart> --version 2.19.0 --reset-then-reuse-values --set image.tag=2.18.0
+   ```
+
+2. Stop the cluster and start it on Ignite 2.19 (the activation job activates it again):
+
+   ```shell
+   kubectl exec -it <release>-ignite-cluster-0 -- /opt/ignite/apache-ignite/bin/control.sh --set-state INACTIVE
+   kubectl scale statefulset <release>-ignite-cluster --replicas=0
+   helm upgrade <release> <chart> --version 2.19.0 --reset-then-reuse-values --set image.tag=2.19.0
+   ```
+
+Without persistence, only the second step applies (without the deactivation). Values that Ignite 2.19 no longer
+supports (memoryConfiguration, tracing) make the chart fail with a message.
 
 ## Values
 
@@ -76,7 +86,7 @@ first.
 | dataStorage | object | `{"extraConfiguration":"","pageEvictionMode":""}` | Data storage configuration |
 | dataStorage.extraConfiguration | string | `""` | Extra configuration for org.apache.ignite.configuration.DataStorageConfiguration bean |
 | dataStorage.pageEvictionMode | string | `""` | Off-heap eviction policy for in-memory mode (e.g., RANDOM_LRU) |
-| deploymentSpi | string | `""` | Deployment SPI |
+| deploymentSpi | string | `""` | Deployment SPI (deprecated since Ignite 2.19) |
 | encryptionSpi | string | `""` | Encryption SPI |
 | env | object | `{"EXTRA_JVM_OPTS":"","EXTRA_OPTION_LIBS":""}` | Environment variables |
 | executorConfiguration | string | `""` | Executor configuration |
@@ -96,7 +106,7 @@ first.
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
 | image.registry | string | `"docker.io"` | Main container image registry |
 | image.repository | string | `"apacheignite/ignite"` | Main container image repository |
-| image.tag | string | `""` | Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.18.0-arm64) |
+| image.tag | string | `""` | Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.19.0-arm64) |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access to REST API |
@@ -113,7 +123,6 @@ first.
 | memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the maxSize for org.apache.ignite.configuration.DataStorageConfiguration bean (data + indexes) |
 | memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
-| memoryConfiguration | string | `""` | Memory configuration |
 | metrics.enabled | bool | `false` | Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations) |
 | minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not wait for rebalancing; raise it for large data sets) |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
@@ -160,7 +169,7 @@ first.
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
 | serviceAccount.name | string | `""` | Name for the ServiceAccount (autogenerated when empty) |
 | serviceConfiguration | string | `""` | Service configuration |
-| sqlConfiguration | string | `""` | SQL configuration |
+| sqlConfiguration | string | `""` | SQL configuration (since Ignite 2.19, SQL runs on the Calcite engine by default, and on H2 only with the QUERY_ENGINE('h2') hint; make org.apache.ignite.indexing.IndexingQueryEngineConfiguration the default engine to keep H2) |
 | sqlQueryHistorySize | int | `0` | Number of SQL queries each node keeps in its history (defaults to 0, as the node that ran the activation job's ALTER USER would keep the new password there until restart, readable by every SQL user; empty uses Ignite's default; ignored with sqlConfiguration) |
 | ssl | object | `{"clientConnector":{"clientAuth":false,"enabled":false},"enabled":false,"existingSecret":{"keys":{"ksPass":"","tsPass":""},"name":""},"keyAlgorithm":"SunX509","keyStoreFilePath":"","keyStorePassword":"","keyStoreType":"JKS","manageSecret":true,"protocol":"TLSv1.2","trustStoreFilePath":"","trustStorePassword":"","trustStoreType":"JKS"}` | SSL configuration |
 | ssl.clientConnector | object | `{"clientAuth":false,"enabled":false}` | SSL client connector configuration |
@@ -197,7 +206,6 @@ first.
 | timeouts.networkTimeout | int | `10000` | Network timeout in milliseconds |
 | tolerations | list | `[]` | Node tolerations |
 | topologySpreadConstraints | list | `[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"{{ .Release.Name }}","app.kubernetes.io/name":"{{ include \"ignite.name\" . }}"}},"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}]` | Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node failure takes as few copies of the same partitions as possible) |
-| tracing.enabled | bool | `false` | Enable tracing |
 | transactionConfiguration | string | `""` | Transaction configuration |
 | updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to another minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0) |
 | userAttributes | string | `""` | User attributes |

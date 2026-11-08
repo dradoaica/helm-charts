@@ -1,4 +1,4 @@
-# Upgrading from 2.18.3: see the Upgrading section of README.md
+# Upgrading from 2.18.x: see the Upgrading section of README.md
 
 global:
   # -- Global container image registry override
@@ -43,7 +43,7 @@ image:
   registry: docker.io
   # -- Main container image repository
   repository: apacheignite/ignite
-  # -- Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.18.0-arm64)
+  # -- Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.19.0-arm64)
   tag: ""
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
@@ -416,13 +416,11 @@ dataStorage:
 # -- Executor configuration
 executorConfiguration: |-
 
-# -- Memory configuration
-memoryConfiguration: |-
-
 # -- Service configuration
 serviceConfiguration: |-
 
-# -- SQL configuration
+# -- SQL configuration (since Ignite 2.19, SQL runs on the Calcite engine by default, and on H2 only with the
+# QUERY_ENGINE('h2') hint; make org.apache.ignite.indexing.IndexingQueryEngineConfiguration the default engine to keep H2)
 sqlConfiguration: |-
 
 # -- Number of SQL queries each node keeps in its history (defaults to 0, as the node that ran the activation job's
@@ -484,7 +482,7 @@ communicationSpi: |-
       <property name="connectTimeout" value="10000"/>
   </bean>
 
-# -- Deployment SPI
+# -- Deployment SPI (deprecated since Ignite 2.19)
 deploymentSpi: |-
 
 # -- Encryption SPI
@@ -498,10 +496,6 @@ loadBalancingSpi: |-
 
 metrics:
   # -- Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations)
-  enabled: false
-
-tracing:
-  # -- Enable tracing
   enabled: false
 
 # -- Environment variables

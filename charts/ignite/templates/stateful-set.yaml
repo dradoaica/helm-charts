@@ -1,5 +1,5 @@
-{{- /* Nodes of different Ignite minor versions cannot form one cluster, so replacing the running pods one by one would
-  leave the new pods out of it (or, as 2.19 nodes do not even recognize 2.18 ones, start a second cluster beside it) */}}
+{{- /* Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so
+  replacing the running pods one by one would start a second cluster beside the first */}}
 {{- $statefulSet := lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-cluster" (include "ignite.fullname" .)) }}
 {{- if $statefulSet }}
 {{- if gt (int $statefulSet.spec.replicas) 0 }}

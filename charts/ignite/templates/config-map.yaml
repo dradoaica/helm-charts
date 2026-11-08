@@ -1,3 +1,9 @@
+{{- if .Values.memoryConfiguration }}
+{{- fail "memoryConfiguration is not supported, as Ignite 2.19 removed MemoryConfiguration (configure the data regions in dataStorage.extraConfiguration)" }}
+{{- end }}
+{{- if (.Values.tracing).enabled }}
+{{- fail "tracing.enabled is not supported, as Ignite 2.19 removed its OpenCensus tracing" }}
+{{- end }}
 {{- if and .Values.authentication.enabled (not .Values.persistence.enabled) }}
 {{- fail "authentication.enabled requires persistence.enabled (Ignite keeps the users in its persistent metastorage)" }}
 {{- end }}
@@ -201,12 +207,6 @@ data:
             </property>
             {{- end }}
 
-            {{- if .Values.memoryConfiguration }}
-            <property name="memoryConfiguration">
-                {{- .Values.memoryConfiguration | nindent 16 }}
-            </property>
-            {{- end }}
-
             {{- if .Values.serviceConfiguration }}
             <property name="serviceConfiguration">
                 {{- .Values.serviceConfiguration | nindent 16 }}
@@ -311,12 +311,6 @@ data:
                         <property name="period" value="10000" />
                     </bean>
                 </list>
-            </property>
-            {{- end }}
-
-            {{- if .Values.tracing.enabled }}
-            <property name="tracingSpi">
-                <bean class="org.apache.ignite.spi.tracing.opencensus.OpenCensusTracingSpi"/>
             </property>
             {{- end }}
         </bean>
