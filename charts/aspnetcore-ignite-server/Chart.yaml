@@ -1,9 +1,9 @@
 apiVersion: v2
-appVersion: "2.18.0"
+appVersion: "2.19.0"
 description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 name: aspnetcore-ignite-server
 type: application
-version: 2.18.2
+version: 2.19.0
 keywords:
   - ignite
   - csharp
@@ -23,3 +23,7 @@ maintainers:
     email: dradoaica@gmail.com
     url: https://dradoaica.blogspot.com/
 kubeVersion: ">= 1.26.0"
+annotations:
+  # The Apache Ignite version of the image (appVersion is the server's version), used to refuse rolling upgrades across
+  # Ignite minor versions
+  ignite.apache.org/version: "2.18.0"

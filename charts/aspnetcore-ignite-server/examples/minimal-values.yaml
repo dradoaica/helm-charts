@@ -1,7 +1,23 @@
-# Minimal values for ASP.NET Core Ignite Server
-# Use this for development, testing, or resource-constrained environments
+# Minimal values for ASP.NET Core Ignite Server: one small node, for development and tests
 #
 # Install with:
 #   helm install ignite-server ./charts/aspnetcore-ignite-server -f ./charts/aspnetcore-ignite-server/examples/minimal-values.yaml
 
 replicaCount: 1
+resources:
+  requests:
+    cpu: 500m
+    memory: 3Gi
+  limits:
+    cpu: "2"
+    memory: 3Gi
+memory:
+  onHeapMB: 512
+  offHeapMB: 256
+  maxDirectMemorySizeMB: 1024
+persistence:
+  storageVolume:
+    size: 1Gi
+  # 10 WAL segments of 256 MB and a WAL archive of up to 1 GB
+  walVolume:
+    size: 4Gi

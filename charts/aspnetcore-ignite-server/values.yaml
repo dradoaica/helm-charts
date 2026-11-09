@@ -1,3 +1,5 @@
+# Upgrading from 2.18.x: see https://github.com/dradoaica/AspNetCore.Ignite/blob/main/docs/upgrading.md
+
 global:
   # -- Global container image registry override
   imageRegistry: ""
@@ -41,10 +43,14 @@ image:
   registry: ghcr.io
   # -- Main container image repository
   repository: dradoaica/aspnetcore.ignite-server
-  # -- Main container image tag
+  # -- Main container image tag (defaults to appVersion when empty)
   tag: ""
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
+
+# -- Apache Ignite version of the image (defaults to the chart's when empty; set it when image.tag runs another one), used
+# to refuse rolling upgrades across Ignite minor versions
+igniteVersion: ""
 
 serviceAccount:
   # -- Create a dedicated ServiceAccount
@@ -58,12 +64,13 @@ rbac:
   # -- Create RBAC items (e.g., role, role-binding)
   create: true
 
-# -- StatefulSet pod management policy
-podManagementPolicy: OrderedReady
+# -- StatefulSet pod management policy (Parallel is required when env.ACTIVATION_MIN_SERVER_NODES is above 1)
+podManagementPolicy: Parallel
 # -- Number of old ReplicaSets to retain
 revisionHistoryLimit: 10
 
-# -- StatefulSet update strategy
+# -- StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to
+# another Ignite minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0)
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:
@@ -72,8 +79,8 @@ updateStrategy:
 # -- Pod priority class name
 priorityClassName: ""
 
-# -- Pod termination grace period
-terminationGracePeriodSeconds: 60
+# -- Pod termination grace period (must be above env.SHUTDOWN_TIMEOUT_IN_SECONDS)
+terminationGracePeriodSeconds: 300
 
 # -- Pod security context configuration
 podSecurityContext:
@@ -83,6 +90,8 @@ podSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   fsGroup: 1001
+  # -- Change the volumes ownership only when their root does not match (faster mounts for large volumes)
+  fsGroupChangePolicy: OnRootMismatch
 
 # -- Container security context configuration
 containerSecurityContext:
@@ -92,7 +101,7 @@ containerSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   privileged: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
   capabilities:
     drop: [ "ALL" ]
@@ -100,13 +109,13 @@ containerSecurityContext:
     type: RuntimeDefault
 
 # -- Main container requests/limits with guaranteed QoS (requests = limits)
-#  memory calculation: DEFAULT_ON_HEAP_MEMORY (JVM Heap max size)
-#   + 256MB (JVM Metaspace max size)
-#   + 240MB (JVM ReservedCodeCache size)
-#   + DEFAULT_OFF_HEAP_MEMORY (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))
-#   + MIN(256MB, DEFAULT_OFF_HEAP_MEMORY) (DEFAULT_OFF_HEAP_MEMORY < 1 GB)
-#     || DEFAULT_OFF_HEAP_MEMORY/4 (DEFAULT_OFF_HEAP_MEMORY between 1 GB and 8 GB)
-#     || 2GB (DEFAULT_OFF_HEAP_MEMORY > 8 GB)
+#  memory calculation: onHeapMB (JVM Heap max size)
+#   + maxMetaspaceSizeMB (JVM Metaspace max size)
+#   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)
+#   + offHeapMB (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))
+#   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)
+#     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)
+#     || 2GB (offHeapMB > 8 GB)
 #       (default region checkpointing buffer size)
 #   + 100MB (sysMemPlc region max size)
 #   + 100MB (metastoreMemPlc region max size)
@@ -126,8 +135,8 @@ livenessProbe:
   # -- Enable liveness probe
   enabled: true
   httpGet:
-    path: /ignite?cmd=version
-    port: 8080
+    path: /health/liveness
+    port: management
   initialDelaySeconds: 5
   periodSeconds: 30
   timeoutSeconds: 10
@@ -139,25 +148,26 @@ readinessProbe:
   # -- Enable readiness probe
   enabled: true
   httpGet:
-    path: /ignite?cmd=probe
-    port: 8080
-  initialDelaySeconds: 30
+    path: /health/readiness
+    port: management
+  # Starts after the startup probe succeeds
+  initialDelaySeconds: 0
   periodSeconds: 10
   timeoutSeconds: 10
   failureThreshold: 3
   successThreshold: 1
 
-# -- Startup probe configuration
+# -- Startup probe configuration (up to 305 s; raise failureThreshold for nodes with a long WAL recovery)
 startupProbe:
   # -- Enable startup probe
   enabled: true
   httpGet:
-    path: /ignite?cmd=version
-    port: 8080
-  initialDelaySeconds: 30
+    path: /health/startup
+    port: management
+  initialDelaySeconds: 5
   periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 15
+  timeoutSeconds: 5
+  failureThreshold: 30
   successThreshold: 1
 
 # -- Lifecycle hooks configuration
@@ -166,27 +176,31 @@ lifecycleHooks: { }
 container:
   # -- Container ports used by the Pod spec and as Service targetPort values
   ports:
-    jdbc: 11211
+    # -- Thin clients, JDBC and ODBC (client connector)
+    thinClients: 10800
     spiCommunication: 47100
     spiDiscovery: 47500
-    jmx: 49112
-    sql: 10800
+    # -- Health checks and /metrics
+    management: 9464
+    # -- REST API (only with rest.enabled)
     rest: 8080
-    thinClients: 10900
+    # -- TCP binary protocol (only with rest.enabled)
+    restTcp: 11211
 
 service:
-  # -- Service ports used by the Service spec. targetPort fields reference container.ports.*
+  # -- Service ports used by the Service spec. targetPort fields reference container.ports.* (spiCommunication and
+  # spiDiscovery are on the headless Service only)
   ports:
-    jdbc: 11211
+    thinClients: 10800
     spiCommunication: 47100
     spiDiscovery: 47500
-    jmx: 49112
-    sql: 10800
+    management: 9464
     rest: 8080
-    thinClients: 10900
+    restTcp: 11211
 
 persistence:
-  # -- Enable persistent settings
+  # -- Enable persistent settings - both storage and WAL (when disabled, authentication.enabled still keeps Ignite
+  # persistence on, in an emptyDir lost with the pod; disable authentication for an in-memory cluster)
   enabled: true
   persistentVolumeClaimRetentionPolicy:
     # -- Enable persistent volume retention policy
@@ -195,17 +209,40 @@ persistence:
     whenScaled: Retain
     # -- Volume retention behavior that applies when the StatefulSet is deleted
     whenDeleted: Retain
-  # -- Persistent volume size
-  size: 16Gi
-  # -- Persistent volume storage class (empty string uses cluster default)
-  storageClass: ""
-  # -- Persistent volume access modes
-  accessModes:
-    - ReadWriteOnce
-  # -- Labels to add to the PersistentVolumeClaim
-  labels: { }
-  # -- Annotations to add to the PersistentVolumeClaim
-  annotations: { }
+  # -- Volume where data and indexes are to be persisted (/app/work)
+  storageVolume:
+    # -- Name of the volume claim template (use "persistence" to reuse the data volumes of chart 2.18.x, with
+    # walVolume.enabled=false)
+    claimName: storage
+    # -- Persistent volume size for storage
+    size: 8Gi
+    # -- Persistent volume storage class for storage (empty string uses cluster default)
+    storageClass: ""
+    # -- Persistent volume access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Labels to add to the storage PersistentVolumeClaim
+    labels: { }
+    # -- Annotations to add to the storage PersistentVolumeClaim
+    annotations: { }
+  # -- Volume where WAL is persisted (/wal)
+  walVolume:
+    # -- Enable a dedicated WAL volume (disable it to keep the WAL in the storage volume, as with chart 2.18.x, whose data
+    # volumes cannot recover without their WAL)
+    enabled: true
+    # -- Name of the volume claim template
+    claimName: wal
+    # -- Persistent volume size for WAL
+    size: 8Gi
+    # -- Persistent volume storage class for WAL (empty string uses cluster default)
+    storageClass: ""
+    # -- Persistent volume access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Labels to add to the WAL PersistentVolumeClaim
+    labels: { }
+    # -- Annotations to add to the WAL PersistentVolumeClaim
+    annotations: { }
 
 # -- Node selector
 nodeSelector: { }
@@ -213,19 +250,29 @@ nodeSelector: { }
 tolerations: [ ]
 # -- Node affinity
 affinity: { }
-# -- Topology spread constraints
-topologySpreadConstraints: [ ]
+# -- Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node
+# failure takes as few copies of the same partitions as possible)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: '{{ include "aspnetcore-ignite-server.name" . }}'
+        app.kubernetes.io/instance: '{{ .Release.Name }}'
 
 networkPolicy:
   # -- Create a NetworkPolicy
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
+  # -- Allow ingress from the chart's test pods (helm test)
+  allowTests: true
   # -- Allow ingress/egress traffic between the pods of this release (required for cluster communication)
   allowIntraCluster: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
-  # -- NetworkPolicy egress rules
+  # -- NetworkPolicy egress rules (add a rule for the OTLP collector when env.OTEL_EXPORTER_OTLP_ENDPOINT is set)
   egress:
     # Allow DNS resolution
     - to:
@@ -245,17 +292,21 @@ networkPolicy:
           protocol: TCP
 
 podDisruptionBudget:
-  # -- Create a PodDisruptionBudget for high availability
-  create: false
+  # -- Create a PodDisruptionBudget (only with more than one replica)
+  create: true
   # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
-  minAvailable: 1
+  minAvailable: ""
   # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
-  maxUnavailable: ""
-  # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
-  # maxUnavailable: "50%"
+  maxUnavailable: 1
 
+# Autoscaling is NOT recommended for Ignite clusters:
+#  - Scaling down removes nodes without draining them; partitions without backups become lost or unavailable.
+#    Without persistence, every scale event triggers rebalancing.
+#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`, overriding the HPA (an implicit scale-down).
+#  - Memory-based scaling does not fit the JVM (heap is pre-touched and rarely returned), so pods rarely scale back down.
+# Prefer scaling manually via `replicaCount`, one node at a time, and only with backups configured.
 autoscaling:
-  # -- Create a HorizontalPodAutoscaler
+  # -- Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data - see the values.yaml comments)
   create: false
   # -- Minimum number of replicas
   minReplicas: 1
@@ -267,7 +318,8 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 
 ingress:
-  # -- Create an Ingress for external HTTP access
+  # -- Create an Ingress for the REST API (requires rest.enabled; unencrypted, and Jetty 11 has no public fix for an HTTP
+  # request smuggling flaw - not for untrusted networks)
   create: false
   # -- IngressClass that will be used to implement the Ingress
   className: ""
@@ -287,40 +339,191 @@ ingress:
 # -- Number of pods
 replicaCount: 1
 
-# -- Secrets
-secrets:
-  igniteUserPassword: ignite
-  sslKeyStorePassword: ""
-  sslTrustStorePassword: ""
-  sslClientCertificatePassword: ""
+memory:
+  # -- On-heap memory limit in MB (the JVM heap; DEFAULT_ON_HEAP_MEMORY). If not set, defaults to 1024
+  onHeapMB: ""
+  # -- JVM Metaspace max size in MB. If not set, defaults to 256
+  maxMetaspaceSizeMB: ""
+  # -- JVM ReservedCodeCache size in MB. If not set, defaults to 240
+  reservedCodeCacheSizeMB: ""
+  # -- JVM G1 Heap region size in MB. If not set, the JVM chooses
+  g1HeapRegionSizeMB: ""
+  # -- Off-heap memory limit in MB. Configures the default data region max size (data + indexes; DEFAULT_OFF_HEAP_MEMORY)
+  offHeapMB: 2048
+  # -- JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size)
+  maxDirectMemorySizeMB: 2960
+
+# -- Extra beans (e.g., com.mysql.cj.jdbc.MysqlDataSource)
+extraBeans: |-
+
+authentication:
+  # -- Enable authentication
+  enabled: true
+  # -- Password for the ignite user (defaults to ignite when empty)
+  igniteUserPassword: ""
+  # -- Current password of the ignite user, when rotating it to igniteUserPassword
+  igniteUserPreviousPassword: ""
   # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
   manageSecret: true
-  # -- Use an existing Secret for all credential keys instead of a chart-managed Secret
+  # -- Use an existing Secret for the ignite user password instead of a chart-managed Secret
   existingSecret:
-    # -- Name of the existing Secret containing the credentials
+    # -- Name of the existing Secret containing the ignite user password
+    name: ""
+    # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password'; required)
+    key: ""
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    previousKey: ""
+
+# -- Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading)
+peerClassLoadingEnabled: false
+# -- Load .NET assemblies sent by other nodes (only for trusted clusters)
+peerAssemblyLoadingEnabled: false
+
+# -- Timeouts
+timeouts:
+  # -- Failure detection timeout in milliseconds
+  failureDetectionTimeout: 30000
+  # -- Client failure detection timeout in milliseconds (not less than env.METRICS_UPDATE_FREQUENCY_IN_SECONDS)
+  clientFailureDetectionTimeout: 60000
+  # -- Network timeout in milliseconds
+  networkTimeout: 10000
+
+# -- Thread pools
+threadPools:
+  # -- Public thread pool size
+  publicThreadPoolSize: ""
+  # -- System thread pool size
+  systemThreadPoolSize: ""
+  # -- Query thread pool size
+  queryThreadPoolSize: ""
+  # -- Service thread pool size
+  serviceThreadPoolSize: ""
+  # -- Striped thread pool size
+  stripedPoolSize: ""
+  # -- Data streamer thread pool size
+  dataStreamerThreadPoolSize: ""
+
+# -- User attributes
+userAttributes: |-
+# -- Binary configuration
+binaryConfiguration: |-
+# -- Cache configuration
+cacheConfiguration: |-
+
+# -- Data storage configuration
+dataStorage:
+  # -- Off-heap eviction policy for in-memory mode (DISABLED, RANDOM_LRU or RANDOM_2_LRU; ignored with persistence)
+  pageEvictionMode: RANDOM_2_LRU
+  # -- WAL mode (FSYNC, LOG_ONLY, BACKGROUND or NONE)
+  walMode: LOG_ONLY
+  # -- Compact the WAL archive
+  walCompactionEnabled: true
+
+# -- Executor configuration
+executorConfiguration: |-
+# -- SQL schemas created on start
+sqlSchemas: [ ]
+# -- Number of SQL queries each node keeps in its history (defaults to 0, as a node that applies a new ignite password
+# would keep it there until restart, readable by every SQL user; empty uses Ignite's default)
+sqlQueryHistorySize: 0
+# -- Transaction configuration
+transactionConfiguration: |-
+
+# -- SSL configuration
+ssl:
+  # -- Enable SSL (between nodes)
+  enabled: false
+  # -- Key manager algorithm that will be used to create a key manager
+  keyAlgorithm: SunX509
+  # -- Path to the keystore that stores Ignite node certificates
+  keyStoreFilePath: ""
+  # -- Password used to access the keystore defined above
+  keyStorePassword: ""
+  # -- Key store type
+  keyStoreType: JKS
+  # -- Path to the truststore used to validate connecting clients
+  trustStoreFilePath: ""
+  # -- Password used to access the truststore defined above
+  trustStorePassword: ""
+  # -- Trust store type
+  trustStoreType: JKS
+  # -- Protocol
+  protocol: TLS
+  # -- SSL client connector configuration
+  clientConnector:
+    # -- Enable SSL for the client connector (thin clients, JDBC, ODBC)
+    enabled: false
+    # -- Client authentication for the client connector
+    clientAuth: true
+    # -- Client certificate (PKCS12) of the server's own client, needed with clientAuth
+    clientCertificatePath: ""
+    # -- Password of the client certificate
+    clientCertificatePassword: ""
+  # -- Restart the node gracefully when the key/trust stores change (the container restarts when the node cannot stop
+  # within env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS)
+  restartOnFileChange: true
+  # -- A Secret with the key store, trust store and client certificate (e.g., from cert-manager), mounted at /certs
+  storesSecret:
+    # -- Name of the Secret
+    name: ""
+    # -- Key of the key store in the Secret
+    keyStoreKey: keystore.p12
+    # -- Key of the trust store in the Secret
+    trustStoreKey: truststore.p12
+    # -- Key of the client certificate in the Secret
+    clientCertificateKey: ""
+  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  manageSecret: true
+  # -- Use an existing Secret for SSL keystore/truststore passphrases instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing SSL passphrase keys
     name: ""
     # -- Optional mapping to override the expected key names in the existing Secret
     keys:
-      # -- Key name for the ignite user password (defaults to 'ignite-user-password')
-      igniteUserPassword: ""
-      # -- Key name for the SSL keystore password (defaults to 'ssl-key-store-password')
-      sslKeyStorePassword: ""
-      # -- Key name for the SSL truststore password (defaults to 'ssl-trust-store-password')
-      sslTrustStorePassword: ""
-      # -- Key name for the SSL client certificate password (defaults to 'ssl-client-certificate-password')
-      sslClientCertificatePassword: ""
+      # -- Key for the keystore password (defaults to 'ignite-ssl-ks-pass')
+      ksPass: ""
+      # -- Key for the truststore password (defaults to 'ignite-ssl-ts-pass')
+      tsPass: ""
+      # -- Key for the client certificate password (defaults to 'ignite-ssl-client-cert-pass')
+      clientCertPass: ""
 
-# -- Environment variables
+# -- Collision SPI
+collisionSpi: |-
+# -- Deployment SPI
+deploymentSpi: |-
+# -- Failover SPI
+failoverSpi: |-
+# -- Load balancing SPI
+loadBalancingSpi: |-
+
+rest:
+  # -- Start the REST API and the TCP binary protocol (both unencrypted)
+  enabled: false
+
+metrics:
+  # -- Enable data region metrics and the prometheus.io pod annotations
+  enabled: true
+  # -- One series per cache (turn off with many caches)
+  perCache: true
+
+# -- Other server settings (see https://github.com/dradoaica/AspNetCore.Ignite/blob/main/docs/configuration.md); the
+# ones set by the values above cannot be set here
 env:
-  DEFAULT_ON_HEAP_MEMORY: 1024
-  DEFAULT_OFF_HEAP_MEMORY: 2048
-  ENABLE_AUTHENTICATION: true
-  USE_SSL: false
-  SSL_KEY_STORE_FILE_PATH: ""
-  SSL_TRUST_STORE_FILE_PATH: ""
-  USE_CLIENT_SSL: false
-  SSL_CLIENT_CERTIFICATE_PATH: ""
+  # -- Extra JVM options, separated by spaces
+  EXTRA_JVM_OPTS: ""
+  # -- Extra Java classpath entries, separated by ':'
+  EXTRA_CLASSPATH: ""
+  # -- Server nodes a new persistent cluster waits for before activating (set it to replicaCount)
+  ACTIVATION_MIN_SERVER_NODES: 1
+  # -- Seconds the baseline waits for a stable topology before following it (defaults to 300 with persistence and 30 without when empty)
+  BASELINE_AUTO_ADJUST_TIMEOUT_IN_SECONDS: ""
+  # -- Mark a started node as ready only once it holds its data (at most REBALANCE_READINESS_MAX_WAIT_IN_SECONDS)
+  READY_WHEN_REBALANCED: true
+  REBALANCE_READINESS_MAX_WAIT_IN_SECONDS: 600
+  # -- Time the node may take to stop gracefully (less than SHUTDOWN_TIMEOUT_IN_SECONDS)
+  GRACEFUL_STOP_TIMEOUT_IN_SECONDS: 240
+  # -- Time the whole stop may take (less than terminationGracePeriodSeconds)
+  SHUTDOWN_TIMEOUT_IN_SECONDS: 270
   METRICS_EXPIRE_TIME_IN_HOURS: 24
   METRICS_LOG_FREQUENCY_IN_MINUTES: 5
   METRICS_UPDATE_FREQUENCY_IN_SECONDS: 60
-  ENABLE_OFF_HEAP_METRICS: false

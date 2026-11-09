@@ -1,4 +1,4 @@
-{{- if .Values.podDisruptionBudget.create }}
+{{- if and .Values.podDisruptionBudget.create (gt (int .Values.replicaCount) 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -19,5 +19,10 @@ spec:
   selector:
     matchLabels:
       {{- include "aspnetcore-ignite-server.selectorLabels" . | nindent 6 }}
+    # Nodes only (the test pod has no scalable controller, which maxUnavailable requires)
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: NotIn
+        values: [ test ]
 {{- end }}
 

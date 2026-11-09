@@ -1,13 +1,35 @@
+{{- /* Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so
+  replacing the running pods one by one would start a second cluster beside the first */}}
+{{- $statefulSet := lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-cluster" (include "aspnetcore-ignite-server.fullname" .)) }}
+{{- if $statefulSet }}
+{{- if gt (int $statefulSet.spec.replicas) 0 }}
+{{- $target := regexFind "^[0-9]+\\.[0-9]+" (include "aspnetcore-ignite-server.igniteVersion" .) }}
+{{- $running := regexFind "^[0-9]+\\.[0-9]+" (get (default (dict) $statefulSet.metadata.annotations) "ignite.apache.org/version") }}
+{{- if not $running }}
+{{- /* A release of chart 2.18.x (its server versions follow the Ignite ones) */}}
+{{- range $statefulSet.spec.template.spec.containers }}
+{{- if eq .name "ignite-node" }}
+{{- $running = regexFind "^[0-9]+\\.[0-9]+" (last (splitList ":" .image)) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $running $target (ne $running $target) }}
+{{- fail (printf "The cluster runs Ignite %s, whose nodes cannot form a cluster with Ignite %s nodes. Stop it first (deactivate it with control.sh --set-state INACTIVE when persistent, then scale the StatefulSet %s to 0) and upgrade again" $running $target $statefulSet.metadata.name) }}
+{{- end }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "aspnetcore-ignite-server.fullname" . }}-cluster
   labels:
     {{- include "aspnetcore-ignite-server.labels" . | nindent 4 }}
-  {{- with (include "aspnetcore-ignite-server.annotations" .) }}
   annotations:
+    # Read by the next upgrade (see above)
+    ignite.apache.org/version: {{ include "aspnetcore-ignite-server.igniteVersion" . | quote }}
+    {{- with (include "aspnetcore-ignite-server.annotations" .) }}
     {{- . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   selector:
     matchLabels:
@@ -33,7 +55,15 @@ spec:
         {{- include "aspnetcore-ignite-server.podLabels" . | nindent 8 }}
       annotations:
         # Rollout on secret reference changes
-        creds/aspnetcore-ignite-server-secret: {{ (default (include "aspnetcore-ignite-server.fullname" .) .Values.secrets.existingSecret.name) | quote }}
+        creds/aspnetcore-ignite-server-auth: {{ (default (printf "%s-auth" (include "aspnetcore-ignite-server.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
+        creds/aspnetcore-ignite-server-ssl: {{ (default (printf "%s-ssl" (include "aspnetcore-ignite-server.fullname" .)) .Values.ssl.existingSecret.name) | quote }}
+        checksum/secrets: {{ print (include (print $.Template.BasePath "/secret-auth.yaml") .) (include (print $.Template.BasePath "/secret-ssl.yaml") .) | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        {{- if .Values.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.container.ports.management | quote }}
+        prometheus.io/path: /metrics
+        {{- end }}
       {{- with (include "aspnetcore-ignite-server.podAnnotations" .) }}
         {{- . | nindent 8 }}
       {{- end }}
@@ -74,49 +104,31 @@ spec:
               value: "{{ include "aspnetcore-ignite-server.fullname" . }}-svc-headless"
             - name: USE_TCP_DISCOVERY_STATIC_IP_FINDER
               value: 'false'
+            # Required in an existing Secret: without it, the ignite user would silently keep its default password
             - name: IGNITE_USER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ignite-user-password" .Values.secrets.existingSecret.keys.igniteUserPassword }}
-                  {{- else }}
-                  name: {{ include "aspnetcore-ignite-server.fullname" . }}
-                  key: ignite-user-password
-                  {{- end }}
+              {{- include "aspnetcore-ignite-server.secretKeyRef" (dict "existing" .Values.authentication.existingSecret.name "key" .Values.authentication.existingSecret.key "default" "ignite-user-password" "suffix" "auth" "required" (and .Values.authentication.enabled .Values.authentication.existingSecret.name) "context" $) | nindent 14 }}
+            - name: IGNITE_USER_PREVIOUS_PASSWORD
+              {{- include "aspnetcore-ignite-server.secretKeyRef" (dict "existing" .Values.authentication.existingSecret.name "key" .Values.authentication.existingSecret.previousKey "default" "ignite-user-previous-password" "suffix" "auth" "context" $) | nindent 14 }}
             - name: SSL_KEY_STORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ssl-key-store-password" .Values.secrets.existingSecret.keys.sslKeyStorePassword }}
-                  {{- else }}
-                  name: {{ include "aspnetcore-ignite-server.fullname" . }}
-                  key: ssl-key-store-password
-                  {{- end }}
+              {{- include "aspnetcore-ignite-server.secretKeyRef" (dict "existing" .Values.ssl.existingSecret.name "key" .Values.ssl.existingSecret.keys.ksPass "default" "ignite-ssl-ks-pass" "suffix" "ssl" "context" $) | nindent 14 }}
             - name: SSL_TRUST_STORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ssl-trust-store-password" .Values.secrets.existingSecret.keys.sslTrustStorePassword }}
-                  {{- else }}
-                  name: {{ include "aspnetcore-ignite-server.fullname" . }}
-                  key: ssl-trust-store-password
-                  {{- end }}
+              {{- include "aspnetcore-ignite-server.secretKeyRef" (dict "existing" .Values.ssl.existingSecret.name "key" .Values.ssl.existingSecret.keys.tsPass "default" "ignite-ssl-ts-pass" "suffix" "ssl" "context" $) | nindent 14 }}
             - name: SSL_CLIENT_CERTIFICATE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ssl-client-certificate-password" .Values.secrets.existingSecret.keys.sslClientCertificatePassword }}
-                  {{- else }}
-                  name: {{ include "aspnetcore-ignite-server.fullname" . }}
-                  key: ssl-client-certificate-password
-                  {{- end }}
-            {{- range $name, $value := .Values.env }}
+              {{- include "aspnetcore-ignite-server.secretKeyRef" (dict "existing" .Values.ssl.existingSecret.name "key" .Values.ssl.existingSecret.keys.clientCertPass "default" "ignite-ssl-client-cert-pass" "suffix" "ssl" "context" $) | nindent 14 }}
+            {{- $derivedEnv := include "aspnetcore-ignite-server.derivedEnv" . | fromYaml }}
+            {{- range $name, $value := $derivedEnv }}
             - name: {{ $name | quote }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- range $name, $value := .Values.env }}
+            {{- if hasKey $derivedEnv $name }}
+            {{- if and (ne (toString $value) "") (ne (toString $value) (toString (get $derivedEnv $name))) }}
+            {{- fail (printf "env.%s is set by the chart from its values, so remove it from env" $name) }}
+            {{- end }}
+            {{- else }}
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
             {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- toYaml .Values.extraEnvVars | nindent 12 }}
@@ -142,8 +154,8 @@ spec:
             {{- toYaml (omit .Values.containerSecurityContext "enabled") | nindent 12 }}
           {{- end }}
           ports:
-            - name: jdbc
-              containerPort: {{ .Values.container.ports.jdbc }}
+            - name: thin-clients
+              containerPort: {{ .Values.container.ports.thinClients }}
               protocol: TCP
             - name: spi-comm
               containerPort: {{ .Values.container.ports.spiCommunication }}
@@ -151,18 +163,17 @@ spec:
             - name: spi-discovery
               containerPort: {{ .Values.container.ports.spiDiscovery }}
               protocol: TCP
-            - name: jmx
-              containerPort: {{ .Values.container.ports.jmx }}
+            - name: management
+              containerPort: {{ .Values.container.ports.management }}
               protocol: TCP
-            - name: sql
-              containerPort: {{ .Values.container.ports.sql }}
-              protocol: TCP
-            - name: http
+            {{- if .Values.rest.enabled }}
+            - name: rest
               containerPort: {{ .Values.container.ports.rest }}
               protocol: TCP
-            - name: thin
-              containerPort: {{ .Values.container.ports.thinClients }}
+            - name: rest-tcp
+              containerPort: {{ .Values.container.ports.restTcp }}
               protocol: TCP
+            {{- end }}
           {{- if .Values.startupProbe.enabled }}
           startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
           {{- end }}
@@ -175,20 +186,44 @@ spec:
           {{- if .Values.lifecycleHooks }}
           lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
           {{- end }}
-          {{- if or .Values.persistence.enabled .Values.extraVolumeMounts }}
           volumeMounts:
-            {{- if .Values.persistence.enabled }}
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/config-extra
+              name: config-extra
+              readOnly: true
             - mountPath: /app/work
-              name: persistence
+              name: {{ ternary .Values.persistence.storageVolume.claimName "work" .Values.persistence.enabled }}
+            {{- if and .Values.persistence.enabled .Values.persistence.walVolume.enabled }}
+            - mountPath: /wal
+              name: {{ .Values.persistence.walVolume.claimName }}
             {{- end }}
-            {{- if .Values.extraVolumeMounts }}
-            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- if .Values.ssl.storesSecret.name }}
+            - mountPath: /certs
+              name: certs
+              readOnly: true
             {{- end }}
-          {{- end }}
-      {{- with .Values.extraVolumes }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: { }
+        - name: config-extra
+          configMap:
+            name: {{ include "aspnetcore-ignite-server.fullname" . }}
+        {{- if not .Values.persistence.enabled }}
+        - name: work
+          emptyDir: { }
+        {{- end }}
+        {{- if .Values.ssl.storesSecret.name }}
+        - name: certs
+          secret:
+            secretName: {{ .Values.ssl.storesSecret.name }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -203,29 +238,50 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:
     - metadata:
-        name: persistence
-        {{- if .Values.persistence.labels }}
+        name: {{ .Values.persistence.storageVolume.claimName }}
+        {{- if .Values.persistence.storageVolume.labels }}
         labels:
-          {{- toYaml .Values.persistence.labels | nindent 10 }}
+          {{- toYaml .Values.persistence.storageVolume.labels | nindent 10 }}
         {{- end }}
-        {{- if .Values.persistence.annotations }}
+        {{- if .Values.persistence.storageVolume.annotations }}
         annotations:
-          {{- toYaml .Values.persistence.annotations | nindent 10 }}
+          {{- toYaml .Values.persistence.storageVolume.annotations | nindent 10 }}
         {{- end }}
       spec:
         accessModes:
-          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
-        {{- if .Values.persistence.storageClass }}
-        storageClassName: {{ .Values.persistence.storageClass }}
+          {{- toYaml .Values.persistence.storageVolume.accessModes | nindent 10 }}
+        {{- if .Values.persistence.storageVolume.storageClass }}
+        storageClassName: {{ .Values.persistence.storageVolume.storageClass }}
         {{- end }}
         resources:
           requests:
-            storage: {{ .Values.persistence.size }}
+            storage: {{ .Values.persistence.storageVolume.size }}
+    {{- if .Values.persistence.walVolume.enabled }}
+    - metadata:
+        name: {{ .Values.persistence.walVolume.claimName }}
+        {{- if .Values.persistence.walVolume.labels }}
+        labels:
+          {{- toYaml .Values.persistence.walVolume.labels | nindent 10 }}
+        {{- end }}
+        {{- if .Values.persistence.walVolume.annotations }}
+        annotations:
+          {{- toYaml .Values.persistence.walVolume.annotations | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.walVolume.accessModes | nindent 10 }}
+        {{- if .Values.persistence.walVolume.storageClass }}
+        storageClassName: {{ .Values.persistence.walVolume.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.walVolume.size }}
+    {{- end }}
   {{- if .Values.persistence.persistentVolumeClaimRetentionPolicy.enabled }}
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: {{ .Values.persistence.persistentVolumeClaimRetentionPolicy.whenDeleted }}

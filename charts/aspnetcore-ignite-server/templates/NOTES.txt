@@ -4,3 +4,34 @@ APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
 
+A node is ready only once it holds its data after starting, so give `helm upgrade --wait` a longer --timeout.
+
+Thin clients and JDBC:  {{ include "aspnetcore-ignite-server.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.thinClients }}
+Health and metrics:     http://{{ include "aspnetcore-ignite-server.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.management }}/health/readiness, /metrics
+{{- if .Values.rest.enabled }}
+REST API (unencrypted): http://{{ include "aspnetcore-ignite-server.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.ports.rest }}/ignite?cmd=version
+{{- end }}
+Control utility:        kubectl exec -n {{ .Release.Namespace }} {{ include "aspnetcore-ignite-server.fullname" . }}-cluster-0 -- control.sh --state
+{{- if gt (int .Values.replicaCount) 1 }}
+
+Before stopping the whole cluster (helm uninstall, scaling to 0), deactivate it (control.sh --set-state INACTIVE --yes);
+otherwise, its last nodes wait env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS for each other and stop uncleanly.
+{{- end }}
+{{- if and .Values.authentication.enabled (not .Values.persistence.enabled) }}
+
+WARNING: authentication.enabled keeps Ignite persistence on, so the data lives in an emptyDir (lost with the pod) and the
+cluster behaves as a persistent one (baseline, lost partitions). Set authentication.enabled=false for an in-memory cluster.
+{{- end }}
+{{- if and .Values.authentication.enabled (not .Values.authentication.existingSecret.name) (or (not .Values.authentication.igniteUserPassword) (eq .Values.authentication.igniteUserPassword "ignite")) }}
+
+WARNING: the 'ignite' user keeps its well-known default password: set authentication.igniteUserPassword (or authentication.existingSecret).
+{{- end }}
+{{- if and (not .Values.ssl.enabled) (not .Values.networkPolicy.create) }}
+
+WARNING: without ssl.enabled or networkPolicy.create, any pod can join the cluster.
+{{- end }}
+{{- if and (gt (int .Values.env.ACTIVATION_MIN_SERVER_NODES) 1) (eq .Values.podManagementPolicy "OrderedReady") }}
+
+WARNING: env.ACTIVATION_MIN_SERVER_NODES above 1 needs podManagementPolicy Parallel.
+{{- end }}
+

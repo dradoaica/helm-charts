@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aspnetcore-ignite-server.fullname" . }}
+  labels:
+    {{- include "aspnetcore-ignite-server.labels" . | nindent 4 }}
+  {{- with (include "aspnetcore-ignite-server.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+data:
+  spring-extra-beans.xml: |
+    {{- if .Values.extraBeans }}
+    {{ .Values.extraBeans | nindent 4 }}
+    {{- end }}
+  spring-extra-properties.xml: |
+    {{- range $section := list "userAttributes" "binaryConfiguration" "cacheConfiguration" "executorConfiguration" "transactionConfiguration" "collisionSpi" "deploymentSpi" "failoverSpi" "loadBalancingSpi" }}
+    {{- with (get $.Values $section) }}
+    <property name="{{ $section }}">
+        {{- . | nindent 8 }}
+    </property>
+    {{- end }}
+    {{- end }}
