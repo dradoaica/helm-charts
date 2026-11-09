@@ -330,7 +330,7 @@ ingress:
 replicaCount: 1
 
 memory:
-  # -- On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 1024
+  # -- On-heap memory limit in MB (the JVM heap; -Xms and -Xmx). If not set, defaults to 1024
   onHeapMB: ""
   # -- JVM Metaspace max size in MB. If not set, defaults to 256
   maxMetaspaceSizeMB: ""
@@ -338,7 +338,7 @@ memory:
   reservedCodeCacheSizeMB: ""
   # -- JVM G1 Heap region size in MB. If not set, defaults to 1
   g1HeapRegionSizeMB: ""
-  # -- Off-heap memory limit in MB. Configures the maxSize for org.apache.ignite.configuration.DataStorageConfiguration bean (data + indexes)
+  # -- Off-heap memory limit in MB. Configures the default data region max size (data + indexes)
   offHeapMB: 2048
   # -- JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size)
   maxDirectMemorySizeMB: 2960
@@ -410,7 +410,7 @@ clientConnector:
 
 # -- Data storage configuration
 dataStorage:
-  # -- Off-heap eviction policy for in-memory mode (e.g., RANDOM_LRU)
+  # -- Off-heap eviction policy for in-memory mode (DISABLED, RANDOM_LRU or RANDOM_2_LRU; ignored with persistence)
   pageEvictionMode: ""
   # -- Extra configuration for org.apache.ignite.configuration.DataStorageConfiguration bean
   extraConfiguration: |-
@@ -435,7 +435,7 @@ transactionConfiguration: |-
 
 # -- SSL configuration
 ssl:
-  # -- Enable SSL
+  # -- Enable SSL (between nodes)
   enabled: false
   # -- Key manager algorithm that will be used to create a key manager
   keyAlgorithm: SunX509
@@ -455,7 +455,7 @@ ssl:
   protocol: TLSv1.2
   # -- SSL client connector configuration
   clientConnector:
-    # -- Enable SSL for the client connector
+    # -- Enable SSL for the client connector (thin clients, JDBC, ODBC)
     enabled: false
     # -- Client authentication for the client connector
     clientAuth: false
@@ -502,7 +502,9 @@ metrics:
 
 # -- Environment variables
 env:
+  # -- Extra JVM options, separated by spaces
   EXTRA_JVM_OPTS: ""
+  # -- Extra Ignite optional libraries (OPTION_LIBS), separated by commas
   EXTRA_OPTION_LIBS: ""
 
 activationJob:

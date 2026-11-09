@@ -85,10 +85,12 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | dataStorage | object | `{"extraConfiguration":"","pageEvictionMode":""}` | Data storage configuration |
 | dataStorage.extraConfiguration | string | `""` | Extra configuration for org.apache.ignite.configuration.DataStorageConfiguration bean |
-| dataStorage.pageEvictionMode | string | `""` | Off-heap eviction policy for in-memory mode (e.g., RANDOM_LRU) |
+| dataStorage.pageEvictionMode | string | `""` | Off-heap eviction policy for in-memory mode (DISABLED, RANDOM_LRU or RANDOM_2_LRU; ignored with persistence) |
 | deploymentSpi | string | `""` | Deployment SPI (deprecated since Ignite 2.19) |
 | encryptionSpi | string | `""` | Encryption SPI |
 | env | object | `{"EXTRA_JVM_OPTS":"","EXTRA_OPTION_LIBS":""}` | Environment variables |
+| env.EXTRA_JVM_OPTS | string | `""` | Extra JVM options, separated by spaces |
+| env.EXTRA_OPTION_LIBS | string | `""` | Extra Ignite optional libraries (OPTION_LIBS), separated by commas |
 | executorConfiguration | string | `""` | Executor configuration |
 | extraBeans | string | `""` | Extra beans (e.g., com.mysql.cj.jdbc.MysqlDataSource) |
 | extraContainers | list | `[]` | Extra sidecar containers to inject into the main Pod spec |
@@ -120,8 +122,8 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB. If not set, defaults to 1 |
 | memory.maxDirectMemorySizeMB | int | `2960` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size) |
 | memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
-| memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the maxSize for org.apache.ignite.configuration.DataStorageConfiguration bean (data + indexes) |
-| memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 1024 |
+| memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the default data region max size (data + indexes) |
+| memory.onHeapMB | string | `""` | On-heap memory limit in MB (the JVM heap; -Xms and -Xmx). If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | metrics.enabled | bool | `false` | Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations) |
 | minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not wait for rebalancing; raise it for large data sets) |
@@ -175,8 +177,8 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | ssl | object | `{"clientConnector":{"clientAuth":false,"enabled":false},"enabled":false,"existingSecret":{"keys":{"ksPass":"","tsPass":""},"name":""},"keyAlgorithm":"SunX509","keyStoreFilePath":"","keyStorePassword":"","keyStoreType":"JKS","manageSecret":true,"protocol":"TLSv1.2","trustStoreFilePath":"","trustStorePassword":"","trustStoreType":"JKS"}` | SSL configuration |
 | ssl.clientConnector | object | `{"clientAuth":false,"enabled":false}` | SSL client connector configuration |
 | ssl.clientConnector.clientAuth | bool | `false` | Client authentication for the client connector |
-| ssl.clientConnector.enabled | bool | `false` | Enable SSL for the client connector |
-| ssl.enabled | bool | `false` | Enable SSL |
+| ssl.clientConnector.enabled | bool | `false` | Enable SSL for the client connector (thin clients, JDBC, ODBC) |
+| ssl.enabled | bool | `false` | Enable SSL (between nodes) |
 | ssl.existingSecret | object | `{"keys":{"ksPass":"","tsPass":""},"name":""}` | Use an existing Secret for SSL keystore/truststore passphrases instead of a chart-managed Secret |
 | ssl.existingSecret.keys | object | `{"ksPass":"","tsPass":""}` | Optional mapping to override the expected key names in the existing Secret |
 | ssl.existingSecret.keys.ksPass | string | `""` | Key for the keystore password (defaults to 'ignite-ssl-ks-pass') |
