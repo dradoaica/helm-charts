@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.5](https://img.shields.io/badge/Version-3.2.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.6](https://img.shields.io/badge/Version-3.2.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -83,6 +83,7 @@ Kubernetes: `>= 1.26.0`
 | minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (gives the restarted node time to catch up on its replicas; raise it for large data sets) |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
+| networkPolicy.allowTests | bool | `true` | Allow ingress from the chart's test pods (helm test) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
 | networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |

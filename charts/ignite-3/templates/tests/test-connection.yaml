@@ -3,8 +3,7 @@ kind: Pod
 metadata:
   name: {{ include "ignite.fullname" . }}-test-connection
   labels:
-    {{- include "ignite.labels" . | nindent 4 }}
-    app.kubernetes.io/component: test
+    {{- include "ignite.testLabels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": test
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
@@ -20,9 +19,11 @@ spec:
     runAsUser: 1001
     runAsGroup: 1001
     fsGroup: 1001
+    seccompProfile:
+      type: RuntimeDefault
   containers:
     - name: wget
-      image: docker.io/busybox:1.36
+      image: {{ .Values.global.imageRegistry | default "docker.io" }}/busybox:1.36
       imagePullPolicy: IfNotPresent
       securityContext:
         allowPrivilegeEscalation: false

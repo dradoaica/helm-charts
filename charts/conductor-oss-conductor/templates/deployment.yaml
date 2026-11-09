@@ -12,11 +12,13 @@ spec:
   {{- with .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ . }}
   {{- end }}
-  {{- with .Values.updateStrategy.type }}
+  {{- with .Values.updateStrategy }}
   strategy:
-    type: {{ . }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if not .Values.autoscaling.create }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "conductor-oss-conductor.selectorLabels" . | nindent 6 }}
@@ -25,14 +27,29 @@ spec:
       labels:
         {{- include "conductor-oss-conductor.podLabels" . | nindent 8 }}
       annotations:
+        kubectl.kubernetes.io/default-container: conductor
+        checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
         # Rollout on secret reference changes
-        creds/conductor-secret: {{ (default (include "conductor-oss-conductor.fullname" .) .Values.secrets.existingSecret.name) | quote }}
+        creds/conductor-secret: {{ include "conductor-oss-conductor.secretName" . | quote }}
+        {{- if include "conductor-oss-conductor.createSecret" . }}
+        # Rollout on credential changes
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.container.ports.rest | quote }}
+        prometheus.io/path: /actuator/prometheus
+        {{- end }}
         {{- with (include "conductor-oss-conductor.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
     spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       serviceAccountName: {{ include "conductor-oss-conductor.serviceAccountName" . }}
+      # Conductor does not call the Kubernetes API
+      automountServiceAccountToken: false
+      # Spring Boot could bind the Service environment variables as properties
+      enableServiceLinks: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -44,10 +61,29 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
       {{- end }}
-      {{- if .Values.extraInitContainers }}
       initContainers:
-        {{- toYaml .Values.extraInitContainers | nindent 8 }}
-      {{- end }}
+        # The image's startup script also appends the console output to /app/logs/server.log, which nothing rotates
+        - name: discard-log-file
+          image: {{ include "conductor-oss-conductor.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- toYaml (omit .Values.containerSecurityContext "enabled") | nindent 12 }}
+          {{- end }}
+          command: [ "ln", "-sf", "/dev/null", "/app/logs/server.log" ]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+        {{- with .Values.extraInitContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       containers:
         {{- if .Values.extraContainers }}
         {{- toYaml .Values.extraContainers | nindent 8 }}
@@ -62,7 +98,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
-            - name: JVM_OPTS
+            - name: JAVA_OPTS
               value: >-
                 -server
                 -XX:+AlwaysActAsServerClassMachine
@@ -81,1124 +117,33 @@ spec:
                 -XX:MaxMetaspaceSize={{ default 256 .Values.memory.maxMetaspaceSizeMB }}M
                 -XX:ReservedCodeCacheSize={{ default 240 .Values.memory.reservedCodeCacheSizeMB }}M
                 -XX:MaxDirectMemorySize={{ default 256 .Values.memory.maxDirectMemorySizeMB }}M
-                -Xms{{ default 2048 .Values.memory.onHeapMB }}M
-                -Xmx{{ default 2048 .Values.memory.onHeapMB }}M
+                -Xms{{ default 1536 .Values.memory.onHeapMB }}M
+                -Xmx{{ default 1536 .Values.memory.onHeapMB }}M
                 {{ .Values.env.EXTRA_JVM_OPTS }}
-            {{- if .Values.app.stack }}
-            - name: conductor.app.stack
-              value: {{ .Values.app.stack | quote }}
-            {{- end }}
-            {{- if .Values.app.appID }}
-            - name: conductor.app.appId
-              value: {{ .Values.app.appID | quote }}
-            {{- end }}
-            {{- if .Values.app.executorServiceMaxThreadCount }}
-            - name: conductor.app.executorServiceMaxThreadCount
-              value: {{ .Values.app.executorServiceMaxThreadCount | quote }}
-            {{- end }}
-            {{- if .Values.app.workflowOffsetTimeout }}
-            - name: conductor.app.workflowOffsetTimeout
-              value: {{ .Values.app.workflowOffsetTimeout | quote }}
-            {{- end }}
-            {{- if .Values.app.maxPostponeDurationSeconds }}
-            - name: conductor.app.maxPostponeDurationSeconds
-              value: {{ .Values.app.maxPostponeDurationSeconds | quote }}
-            {{- end }}
-            {{- if .Values.app.sweeperThreadCount }}
-            - name: conductor.app.sweeperThreadCount
-              value: {{ .Values.app.sweeperThreadCount | quote }}
-            {{- end }}
-            {{- if .Values.app.sweeperWorkflowPollTimeout }}
-            - name: conductor.app.sweeperWorkflowPollTimeout
-              value: {{ .Values.app.sweeperWorkflowPollTimeout | quote }}
-            {{- end }}
-            {{- if .Values.app.sweeperSweepBatchSize }}
-            - name: conductor.app.sweeper.sweepBatchSize
-              value: {{ .Values.app.sweeperSweepBatchSize | quote }}
-            {{- end }}
-            {{- if .Values.app.sweeperQueuePopTimeout }}
-            - name: conductor.app.sweeper.queuePopTimeout
-              value: {{ .Values.app.sweeperQueuePopTimeout | quote }}
-            {{- end }}
-            {{- if .Values.app.eventProcessorThreadCount }}
-            - name: conductor.app.eventProcessorThreadCount
-              value: {{ .Values.app.eventProcessorThreadCount | quote }}
-            {{- end }}
-            {{- if .Values.app.eventMessageIndexingEnabled }}
-            - name: conductor.app.eventMessageIndexingEnabled
-              value: {{ .Values.app.eventMessageIndexingEnabled | quote }}
-            {{- end }}
-            {{- if .Values.app.eventExecutionIndexingEnabled }}
-            - name: conductor.app.eventExecutionIndexingEnabled
-              value: {{ .Values.app.eventExecutionIndexingEnabled | quote }}
-            {{- end }}
-            - name: conductor.app.workflowExecutionLockEnabled
-              value: {{ .Values.app.workflowExecutionLockEnabled | quote }}
-            {{- if .Values.app.lockLeaseTime }}
-            - name: conductor.app.lockLeaseTime
-              value: {{ .Values.app.lockLeaseTime | quote }}
-            {{- end }}
-            - name: conductor.app.lockTimeToTry
-              value: {{ .Values.app.lockTimeToTry | quote }}
-            {{- if .Values.app.activeWorkerLastPollTimeout }}
-            - name: conductor.app.activeWorkerLastPollTimeout
-              value: {{ .Values.app.activeWorkerLastPollTimeout | quote }}
-            {{- end }}
-            {{- if .Values.app.taskExecutionPostponeDuration }}
-            - name: conductor.app.taskExecutionPostponeDuration
-              value: {{ .Values.app.taskExecutionPostponeDuration | quote }}
-            {{- end }}
-            {{- if .Values.app.taskIndexingEnabled }}
-            - name: conductor.app.taskIndexingEnabled
-              value: {{ .Values.app.taskIndexingEnabled | quote }}
-            {{- end }}
-            {{- if .Values.app.taskExecLogIndexingEnabled }}
-            - name: conductor.app.taskExecLogIndexingEnabled
-              value: {{ .Values.app.taskExecLogIndexingEnabled | quote }}
-            {{- end }}
-            {{- if .Values.app.asyncIndexingEnabled }}
-            - name: conductor.app.asyncIndexingEnabled
-              value: {{ .Values.app.asyncIndexingEnabled | quote }}
-            {{- end }}
-            - name: conductor.app.systemTaskWorkerThreadCount
-              value: {{ .Values.app.systemTaskWorkerThreadCount | quote }}
-            - name: conductor.app.systemTaskMaxPollCount
-              value: {{ .Values.app.systemTaskMaxPollCount | quote }}
-            {{- if .Values.app.systemTaskWorkerCallbackDuration }}
-            - name: conductor.app.systemTaskWorkerCallbackDuration
-              value: {{ .Values.app.systemTaskWorkerCallbackDuration | quote }}
-            {{- end }}
-            {{- if .Values.app.systemTaskWorkerPollInterval }}
-            - name: conductor.app.systemTaskWorkerPollInterval
-              value: {{ .Values.app.systemTaskWorkerPollInterval | quote }}
-            {{- end }}
-            {{- if .Values.app.systemTaskQueuePopTimeout }}
-            - name: conductor.app.systemTaskQueuePopTimeout
-              value: {{ .Values.app.systemTaskQueuePopTimeout | quote }}
-            {{- end }}
-            {{- if .Values.app.systemTaskWorkerExecutionNamespace }}
-            - name: conductor.app.systemTaskWorkerExecutionNamespace
-              value: {{ .Values.app.systemTaskWorkerExecutionNamespace | quote }}
-            {{- end }}
-            {{- if .Values.app.isolatedSystemTaskWorkerThreadCount }}
-            - name: conductor.app.isolatedSystemTaskWorkerThreadCount
-              value: {{ .Values.app.isolatedSystemTaskWorkerThreadCount | quote }}
-            {{- end }}
-            {{- if .Values.app.systemTaskPostponeThreshold }}
-            - name: conductor.app.systemTaskPostponeThreshold
-              value: {{ .Values.app.systemTaskPostponeThreshold | quote }}
-            {{- end }}
-            - name: conductor.app.asyncUpdateShortRunningWorkflowDuration
-              value: {{ .Values.app.asyncUpdateShortRunningWorkflowDuration | quote }}
-            {{- if .Values.app.asyncUpdateDelay }}
-            - name: conductor.app.asyncUpdateDelay
-              value: {{ .Values.app.asyncUpdateDelay | quote }}
-            {{- end }}
-            {{- if .Values.app.ownerEmailMandatory }}
-            - name: conductor.app.ownerEmailMandatory
-              value: {{ .Values.app.ownerEmailMandatory | quote }}
-            {{- end }}
-            {{- if .Values.app.eventQueueSchedulerPollThreadCount }}
-            - name: conductor.app.eventQueueSchedulerPollThreadCount
-              value: {{ .Values.app.eventQueueSchedulerPollThreadCount | quote }}
-            {{- end }}
-            {{- if .Values.app.eventQueuePollInterval }}
-            - name: conductor.app.eventQueuePollInterval
-              value: {{ .Values.app.eventQueuePollInterval | quote }}
-            {{- end }}
-            {{- if .Values.app.eventQueuePollCount }}
-            - name: conductor.app.eventQueuePollCount
-              value: {{ .Values.app.eventQueuePollCount | quote }}
-            {{- end }}
-            {{- if .Values.app.eventQueueLongPollTimeout }}
-            - name: conductor.app.eventQueueLongPollTimeout
-              value: {{ .Values.app.eventQueueLongPollTimeout | quote }}
-            {{- end }}
-            - name: conductor.app.workflowInputPayloadSizeThreshold
-              value: {{ .Values.app.workflowInputPayloadSizeThreshold | quote }}
-            - name: conductor.app.maxWorkflowInputPayloadSizeThreshold
-              value: {{ .Values.app.maxWorkflowInputPayloadSizeThreshold | quote }}
-            - name: conductor.app.workflowOutputPayloadSizeThreshold
-              value: {{ .Values.app.workflowOutputPayloadSizeThreshold | quote }}
-            - name: conductor.app.maxWorkflowOutputPayloadSizeThreshold
-              value: {{ .Values.app.maxWorkflowOutputPayloadSizeThreshold | quote }}
-            - name: conductor.app.taskInputPayloadSizeThreshold
-              value: {{ .Values.app.taskInputPayloadSizeThreshold | quote }}
-            - name: conductor.app.maxTaskInputPayloadSizeThreshold
-              value: {{ .Values.app.maxTaskInputPayloadSizeThreshold | quote }}
-            - name: conductor.app.taskOutputPayloadSizeThreshold
-              value: {{ .Values.app.taskOutputPayloadSizeThreshold | quote }}
-            - name: conductor.app.maxTaskOutputPayloadSizeThreshold
-              value: {{ .Values.app.maxTaskOutputPayloadSizeThreshold | quote }}
-            - name: conductor.app.maxWorkflowVariablesPayloadSizeThreshold
-              value: {{ .Values.app.maxWorkflowVariablesPayloadSizeThreshold | quote }}
-            {{- if .Values.app.taskExecLogSizeLimit }}
-            - name: conductor.app.taskExecLogSizeLimit
-              value: {{ .Values.app.taskExecLogSizeLimit | quote }}
-            {{- end }}
-            {{- range $task, $config := .Values.app.taskWorkerConfigs }}
-            {{- range $name, $value := $config }}
-            - name: conductor.app.taskWorkerConfigs.{{ $task }}.{{ $name }}
-              value: {{ $value | quote }}
-            {{- end }}
-            {{- end }}
-            - name: conductor.app.workflowRepairServiceEnabled
-              value: {{ .Values.app.workflowRepairServiceEnabled | quote }}
-            - name: conductor.scheduler.enabled
-              value: {{ .Values.scheduler.enabled | quote }}
-            {{- if .Values.workflowArchival.enabled }}
-            - name: conductor.workflow.workflowArchival.enabled
-              value: {{ .Values.workflowArchival.enabled | quote }}
-            - name: conductor.workflow.workflowArchival.type
-              value: {{ .Values.workflowArchival.type | quote }}
-            - name: conductor.workflow.workflowArchival.ttl
-              value: {{ .Values.workflowArchival.ttl | quote }}
-            - name: conductor.workflow.workflowArchival.delay
-              value: {{ .Values.workflowArchival.delay | quote }}
-            {{- end }}
-            {{- if .Values.workflowMessageQueue.enabled }}
-            - name: conductor.workflow-message-queue.enabled
-              value: {{ .Values.workflowMessageQueue.enabled | quote }}
-            - name: conductor.workflow-message-queue.maxQueueSize
-              value: {{ .Values.workflowMessageQueue.maxQueueSize | quote }}
-            - name: conductor.workflow-message-queue.ttlSeconds
-              value: {{ .Values.workflowMessageQueue.ttlSeconds | quote }}
-            - name: conductor.workflow-message-queue.maxBatchSize
-              value: {{ .Values.workflowMessageQueue.maxBatchSize | quote }}
-            {{- end }}
-            - name: conductor.app.enableRemoveRedisKey
-              value: {{ .Values.app.enableRemoveRedisKey | quote }}
-            {{- if .Values.app.ttlRedisKeyExpire }}
-            - name: conductor.app.ttlRedisKeyExpire
-              value: {{ .Values.app.ttlRedisKeyExpire | quote }}
-            {{- end }}
-            - name: conductor.app.workflow.name-validation.enabled
-              value: {{ .Values.app.workflowNameValidationEnabled | quote }}
-            {{- if .Values.app.summaryInputOutputJsonSerializationEnabled }}
-            - name: conductor.app.summary-input-output-json-serialization.enabled
-              value: {{ .Values.app.summaryInputOutputJsonSerializationEnabled | quote }}
-            {{- end }}
-            - name: conductor.db.type
-              value: {{ .Values.db.type | quote }}
-            - name: conductor.queue.type
-              value: {{ .Values.queue.type | quote }}
-            {{- if .Values.defaultEventQueue.enabled }}
-            - name: conductor.default-event-queue.type
-              value: {{ .Values.defaultEventQueue.type | quote }}
-            {{- end }}
-            - name: queues.dynomite.threads
-              value: {{ .Values.queues.dynomiteThreads | quote }}
-            - name: conductor.workflow-execution-lock.type
-              value: {{ .Values.workflowExecutionLock.type | quote }}
-            {{- if eq .Values.workflowExecutionLock.type "zookeeper" }}
-            - name: conductor.zookeeper-lock.connectionString
-              value: {{ .Values.zookeeperLock.connectionString | quote }}
-            {{- if .Values.zookeeperLock.sessionTimeoutMs }}
-            - name: conductor.zookeeper-lock.sessionTimeoutMs
-              value: {{ .Values.zookeeperLock.sessionTimeoutMs | quote }}
-            {{- end }}
-            {{- if .Values.zookeeperLock.connectionTimeoutMs }}
-            - name: conductor.zookeeper-lock.connectionTimeoutMs
-              value: {{ .Values.zookeeperLock.connectionTimeoutMs | quote }}
-            {{- end }}
-            {{- if .Values.zookeeperLock.namespace }}
-            - name: conductor.zookeeper-lock.namespace
-              value: {{ .Values.zookeeperLock.namespace | quote }}
-            {{- end }}
-            {{- end }}
-            - name: conductor.indexing.enabled
-              value: {{ .Values.indexing.enabled | quote }}
-            - name: conductor.indexing.type
-              value: {{ .Values.indexing.type | quote }}
-            {{- if and .Values.externalPayloadStorage.type (not (or (eq .Values.externalPayloadStorage.type "s3") (eq .Values.externalPayloadStorage.type "azure_blob"))) }}
-            - name: conductor.external-payload-storage.type
-              value: {{ .Values.externalPayloadStorage.type | quote }}
-            {{- end }}
-            {{- $dbRedis := hasPrefix "redis" .Values.db.type }}
-            {{- $queueRedis := hasPrefix "redis" .Values.queue.type }}
-            {{- $lockRedis := eq .Values.workflowExecutionLock.type "redis" }}
-            {{- if or $dbRedis $queueRedis $lockRedis }}
-            - name: conductor.redis.hosts
-              {{- if .Values.redis.hosts }}
-              value: {{ .Values.redis.hosts | quote }}
-              {{- else }}
-              value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
-              {{- end }}
-            {{- if .Values.redis.masterName }}
-            - name: conductor.redis.masterName
-              value: {{ .Values.redis.masterName | quote }}
-            {{- end }}
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "redis-password" .Values.secrets.existingSecret.keys.redisPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: redis-password
-                  {{- end }}
-            - name: conductor.redis.password
-              value: "$(REDIS_PASSWORD)"
-            - name: conductor.redis-lock.serverAddress
-              {{- if .Values.redis.hosts }}
-              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.hosts }}"
-              {{- else }}
-              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}"
-              {{- end }}
-            {{- if .Values.redisLock.serverType }}
-            - name: conductor.redis-lock.serverType
-              value: {{ .Values.redisLock.serverType | quote }}
-            {{- end }}
-            {{- if .Values.redisLock.serverMasterName }}
-            - name: conductor.redis-lock.serverMasterName
-              value: {{ .Values.redisLock.serverMasterName | quote }}
-            {{- end }}
-            {{- if .Values.redisLock.namespace }}
-            - name: conductor.redis-lock.namespace
-              value: {{ .Values.redisLock.namespace | quote }}
-            {{- end }}
-            - name: conductor.redis.ssl
-              value: {{ .Values.redis.ssl | quote }}
-            - name: conductor.redis.taskDefCacheRefreshInterval
-              value: {{ .Values.redis.taskDefCacheRefreshInterval | quote }}
-            - name: conductor.redis.workflowNamespacePrefix
-              value: {{ .Values.redis.workflowNamespacePrefix | quote }}
-            - name: conductor.redis.queueNamespacePrefix
-              value: {{ .Values.redis.queueNamespacePrefix | quote }}
-            - name: conductor.redis.queuesNonQuorumPort
-              value: {{ .Values.redis.queuesNonQuorumPort | quote }}
-            - name: conductor.redis.availabilityZone
-              value: {{ .Values.redis.availabilityZone | quote }}
-            {{- if .Values.redis.maxIdleConnections }}
-            - name: conductor.redis.maxIdleConnections
-              value: {{ .Values.redis.maxIdleConnections | quote }}
-            {{- end }}
-            {{- if .Values.redis.minIdleConnections }}
-            - name: conductor.redis.minIdleConnections
-              value: {{ .Values.redis.minIdleConnections | quote }}
-            {{- end }}
-            {{- if .Values.redis.minEvictableIdleTimeMillis }}
-            - name: conductor.redis.minEvictableIdleTimeMillis
-              value: {{ .Values.redis.minEvictableIdleTimeMillis | quote }}
-            {{- end }}
-            {{- if .Values.redis.timeBetweenEvictionRunsMillis }}
-            - name: conductor.redis.timeBetweenEvictionRunsMillis
-              value: {{ .Values.redis.timeBetweenEvictionRunsMillis | quote }}
-            {{- end }}
-            {{- if .Values.redis.testWhileIdle }}
-            - name: conductor.redis.testWhileIdle
-              value: {{ .Values.redis.testWhileIdle | quote }}
-            {{- end }}
-            {{- if .Values.redis.numTestsPerEvictionRun }}
-            - name: conductor.redis.numTestsPerEvictionRun
-              value: {{ .Values.redis.numTestsPerEvictionRun | quote }}
-            {{- end }}
-            - name: management.health.redis.enabled
-              value: {{ .Values.management.healthRedisEnabled | quote }}
-            {{- end }}
-            {{- if eq .Values.db.type "mysql" }}
-            - name: spring.datasource.url
-              value: "jdbc:mysql://{{ .Values.mySql.host }}:{{ .Values.mySql.port }}/{{ .Values.mySql.database }}"
-            - name: spring.datasource.username
-              value: {{ .Values.mySql.username | quote }}
-            - name: spring.datasource.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "my-sql-password" .Values.secrets.existingSecret.keys.mySqlPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: my-sql-password
-                  {{- end }}
-            {{- if .Values.mySql.deadlockRetryMax }}
-            - name: conductor.mysql.deadlockRetryMax
-              value: {{ .Values.mySql.deadlockRetryMax | quote }}
-            {{- end }}
-            {{- if .Values.mySql.taskDefCacheRefreshInterval }}
-            - name: conductor.mysql.taskDefCacheRefreshInterval
-              value: {{ .Values.mySql.taskDefCacheRefreshInterval | quote }}
-            {{- end }}
-            {{- end }}
-            {{- if or (eq .Values.db.type "postgres") (eq .Values.workflowExecutionLock.type "postgres") (eq .Values.indexing.type "postgres") (and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "postgres")) }}
-            - name: spring.datasource.url
-              value: "jdbc:postgresql://{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
-            - name: spring.datasource.username
-              value: {{ .Values.postgres.username | quote }}
-            - name: spring.datasource.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "postgres-password" .Values.secrets.existingSecret.keys.postgresPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: postgres-password
-                  {{- end }}
-            {{- if .Values.postgres.schema }}
-            - name: conductor.postgres.schema
-              value: {{ .Values.postgres.schema | quote }}
-            {{- end }}
-            {{- if .Values.postgres.deadlockRetryMax }}
-            - name: conductor.postgres.deadlockRetryMax
-              value: {{ .Values.postgres.deadlockRetryMax | quote }}
-            {{- end }}
-            {{- if .Values.postgres.taskDefCacheRefreshInterval }}
-            - name: conductor.postgres.taskDefCacheRefreshInterval
-              value: {{ .Values.postgres.taskDefCacheRefreshInterval | quote }}
-            {{- end }}
-            {{- if .Values.postgres.asyncMaxPoolSize }}
-            - name: conductor.postgres.asyncMaxPoolSize
-              value: {{ .Values.postgres.asyncMaxPoolSize | quote }}
-            {{- end }}
-            {{- if .Values.postgres.asyncWorkerQueueSize }}
-            - name: conductor.postgres.asyncWorkerQueueSize
-              value: {{ .Values.postgres.asyncWorkerQueueSize | quote }}
-            {{- end }}
-            {{- if .Values.postgres.pollDataFlushInterval }}
-            - name: conductor.postgres.pollDataFlushInterval
-              value: {{ .Values.postgres.pollDataFlushInterval | quote }}
-            {{- end }}
-            {{- if .Values.postgres.pollDataCacheValidityPeriod }}
-            - name: conductor.postgres.pollDataCacheValidityPeriod
-              value: {{ .Values.postgres.pollDataCacheValidityPeriod | quote }}
-            {{- end }}
-            {{- if .Values.postgres.onlyIndexOnStatusChange }}
-            - name: conductor.postgres.onlyIndexOnStatusChange
-              value: {{ .Values.postgres.onlyIndexOnStatusChange | quote }}
-            {{- end }}
-            {{- if .Values.postgres.experimentalQueueNotify }}
-            - name: conductor.postgres.experimentalQueueNotify
-              value: {{ .Values.postgres.experimentalQueueNotify | quote }}
-            {{- end }}
-            {{- if .Values.postgres.experimentalQueueNotifyStalePeriod }}
-            - name: conductor.postgres.experimentalQueueNotifyStalePeriod
-              value: {{ .Values.postgres.experimentalQueueNotifyStalePeriod | quote }}
-            {{- end }}
-            {{- end }}
-            {{- if eq .Values.db.type "cassandra" }}
-            - name: conductor.cassandra.contactPoints
-              value: {{ .Values.cassandra.contactPoints | quote }}
-            - name: conductor.cassandra.port
-              value: {{ .Values.cassandra.port | quote }}
-            - name: conductor.cassandra.keyspace
-              value: {{ .Values.cassandra.keyspace | quote }}
-            {{- if .Values.cassandra.localDatacenter }}
-            - name: conductor.cassandra.localDatacenter
-              value: {{ .Values.cassandra.localDatacenter | quote }}
-            {{- end }}
-            {{- if .Values.cassandra.username }}
-            - name: conductor.cassandra.username
-              value: {{ .Values.cassandra.username | quote }}
-            {{- end }}
-            {{- if .Values.cassandra.password }}
-            - name: CASSANDRA_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "cassandra-password" .Values.secrets.existingSecret.keys.cassandraPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: cassandra-password
-                  {{- end }}
-            - name: conductor.cassandra.password
-              value: "$(CASSANDRA_PASSWORD)"
-            {{- end }}
-            {{- end }}
-            {{- if eq .Values.indexing.type "elasticsearch" }}
-            - name: conductor.elasticsearch.url
-              value: {{ .Values.elasticsearch.url | quote }}
-            - name: conductor.elasticsearch.username
-              value: {{ .Values.elasticsearch.username | quote }}
-            - name: conductor.elasticsearch.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "elasticsearch-password" .Values.secrets.existingSecret.keys.elasticsearchPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: elasticsearch-password
-                  {{- end }}
-            - name: conductor.elasticsearch.indexName
-              value: {{ .Values.elasticsearch.indexName | quote }}
-            - name: conductor.elasticsearch.indexPrefix
-              value: {{ .Values.elasticsearch.indexPrefix | quote }}
-            - name: conductor.elasticsearch.indexShardCount
-              value: {{ .Values.elasticsearch.indexShardCount | quote }}
-            - name: conductor.elasticsearch.indexReplicasCount
-              value: {{ .Values.elasticsearch.indexReplicasCount | quote }}
-            - name: conductor.elasticsearch.indexBatchSize
-              value: {{ .Values.elasticsearch.indexBatchSize | quote }}
-            - name: conductor.elasticsearch.asyncWorkerQueueSize
-              value: {{ .Values.elasticsearch.asyncWorkerQueueSize | quote }}
-            - name: conductor.elasticsearch.asyncMaxPoolSize
-              value: {{ .Values.elasticsearch.asyncMaxPoolSize | quote }}
-            - name: conductor.elasticsearch.asyncBufferFlushTimeout
-              value: {{ .Values.elasticsearch.asyncBufferFlushTimeout | quote }}
-            - name: conductor.elasticsearch.version
-              value: {{ .Values.elasticsearch.version | quote }}
-            - name: conductor.elasticsearch.clusterHealthColor
-              value: {{ .Values.elasticsearch.clusterHealthColor | quote }}
-            - name: conductor.elasticsearch.restClientConnectionTimeout
-              value: {{ .Values.elasticsearch.restClientConnectionTimeout | quote }}
-            - name: conductor.elasticsearch.restClientReadTimeout
-              value: {{ .Values.elasticsearch.restClientReadTimeout | quote }}
-            {{- end }}
-            {{- if or (eq .Values.indexing.type "opensearch2") (eq .Values.indexing.type "opensearch3") }}
-            - name: conductor.opensearch.url
-              value: {{ .Values.openSearch.url | quote }}
-            {{- if .Values.openSearch.username }}
-            - name: conductor.opensearch.username
-              value: {{ .Values.openSearch.username | quote }}
-            {{- end }}
-            - name: conductor.opensearch.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "open-search-password" .Values.secrets.existingSecret.keys.openSearchPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: open-search-password
-                  {{- end }}
-            - name: conductor.opensearch.indexPrefix
-              value: {{ .Values.openSearch.indexPrefix | quote }}
-            - name: conductor.opensearch.indexShardCount
-              value: {{ .Values.openSearch.indexShardCount | quote }}
-            - name: conductor.opensearch.indexReplicasCount
-              value: {{ .Values.openSearch.indexReplicasCount | quote }}
-            - name: conductor.opensearch.autoIndexManagementEnabled
-              value: {{ .Values.openSearch.autoIndexManagementEnabled | quote }}
-            - name: conductor.opensearch.clusterHealthColor
-              value: {{ .Values.openSearch.clusterHealthColor | quote }}
-            - name: conductor.opensearch.indexBatchSize
-              value: {{ .Values.openSearch.indexBatchSize | quote }}
-            - name: conductor.opensearch.asyncWorkerQueueSize
-              value: {{ .Values.openSearch.asyncWorkerQueueSize | quote }}
-            - name: conductor.opensearch.asyncMaxPoolSize
-              value: {{ .Values.openSearch.asyncMaxPoolSize | quote }}
-            - name: conductor.opensearch.asyncBufferFlushTimeout
-              value: {{ .Values.openSearch.asyncBufferFlushTimeout | quote }}
-            - name: conductor.opensearch.taskLogResultLimit
-              value: {{ .Values.openSearch.taskLogResultLimit | quote }}
-            - name: conductor.opensearch.restClientConnectionRequestTimeout
-              value: {{ .Values.openSearch.restClientConnectionRequestTimeout | quote }}
-            - name: conductor.opensearch.restClientConnectionTimeout
-              value: {{ .Values.openSearch.restClientConnectionTimeout | quote }}
-            - name: conductor.opensearch.restClientReadTimeout
-              value: {{ .Values.openSearch.restClientReadTimeout | quote }}
-            {{- end }}
-            {{- if eq .Values.indexing.type "opensearch" }}
-            - name: conductor.elasticsearch.url
-              value: {{ .Values.openSearch.url | quote }}
-            - name: conductor.elasticsearch.username
-              value: {{ .Values.openSearch.username | quote }}
-            - name: conductor.elasticsearch.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "open-search-password" .Values.secrets.existingSecret.keys.openSearchPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: open-search-password
-                  {{- end }}
-            - name: conductor.elasticsearch.indexName
-              value: {{ .Values.openSearch.indexName | quote }}
-            - name: conductor.elasticsearch.indexPrefix
-              value: {{ .Values.openSearch.indexPrefix | quote }}
-            - name: conductor.elasticsearch.indexReplicasCount
-              value: {{ .Values.openSearch.indexReplicasCount | quote }}
-            - name: conductor.elasticsearch.version
-              value: {{ .Values.openSearch.version | quote }}
-            - name: conductor.elasticsearch.clusterHealthColor
-              value: {{ .Values.openSearch.clusterHealthColor | quote }}
-            - name: conductor.elasticsearch.restClientConnectionTimeout
-              value: {{ .Values.openSearch.restClientConnectionTimeout | quote }}
-            - name: conductor.elasticsearch.restClientReadTimeout
-              value: {{ .Values.openSearch.restClientReadTimeout | quote }}
-            {{- end }}
-            {{- if and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "s3") }}
-            - name: conductor.external-payload-storage.type
-              value: "S3"
-            - name: conductor.external-payload-storage.s3.bucketName
-              value: {{ .Values.s3.externalPayloadStorage.bucketName | quote }}
-            - name: conductor.external-payload-storage.s3.signedUrlExpirationDuration
-              value: {{ .Values.s3.externalPayloadStorage.signedUrlExpirationDuration | quote }}
-            {{- end }}
-            {{- if and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "azure_blob") }}
-            - name: conductor.external-payload-storage.type
-              value: "azure_blob"
-            {{- if .Values.azureBlob.externalPayloadStorage.connectionString }}
-            - name: workflow.external.payload.storage.azure_blob.connection_string
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "azure-blob-connection-string" .Values.secrets.existingSecret.keys.azureBlobConnectionString }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: azure-blob-connection-string
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.azureBlob.externalPayloadStorage.endpoint }}
-            - name: workflow.external.payload.storage.azure_blob.endpoint
-              value: {{ .Values.azureBlob.externalPayloadStorage.endpoint | quote }}
-            {{- end }}
-            {{- if .Values.azureBlob.externalPayloadStorage.sasToken }}
-            - name: workflow.external.payload.storage.azure_blob.sas_token
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "azure-blob-sas-token" .Values.secrets.existingSecret.keys.azureBlobSasToken }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: azure-blob-sas-token
-                  {{- end }}
-            {{- end }}
-            - name: workflow.external.payload.storage.azure_blob.container_name
-              value: {{ .Values.azureBlob.externalPayloadStorage.containerName | quote }}
-            - name: workflow.external.payload.storage.azure_blob.signedurlexpirationseconds
-              value: {{ .Values.azureBlob.externalPayloadStorage.signedUrlExpirationSeconds | quote }}
-            - name: workflow.external.payload.storage.azure_blob.workflow_input_path
-              value: {{ .Values.azureBlob.externalPayloadStorage.workflowInputPath | quote }}
-            - name: workflow.external.payload.storage.azure_blob.workflow_output_path
-              value: {{ .Values.azureBlob.externalPayloadStorage.workflowOutputPath | quote }}
-            - name: workflow.external.payload.storage.azure_blob.task_input_path
-              value: {{ .Values.azureBlob.externalPayloadStorage.taskInputPath | quote }}
-            - name: workflow.external.payload.storage.azure_blob.task_output_path
-              value: {{ .Values.azureBlob.externalPayloadStorage.taskOutputPath | quote }}
-            {{- end }}
-            {{- if eq .Values.indexing.type "postgres" }}
-            - name: conductor.elasticsearch.version
-              value: '0'
-            {{- end }}
-            {{- if and .Values.externalPayloadStorage.type (eq .Values.externalPayloadStorage.type "postgres") }}
-            - name: conductor.external-payload-storage.postgres.conductor-url
-              value: {{ .Values.postgres.externalPayloadStorage.conductorUrl | quote }}
-            - name: conductor.external-payload-storage.postgres.url
-              value: "jdbc:postgresql://{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
-            - name: conductor.external-payload-storage.postgres.username
-              value: {{ .Values.postgres.username | quote }}
-            - name: conductor.external-payload-storage.postgres.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "postgres-password" .Values.secrets.existingSecret.keys.postgresPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: postgres-password
-                  {{- end }}
-            - name: conductor.external-payload-storage.postgres.table-name
-              value: {{ .Values.postgres.externalPayloadStorage.tableName | quote }}
-            - name: conductor.external-payload-storage.postgres.max-data-rows
-              value: {{ .Values.postgres.externalPayloadStorage.maxDataRows | quote }}
-            - name: conductor.external-payload-storage.postgres.max-data-days
-              value: {{ .Values.postgres.externalPayloadStorage.maxDataDays | quote }}
-            - name: conductor.external-payload-storage.postgres.max-data-months
-              value: {{ .Values.postgres.externalPayloadStorage.maxDataMonths | quote }}
-            - name: conductor.external-payload-storage.postgres.max-data-years
-              value: {{ .Values.postgres.externalPayloadStorage.maxDataYears | quote }}
-            {{- end }}
-            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "amqp") }}
-            - name: conductor.event-queues.amqp.enabled
-              value: 'true'
-            - name: conductor.event-queues.amqp.hosts
-              value: {{ .Values.amqpEventQueues.hosts | quote }}
-            - name: conductor.event-queues.amqp.username
-              value: {{ .Values.amqpEventQueues.username | quote }}
-            - name: conductor.event-queues.amqp.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "amqp-password" .Values.secrets.existingSecret.keys.amqpPassword }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: amqp-password
-                  {{- end }}
-            - name: conductor.event-queues.amqp.virtualHost
-              value: {{ .Values.amqpEventQueues.virtualHost | quote }}
-            - name: conductor.event-queues.amqp.port
-              value: {{ .Values.amqpEventQueues.port | quote }}
-            - name: conductor.event-queues.amqp.useNio
-              value: {{ .Values.amqpEventQueues.useNio | quote }}
-            - name: conductor.event-queues.amqp.batchSize
-              value: {{ .Values.amqpEventQueues.batchSize | quote }}
-            - name: conductor.event-queues.amqp.pollTimeDuration
-              value: {{ .Values.amqpEventQueues.pollTimeDuration | quote }}
-            - name: conductor.event-queues.amqp.queueType
-              value: {{ .Values.amqpEventQueues.queueType | quote }}
-            - name: conductor.event-queues.amqp.sequentialMsgProcessing
-              value: {{ .Values.amqpEventQueues.sequentialMsgProcessing | quote }}
-            - name: conductor.event-queues.amqp.connectionTimeoutInMilliSecs
-              value: {{ .Values.amqpEventQueues.connectionTimeoutInMilliSecs | quote }}
-            - name: conductor.event-queues.amqp.networkRecoveryIntervalInMilliSecs
-              value: {{ .Values.amqpEventQueues.networkRecoveryIntervalInMilliSecs | quote }}
-            - name: conductor.event-queues.amqp.requestHeartbeatTimeoutInSecs
-              value: {{ .Values.amqpEventQueues.requestHeartbeatTimeoutInSecs | quote }}
-            - name: conductor.event-queues.amqp.handshakeTimeoutInMilliSecs
-              value: {{ .Values.amqpEventQueues.handshakeTimeoutInMilliSecs | quote }}
-            - name: conductor.event-queues.amqp.maxChannelCount
-              value: {{ .Values.amqpEventQueues.maxChannelCount | quote }}
-            - name: conductor.event-queues.amqp.limit
-              value: {{ .Values.amqpEventQueues.limit | quote }}
-            - name: conductor.event-queues.amqp.duration
-              value: {{ .Values.amqpEventQueues.duration | quote }}
-            - name: conductor.event-queues.amqp.retryType
-              value: {{ .Values.amqpEventQueues.retryType | quote }}
-            - name: conductor.event-queues.amqp.useExchange
-              value: {{ .Values.amqpEventQueues.useExchange | quote }}
-            {{- if .Values.amqpEventQueues.listenerQueuePrefix }}
-            - name: conductor.event-queues.amqp.listenerQueuePrefix
-              value: {{ .Values.amqpEventQueues.listenerQueuePrefix | quote }}
-            {{- end }}
-            - name: conductor.event-queues.amqp.durable
-              value: {{ .Values.amqpEventQueues.durable | quote }}
-            - name: conductor.event-queues.amqp.exclusive
-              value: {{ .Values.amqpEventQueues.exclusive | quote }}
-            - name: conductor.event-queues.amqp.maxPriority
-              value: {{ .Values.amqpEventQueues.maxPriority | quote }}
-            {{- end }}
-            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "nats_stream") }}
-            - name: conductor.event-queues.nats.enabled
-              value: 'true'
-            - name: conductor.event-queues.nats-stream.clusterId
-              value: {{ .Values.natsEventQueues.natsStream.clusterId | quote }}
-            - name: conductor.event-queues.nats-stream.durableName
-              value: {{ .Values.natsEventQueues.natsStream.durableName | quote }}
-            - name: conductor.event-queues.nats-stream.url
-              value: {{ .Values.natsEventQueues.natsStream.url | quote }}
-            - name: conductor.event-queues.nats-stream.listenerQueuePrefix
-              value: {{ .Values.natsEventQueues.natsStream.listenerQueuePrefix | quote }}
-            {{- end }}
-            {{- if and .Values.defaultEventQueue.enabled (eq .Values.defaultEventQueue.type "kafka") }}
-            - name: conductor.event-queues.kafka.enabled
-              value: 'true'
-            - name: conductor.event-queues.kafka.bootstrap-servers
-              value: {{ .Values.kafkaEventQueues.bootstrapServers | quote }}
-            - name: conductor.event-queues.kafka.dlq-topic
-              value: {{ .Values.kafkaEventQueues.dlqTopic | quote }}
-            - name: conductor.event-queues.kafka.listener-queue-prefix
-              value: {{ .Values.kafkaEventQueues.listenerQueuePrefix | quote }}
-            - name: conductor.event-queues.kafka.poll-time-duration
-              value: {{ .Values.kafkaEventQueues.pollTimeDuration | quote }}
-            {{- range $name, $value := .Values.kafkaEventQueues.consumer }}
-            - name: conductor.event-queues.kafka.consumer.{{ $name }}
-              value: "{{ $value }}"
-            {{- end }}
-            {{- range $name, $value := .Values.kafkaEventQueues.producer }}
-            - name: conductor.event-queues.kafka.producer.{{ $name }}
-              value: "{{ $value }}"
-            {{- end }}
-            {{- range $name, $value := .Values.kafkaEventQueues.admin }}
-            - name: conductor.event-queues.kafka.admin.{{ $name }}
-              value: "{{ $value }}"
-            {{- end }}
-            {{- end }}
-            {{- if .Values.statusListener.workflowType }}
-            - name: conductor.workflow-status-listener.type
-              value: {{ .Values.statusListener.workflowType | quote }}
-            {{- end }}
-            {{- if .Values.statusListener.taskType }}
-            - name: conductor.task-status-listener.type
-              value: {{ .Values.statusListener.taskType | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.url }}
-            - name: conductor.status-notifier.notification.url
-              value: {{ .Values.statusNotifier.url | quote }}
-            {{- if .Values.statusNotifier.endpointWorkflow }}
-            - name: conductor.status-notifier.notification.endpointWorkflow
-              value: {{ .Values.statusNotifier.endpointWorkflow | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.endpointTask }}
-            - name: conductor.status-notifier.notification.endpointTask
-              value: {{ .Values.statusNotifier.endpointTask | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.subscribedTaskStatuses }}
-            - name: conductor.status-notifier.notification.subscribedTaskStatuses
-              value: {{ .Values.statusNotifier.subscribedTaskStatuses | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.headerPrefer }}
-            - name: conductor.status-notifier.notification.headerPrefer
-              value: {{ .Values.statusNotifier.headerPrefer | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.headerPreferValue }}
-            - name: conductor.status-notifier.notification.headerPreferValue
-              value: {{ .Values.statusNotifier.headerPreferValue | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.requestTimeoutMsConnect }}
-            - name: conductor.status-notifier.notification.requestTimeoutMsConnect
-              value: {{ .Values.statusNotifier.requestTimeoutMsConnect | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.requestTimeoutMsRead }}
-            - name: conductor.status-notifier.notification.requestTimeoutMsRead
-              value: {{ .Values.statusNotifier.requestTimeoutMsRead | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.requestTimeoutMsConnMgr }}
-            - name: conductor.status-notifier.notification.requestTimeoutMsConnMgr
-              value: {{ .Values.statusNotifier.requestTimeoutMsConnMgr | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.requestRetryCount }}
-            - name: conductor.status-notifier.notification.requestRetryCount
-              value: {{ .Values.statusNotifier.requestRetryCount | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.requestRetryIntervalMs }}
-            - name: conductor.status-notifier.notification.requestRetryIntervalMs
-              value: {{ .Values.statusNotifier.requestRetryIntervalMs | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.connectionPoolMaxRequest }}
-            - name: conductor.status-notifier.notification.connectionPoolMaxRequest
-              value: {{ .Values.statusNotifier.connectionPoolMaxRequest | quote }}
-            {{- end }}
-            {{- if .Values.statusNotifier.connectionPoolMaxRequestPerRoute }}
-            - name: conductor.status-notifier.notification.connectionPoolMaxRequestPerRoute
-              value: {{ .Values.statusNotifier.connectionPoolMaxRequestPerRoute | quote }}
-            {{- end }}
-            {{- end }}
-            - name: conductor.integrations.ai.enabled
-              value: {{ .Values.ai.enabled | quote }}
-            {{- if .Values.ai.outbound.allowedOrigins }}
-            - name: conductor.ai.outbound.allowed-origins
-              value: {{ .Values.ai.outbound.allowedOrigins | quote }}
-            {{- end }}
-            {{- if .Values.ai.outbound.allowPrivateNetworks }}
-            - name: conductor.ai.outbound.allow-private-networks
-              value: {{ .Values.ai.outbound.allowPrivateNetworks | quote }}
-            {{- end }}
-            {{- if and .Values.ai.enabled .Values.ai.decision.apiKey }}
-            - name: conductor.ai.decision.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-decision-api-key" .Values.secrets.existingSecret.keys.aiDecisionApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-decision-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.decision.provider }}
-            - name: conductor.ai.decision.provider
-              value: {{ .Values.ai.decision.provider | quote }}
-            {{- end }}
-            {{- if .Values.ai.decision.apiShape }}
-            - name: conductor.ai.decision.api-shape
-              value: {{ .Values.ai.decision.apiShape | quote }}
-            {{- end }}
-            {{- if .Values.ai.openAI.apiKey }}
-            - name: conductor.ai.openai.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-open-ai-api-key" .Values.secrets.existingSecret.keys.aiOpenAiApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-open-ai-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.openAI.organizationID }}
-            - name: conductor.ai.openai.organization-id
-              value: {{ .Values.ai.openAI.organizationID | quote }}
-            {{- end }}
-            {{- if .Values.ai.anthropic.apiKey }}
-            - name: conductor.ai.anthropic.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-anthropic-api-key" .Values.secrets.existingSecret.keys.aiAnthropicApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-anthropic-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.mistral.apiKey }}
-            - name: conductor.ai.mistral.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-mistral-api-key" .Values.secrets.existingSecret.keys.aiMistralApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-mistral-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.cohere.apiKey }}
-            - name: conductor.ai.cohere.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-cohere-api-key" .Values.secrets.existingSecret.keys.aiCohereApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-cohere-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.grok.apiKey }}
-            - name: conductor.ai.grok.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-grok-api-key" .Values.secrets.existingSecret.keys.aiGrokApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-grok-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.perplexity.apiKey }}
-            - name: conductor.ai.perplexity.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-perplexity-api-key" .Values.secrets.existingSecret.keys.aiPerplexityApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-perplexity-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.huggingFace.apiKey }}
-            - name: conductor.ai.huggingface.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-hugging-face-api-key" .Values.secrets.existingSecret.keys.aiHuggingFaceApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-hugging-face-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.stabilityAI.apiKey }}
-            - name: conductor.ai.stabilityai.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-stability-ai-api-key" .Values.secrets.existingSecret.keys.aiStabilityAiApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-stability-ai-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.azureOpenAI.apiKey }}
-            - name: conductor.ai.azureopenai.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-azure-open-ai-api-key" .Values.secrets.existingSecret.keys.aiAzureOpenAiApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-azure-open-ai-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.azureOpenAI.baseUrl }}
-            - name: conductor.ai.azureopenai.base-url
-              value: {{ .Values.ai.azureOpenAI.baseUrl | quote }}
-            {{- end }}
-            {{- if .Values.ai.azureOpenAI.deploymentName }}
-            - name: conductor.ai.azureopenai.deployment-name
-              value: {{ .Values.ai.azureOpenAI.deploymentName | quote }}
-            {{- end }}
-            {{- if .Values.ai.bedrock.accessKey }}
-            - name: conductor.ai.bedrock.access-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-bedrock-access-key" .Values.secrets.existingSecret.keys.aiBedrockAccessKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-bedrock-access-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.bedrock.secretKey }}
-            - name: conductor.ai.bedrock.secret-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-bedrock-secret-key" .Values.secrets.existingSecret.keys.aiBedrockSecretKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-bedrock-secret-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.bedrock.bearerToken }}
-            - name: conductor.ai.bedrock.bearerToken
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-bedrock-bearer-token" .Values.secrets.existingSecret.keys.aiBedrockBearerToken }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-bedrock-bearer-token
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.bedrock.region }}
-            - name: conductor.ai.bedrock.region
-              value: {{ .Values.ai.bedrock.region | quote }}
-            {{- end }}
-            {{- if .Values.ai.gemini.apiKey }}
-            - name: conductor.ai.gemini.api-key
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "ai-gemini-api-key" .Values.secrets.existingSecret.keys.aiGeminiApiKey }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: ai-gemini-api-key
-                  {{- end }}
-            {{- end }}
-            {{- if .Values.ai.gemini.projectID }}
-            - name: conductor.ai.gemini.project-id
-              value: {{ .Values.ai.gemini.projectID | quote }}
-            {{- end }}
-            {{- if .Values.ai.gemini.location }}
-            - name: conductor.ai.gemini.location
-              value: {{ .Values.ai.gemini.location | quote }}
-            {{- end }}
-            {{- if .Values.ai.gemini.applicationCredentials }}
-            - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: {{ .Values.ai.gemini.applicationCredentials | quote }}
-            {{- end }}
-            {{- if .Values.ai.ollama.baseUrl }}
-            - name: conductor.ai.ollama.base-url
-              value: {{ .Values.ai.ollama.baseUrl | quote }}
-            {{- end }}
-            - name: conductor.document-access-policy.disabled
-              value: {{ .Values.documentAccessPolicy.disabled | quote }}
-            {{- if .Values.documentAccessPolicy.allowedDirectories }}
-            - name: conductor.document-access-policy.allowed-directories
-              value: {{ .Values.documentAccessPolicy.allowedDirectories | quote }}
-            {{- end }}
-            {{- if .Values.documentAccessPolicy.blockedPathPrefixes }}
-            - name: conductor.document-access-policy.blocked-path-prefixes
-              value: {{ .Values.documentAccessPolicy.blockedPathPrefixes | quote }}
-            {{- end }}
-            {{- if .Values.documentAccessPolicy.blockedFileNames }}
-            - name: conductor.document-access-policy.blocked-file-names
-              value: {{ .Values.documentAccessPolicy.blockedFileNames | quote }}
-            {{- end }}
-            {{- if .Values.documentAccessPolicy.blockedHosts }}
-            - name: conductor.document-access-policy.blocked-hosts
-              value: {{ .Values.documentAccessPolicy.blockedHosts | quote }}
-            {{- end }}
-            - name: conductor.metrics-logger.enabled
-              value: {{ .Values.metrics.loggerEnabled | quote }}
-            - name: conductor.metrics-logger.reportPeriodSeconds
-              value: {{ .Values.metrics.loggerReportPeriodSeconds | quote }}
-            - name: conductor.metrics-prometheus.enabled
-              value: {{ .Values.metrics.prometheusEnabled | quote }}
-            - name: management.endpoints.web.exposure.include
-              value: {{ .Values.management.endpointsWebExposureInclude | quote }}
-            - name: management.metrics.distribution.percentiles.http.server.requests
-              value: {{ .Values.management.metricsPercentiles | quote }}
-            - name: management.endpoint.health.show-details
-              value: {{ .Values.management.healthShowDetails | quote }}
-            - name: management.atlas.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.atlas | quote }}
-            - name: management.otlp.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.otlp | quote }}
-            - name: management.influx.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.influx | quote }}
-            - name: management.elastic.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.elastic | quote }}
-            - name: management.dynatrace.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.dynatrace | quote }}
-            - name: management.new-relic.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.newRelic | quote }}
-            - name: management.stackdriver.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.stackdriver | quote }}
-            {{- if .Values.management.metricsExport.stackdriverProjectID }}
-            - name: management.stackdriver.metrics.export.projectId
-              value: {{ .Values.management.metricsExport.stackdriverProjectID | quote }}
-            {{- end }}
-            - name: management.datadog.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.datadog | quote }}
-            {{- if .Values.management.metricsExport.datadogApiKey }}
-            - name: management.datadog.metrics.export.apiKey
-              value: {{ .Values.management.metricsExport.datadogApiKey | quote }}
-            {{- end }}
-            - name: management.statsd.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.statsD | quote }}
-            - name: management.cloudwatch.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.cloudWatch | quote }}
-            - name: management.cloudwatch.metrics.export.namespace
-              value: {{ .Values.management.metricsExport.cloudWatchNamespace | quote }}
-            - name: management.azuremonitor.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.azureMonitor | quote }}
-            {{- if .Values.management.metricsExport.azureMonitorInstrumentationKey }}
-            - name: management.azuremonitor.metrics.export.instrumentationKey
-              value: {{ .Values.management.metricsExport.azureMonitorInstrumentationKey | quote }}
-            {{- end }}
-            - name: management.jmx.metrics.export.enabled
-              value: {{ .Values.management.metricsExport.jmx | quote }}
-            - name: conductor.grpcServer.server.enabled
-              value: {{ .Values.grpcServer.enabled | quote }}
-            - name: conductor.grpcServer.server.port
-              value: {{ .Values.container.ports.grpc | quote }}
-            - name: conductor.api-docs.cors.allowed-origins
-              value: {{ .Values.cors.allowedOrigins | quote }}
-            {{- if .Values.security.enabled }}
-            - name: conductor.security.enabled
-              value: {{ .Values.security.enabled | quote }}
-            - name: conductor.security.auth.oidc.enabled
-              value: {{ .Values.security.auth.oidc.enabled | quote }}
-            - name: conductor.security.auth.oidc.discovery-uri
-              value: {{ .Values.security.auth.oidc.discoveryUri | quote }}
-            - name: conductor.security.auth.oidc.client-id
-              value: {{ .Values.security.auth.oidc.clientID | quote }}
-            {{- if .Values.security.auth.oidc.clientSecret }}
-            - name: conductor.security.auth.oidc.client-secret
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secrets.existingSecret.name }}
-                  name: {{ .Values.secrets.existingSecret.name }}
-                  key: {{ default "auth-oidc-client-secret" .Values.secrets.existingSecret.keys.authOidcClientSecret }}
-                  {{- else }}
-                  name: {{ include "conductor-oss-conductor.fullname" . }}
-                  key: auth-oidc-client-secret
-                  {{- end }}
-            {{- end }}
-            - name: conductor.security.auth.oidc.audience
-              value: {{ .Values.security.auth.oidc.audience | quote }}
-            - name: conductor.security.auth.oidc.groups-claim
-              value: {{ .Values.security.auth.oidc.groupsClaim | quote }}
-            - name: conductor.security.auth.basic.enabled
-              value: {{ .Values.security.auth.basic.enabled | quote }}
-            - name: conductor.security.auth.basic.realm
-              value: {{ .Values.security.auth.basic.realm | quote }}
-            - name: conductor.security.auth.basic.principal
-              value: {{ .Values.security.auth.basic.principal | quote }}
-            - name: conductor.security.auth.basic.role
-              value: {{ .Values.security.auth.basic.role | quote }}
-            {{- end }}
-            - name: loadSample
-              value: 'false'
-            - name: spring.application.name
-              value: {{ .Values.spring.applicationName | quote }}
-            - name: spring.main.allow-bean-definition-overriding
-              value: {{ .Values.spring.allowBeanDefinitionOverriding | quote }}
+            # The image's startup script passes CONFIG_PROP (relative to /app/config) as -DCONDUCTOR_CONFIG_FILE;
+            # Conductor also reads the CONDUCTOR_CONFIG_FILE environment variable
+            - name: CONFIG_PROP
+              value: chart/conductor.properties
+            - name: CONDUCTOR_CONFIG_FILE
+              value: /app/config/chart/conductor.properties
+            {{- with .Values.spring.profilesActive }}
             - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.spring.profilesActive | quote }}
-            - name: springdoc.api-docs.path
-              value: {{ .Values.spring.apiDocsPath | quote }}
-            - name: logging.level.root
-              value: {{ .Values.logging.level.root | quote }}
+              value: {{ . | quote }}
+            {{- end }}
+            {{- range (include "conductor-oss-conductor.credentials" . | fromYamlArray) }}
+            - name: {{ .env }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "conductor-oss-conductor.secretName" $ }}
+                  key: {{ .secretKey }}
+                  {{- if .optional }}
+                  optional: true
+                  {{- end }}
+            {{- end }}
+            {{- with (include "conductor-oss-conductor.geminiCredentialsPath" .) }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: {{ . | quote }}
+            {{- end }}
             {{- range $name, $value := .Values.env }}
             {{- if ne $name "EXTRA_JVM_OPTS" }}
             - name: {{ $name | quote }}
@@ -1246,14 +191,56 @@ spec:
           {{- if .Values.lifecycleHooks }}
           lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
           {{- end }}
-          {{- if .Values.extraVolumeMounts }}
           volumeMounts:
-            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
-          {{- end }}
-      {{- if .Values.extraVolumes }}
+            - name: config
+              mountPath: /app/config/chart
+              readOnly: true
+            # Writable directories (the root filesystem may be read-only): heap dumps, server logs, nginx (serving the UI)
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+            - name: nginx
+              mountPath: /var/lib/nginx
+            - name: nginx-logs
+              mountPath: /var/log/nginx
+            - name: run
+              mountPath: /run
+            {{- if and .Values.ai.enabled .Values.ai.gemini.credentialsSecret.name }}
+            - name: gemini-credentials
+              mountPath: /var/run/secrets/gemini
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
-        {{- toYaml .Values.extraVolumes | nindent 8 }}
-      {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "conductor-oss-conductor.fullname" . }}
+        - name: tmp
+          emptyDir: { }
+        - name: logs
+          emptyDir: { }
+        - name: nginx
+          emptyDir: { }
+        - name: nginx-logs
+          emptyDir: { }
+        - name: run
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        {{- if and .Values.ai.enabled .Values.ai.gemini.credentialsSecret.name }}
+        - name: gemini-credentials
+          secret:
+            secretName: {{ .Values.ai.gemini.credentialsSecret.name }}
+            items:
+              - key: {{ .Values.ai.gemini.credentialsSecret.key | default "credentials.json" }}
+                path: credentials.json
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       restartPolicy: Always
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -1269,5 +256,5 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}

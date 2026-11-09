@@ -13,7 +13,7 @@ metadata:
 spec:
   egress:
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job)
     - to:
         - podSelector:
             matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}
@@ -22,8 +22,16 @@ spec:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   ingress:
+    {{- if .Values.networkPolicy.allowTests }}
+    # Allow traffic from the chart's test pods (helm test)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "ignite.name" . }}-test
+              app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- end }}
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job, tests)
+    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job)
     - from:
         - podSelector:
             matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}

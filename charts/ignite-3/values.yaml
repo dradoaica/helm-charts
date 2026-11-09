@@ -232,6 +232,8 @@ networkPolicy:
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
+  # -- Allow ingress from the chart's test pods (helm test)
+  allowTests: true
   # -- Allow ingress/egress traffic between the pods of this release (required for cluster communication)
   allowIntraCluster: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)

@@ -1,4 +1,5 @@
-{{- if .Values.podDisruptionBudget.create }}
+{{- $replicas := ternary .Values.autoscaling.minReplicas .Values.replicaCount .Values.autoscaling.create }}
+{{- if and .Values.podDisruptionBudget.create (gt (int $replicas) 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -13,10 +14,10 @@ spec:
   selector:
     matchLabels:
       {{- include "conductor-oss-conductor.selectorLabels" . | nindent 6 }}
-  {{- if .Values.podDisruptionBudget.minAvailable }}
+  {{- /* minAvailable, when set, takes precedence over maxUnavailable (which has a default) */}}
+  {{- if not (eq (toString .Values.podDisruptionBudget.minAvailable) "") }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else if not (eq (toString .Values.podDisruptionBudget.maxUnavailable) "") }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   {{- end }}
 {{- end }}

@@ -1,9 +1,21 @@
-# Minimal values for Conductor OSS
+# Minimal values for Conductor OSS: one small pod using Redis, without indexing (no workflow search)
 # Use this for development, testing, or resource-constrained environments
-#
-# NOTE: Conductor requires Redis. You must provide a Redis connection.
 #
 # Install with:
 #   helm install conductor ./charts/conductor-oss-conductor -f ./charts/conductor-oss-conductor/examples/minimal-values.yaml
 
 replicaCount: 1
+redis:
+  host: redis-master
+  password: ""
+indexing:
+  enabled: false
+memory:
+  onHeapMB: 512
+resources:
+  requests:
+    cpu: 200m
+    memory: 1.5Gi
+  limits:
+    cpu: "2"
+    memory: 1.5Gi

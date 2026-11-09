@@ -1,0 +1,26 @@
+{{- include "conductor-oss-conductor.validate" . }}
+{{- $properties := include "conductor-oss-conductor.properties" . | fromYaml }}
+{{- $properties = mergeOverwrite $properties (deepCopy .Values.extraProperties) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "conductor-oss-conductor.fullname" . }}
+  labels:
+    {{- include "conductor-oss-conductor.labels" . | nindent 4 }}
+  {{- with (include "conductor-oss-conductor.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+data:
+  # Loaded by Conductor as system properties (CONDUCTOR_CONFIG_FILE); ${...} placeholders resolve from the environment
+  conductor.properties: |
+    {{- range $key, $value := $properties }}
+    {{- if not (or (kindIs "invalid" $value) (eq (toString $value) "")) }}
+    {{- if and (kindIs "float64" $value) (eq (floor $value) $value) }}
+    {{- /* YAML numbers are floats: render whole numbers without an exponent (e.g., 1000000, not 1e+06) */}}
+    {{- $value = int64 $value }}
+    {{- end }}
+    {{- /* Escape like Java properties (read as ISO-8859-1): backslashes, control characters and non-ASCII as \uXXXX */}}
+    {{ $key }}={{ printf "%+q" (toString $value) | trimPrefix "\"" | trimSuffix "\"" | replace "\\\"" "\"" }}
+    {{- end }}
+    {{- end }}

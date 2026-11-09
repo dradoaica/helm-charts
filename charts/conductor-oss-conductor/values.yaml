@@ -1,3 +1,5 @@
+# Upgrading from 3.33.1: see the Upgrading section of README.md
+
 global:
   # -- Global container image registry override
   imageRegistry: ""
@@ -57,7 +59,7 @@ serviceAccount:
 # -- Number of old ReplicaSets to retain
 revisionHistoryLimit: 10
 
-# -- Deployment update strategy (type only is used)
+# -- Deployment update strategy
 updateStrategy:
   type: RollingUpdate
 
@@ -84,7 +86,7 @@ containerSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   privileged: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
   capabilities:
     drop: [ "ALL" ]
@@ -96,11 +98,12 @@ containerSecurityContext:
 #   + maxMetaspaceSizeMB (JVM Metaspace max size)
 #   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)
 #   + maxDirectMemorySizeMB (JVM DirectMemory max size)
-#   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.)
+#   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, nginx serving the UI, etc.)
+#  The JVM pre-touches its whole heap at startup, so request the memory limit
 resources:
   requests:
     cpu: 300m
-    memory: 2Gi
+    memory: 3Gi
   limits:
     cpu: "2"
     memory: 3Gi
@@ -111,7 +114,7 @@ livenessProbe:
   enabled: true
   httpGet:
     path: /health
-    port: 8080
+    port: rest
   initialDelaySeconds: 5
   periodSeconds: 30
   timeoutSeconds: 10
@@ -124,7 +127,7 @@ readinessProbe:
   enabled: true
   httpGet:
     path: /health
-    port: 8080
+    port: rest
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 10
@@ -137,18 +140,24 @@ startupProbe:
   enabled: true
   httpGet:
     path: /health
-    port: 8080
+    port: rest
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 1
   failureThreshold: 15
   successThreshold: 1
 
-# -- Lifecycle hooks configuration
-lifecycleHooks: { }
+# -- Lifecycle hooks configuration (templated; as the image runs Java under a shell that does not forward SIGTERM, the
+# default preStop hook waits for the Service to stop routing to the pod, then signals Java, and the container stops when
+# Java has shut down)
+lifecycleHooks:
+  preStop:
+    exec:
+      command: [ "/bin/sh", "-c", "sleep 5; pid=$(pidof java) && kill -TERM $pid" ]
 
 container:
-  # -- Container ports used by the Pod spec and as Service targetPort values
+  # -- Container ports used by the Pod spec and as Service targetPort values (keep rest and ui as they are, as the image's
+  # nginx serves the UI on 5000 and proxies the API to localhost:8080)
   ports:
     rest: 8080
     ui: 5000
@@ -179,17 +188,30 @@ nodeSelector: { }
 tolerations: [ ]
 # -- Node affinity
 affinity: { }
-# -- Topology spread constraints
-topologySpreadConstraints: [ ]
+# -- Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: '{{ include "conductor-oss-conductor.name" . }}'
+        app.kubernetes.io/instance: '{{ .Release.Name }}'
 
 networkPolicy:
   # -- Create a NetworkPolicy
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
+  # -- Allow ingress from the chart's test pods (helm test)
+  allowTests: true
+  # -- Allow egress to the ports of the configured backends on any host (Redis, the database, the indexing backend, the event
+  # queues; other destinations, e.g., webhooks, payload storage, AI providers or Kafka brokers advertising other ports than
+  # the bootstrap servers, need egress rules)
+  allowBackends: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the API/UI)
   ingress: [ ]
-  # -- NetworkPolicy egress rules (add rules for the configured backends, e.g., Redis, Elasticsearch/OpenSearch, PostgreSQL/MySQL)
+  # -- NetworkPolicy egress rules
   egress:
     # Allow DNS resolution
     - to:
@@ -201,14 +223,12 @@ networkPolicy:
           protocol: TCP
 
 podDisruptionBudget:
-  # -- Create a PodDisruptionBudget for high availability
+  # -- Create a PodDisruptionBudget for high availability (only with more than one replica)
   create: false
-  # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
-  minAvailable: 1
-  # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
-  maxUnavailable: ""
-  # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
-  # maxUnavailable: "50%"
+  # -- Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable)
+  minAvailable: ""
+  # -- Maximum number of pods that can be unavailable during disruptions
+  maxUnavailable: 1
 
 autoscaling:
   # -- Create a HorizontalPodAutoscaler
@@ -219,8 +239,9 @@ autoscaling:
   maxReplicas: 10
   # -- Target CPU utilization percentage
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
-  targetMemoryUtilizationPercentage: 80
+  # -- Target memory utilization percentage (not recommended, as the JVM pre-touches its whole heap, so the memory
+  # utilization stays high whatever the load)
+  targetMemoryUtilizationPercentage: ""
 
 ingress:
   # -- Create an Ingress for external HTTP access
@@ -235,12 +256,12 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          port: 8080
+          portName: rest
     - host: conductor-ui.local
       paths:
         - path: /
           pathType: Prefix
-          port: 5000
+          portName: ui
   # -- TLS configuration for Ingress
   tls: [ ]
 
@@ -248,8 +269,12 @@ ingress:
 # -- Number of pods
 replicaCount: 1
 
+# -- Maximum time Conductor waits for the in-flight requests on shutdown (Spring's graceful shutdown; keep the preStop delay
+# in lifecycleHooks plus this timeout below terminationGracePeriodSeconds)
+gracefulShutdownTimeout: 30s
+
 memory:
-  # -- On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 2048
+  # -- On-heap memory limit in MB. If set, -Xms and -Xmx will be value. If not set, defaults to 1536
   onHeapMB: ""
   # -- JVM Metaspace max size in MB. If not set, defaults to 256
   maxMetaspaceSizeMB: ""
@@ -320,8 +345,8 @@ app:
   systemTaskPostponeThreshold: ""
   # -- Per-task-type system task worker settings, rendered as `conductor.app.taskWorkerConfigs.<TASK>.<setting>` (e.g., HTTP: { threadCount: 20 })
   taskWorkerConfigs: { }
-  # -- The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (e.g., 30s)
-  asyncUpdateShortRunningWorkflowDuration: 10m
+  # -- The duration of workflow execution qualifying as short-running when async indexing to Elasticsearch is enabled (defaults to 30s)
+  asyncUpdateShortRunningWorkflowDuration: ""
   # -- The delay with which short-running workflows will be updated in Elasticsearch when async indexing is enabled (e.g., 60s)
   asyncUpdateDelay: ""
   # -- Whether to validate the owner email field as mandatory within workflow and task definitions
@@ -338,48 +363,55 @@ app:
   workflowNameValidationEnabled: false
   # -- Whether to enable summary input/output JSON serialization
   summaryInputOutputJsonSerializationEnabled: ""
-  # -- The threshold of the workflow input payload size beyond which the payload will be stored in ExternalPayloadStorage
-  workflowInputPayloadSizeThreshold: 1MB
-  # -- The maximum threshold of the workflow input payload size beyond which input will be rejected and the workflow marked as FAILED
-  maxWorkflowInputPayloadSizeThreshold: 4GB
-  # -- The threshold of the workflow output payload size beyond which the payload will be stored in ExternalPayloadStorage
-  workflowOutputPayloadSizeThreshold: 1MB
-  # -- The maximum threshold of the workflow output payload size beyond which output will be rejected and the workflow marked as FAILED
-  maxWorkflowOutputPayloadSizeThreshold: 4GB
-  # -- The threshold of the task input payload size beyond which the payload will be stored in ExternalPayloadStorage
-  taskInputPayloadSizeThreshold: 1MB
-  # -- The maximum threshold of the task input payload size beyond which the task input will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxTaskInputPayloadSizeThreshold: 4GB
-  # -- The threshold of the task output payload size beyond which the payload will be stored in ExternalPayloadStorage
-  taskOutputPayloadSizeThreshold: 1MB
-  # -- The maximum threshold of the task output payload size beyond which the task output will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxTaskOutputPayloadSizeThreshold: 4GB
-  # -- The maximum threshold of the workflow variables payload size beyond which the task changes will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR
-  maxWorkflowVariablesPayloadSizeThreshold: 100MB
+  # -- The threshold of the workflow input payload size beyond which the payload will be stored in ExternalPayloadStorage (defaults to 5120KB;
+  # without externalPayloadStorage.type, the payloads beyond the thresholds are stored in the pod, lost on restart and not shared
+  # between replicas)
+  workflowInputPayloadSizeThreshold: ""
+  # -- The maximum threshold of the workflow input payload size beyond which input will be rejected and the workflow marked as FAILED (defaults to 10240KB)
+  maxWorkflowInputPayloadSizeThreshold: ""
+  # -- The threshold of the workflow output payload size beyond which the payload will be stored in ExternalPayloadStorage (defaults to 5120KB)
+  workflowOutputPayloadSizeThreshold: ""
+  # -- The maximum threshold of the workflow output payload size beyond which output will be rejected and the workflow marked as FAILED (defaults to 10240KB)
+  maxWorkflowOutputPayloadSizeThreshold: ""
+  # -- The threshold of the task input payload size beyond which the payload will be stored in ExternalPayloadStorage (defaults to 3072KB)
+  taskInputPayloadSizeThreshold: ""
+  # -- The maximum threshold of the task input payload size beyond which the task input will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR (defaults to 10240KB)
+  maxTaskInputPayloadSizeThreshold: ""
+  # -- The threshold of the task output payload size beyond which the payload will be stored in ExternalPayloadStorage (defaults to 3072KB)
+  taskOutputPayloadSizeThreshold: ""
+  # -- The maximum threshold of the task output payload size beyond which the task output will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR (defaults to 10240KB)
+  maxTaskOutputPayloadSizeThreshold: ""
+  # -- The maximum threshold of the workflow variables payload size beyond which the task changes will be rejected and the task marked as FAILED_WITH_TERMINAL_ERROR (defaults to 256KB)
+  maxWorkflowVariablesPayloadSizeThreshold: ""
   # -- The maximum size of task execution logs
   taskExecLogSizeLimit: ""
-  # -- Whether to enable the workflow repair service
+  # -- Whether to enable the (deprecated) workflow repair service
   workflowRepairServiceEnabled: false
-  # -- Whether to enable the remove Redis key feature
-  enableRemoveRedisKey: false
-  # -- TTL for Redis key expiration
-  ttlRedisKeyExpire: ""
 
 # -- Scheduler configuration
 scheduler:
   # -- Enable the scheduler
   enabled: true
 
-# -- Workflow archival configuration
+# -- Workflow archival configuration (an archive workflow status listener, which removes the completed workflows from the
+# primary storage; combined with statusListener.workflowType, if set)
 workflowArchival:
   # -- Enable workflow archival
   enabled: false
-  # -- Archival type (e.g., elasticsearch, opensearch)
-  type: elasticsearch
-  # -- Time to live for archived workflows
-  ttl: 30d
-  # -- Delay before archiving a completed workflow
-  delay: 1h
+  # -- Archival type (DEFAULT keeps the workflows in the indexing backend only, S3 also uploads them to S3)
+  type: DEFAULT
+  # -- Time to keep the completed workflows before removing them (e.g., 30d; if set, it takes precedence over type)
+  ttl: ""
+  # -- Delay in seconds before archiving a completed workflow (defaults to 60)
+  delaySeconds: ""
+  # -- Archive only the workflows that did not complete successfully
+  unsuccessfulOnly: false
+  # -- Number of threads processing the delayed archivals
+  delayQueueWorkerThreadCount: ""
+  # -- S3 bucket name when type is S3
+  s3BucketName: ""
+  # -- S3 bucket region when type is S3 (defaults to us-east-1)
+  s3BucketRegion: ""
 
 # -- Workflow message queue configuration
 workflowMessageQueue:
@@ -394,65 +426,68 @@ workflowMessageQueue:
 
 # -- DB configuration
 db:
-  # -- DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite, memory)
+  # -- DB type (redis_standalone, redis_cluster, redis_sentinel, mysql, postgres, cassandra, sqlite; sqlite keeps the data in
+  # the pod, lost on restart)
   type: redis_standalone
 
 # -- Queue configuration
 queue:
-  # -- Queue type (redis_standalone, redis_cluster, redis_sentinel, postgres, sqlite, memory)
+  # -- Queue type (redis_standalone, redis_cluster, redis_sentinel, or the db.type for postgres, mysql and sqlite, which use
+  # their own queues; cassandra requires a Redis queue type)
   type: redis_standalone
 
-# -- Default event queue configuration
+# -- Default event queue configuration (the queues Conductor listens on for WAIT/HUMAN task updates; enabling it also
+# enables the event queues of its type)
 defaultEventQueue:
   # -- Enable default event queue
   enabled: false
-  # -- Default event queue type (e.g., amqp, nats_stream, kafka)
+  # -- Default event queue type (amqp, nats_stream, jsm, kafka)
   type: amqp
-
-# -- Queues configuration
-queues:
-  # -- Number of threads allocated to Dynomite queues
-  dynomiteThreads: 10
 
 # -- Workflow execution lock configuration
 workflowExecutionLock:
-  # -- Workflow execution lock type (redis, postgres, zookeeper, local_only, noop_lock)
+  # -- Workflow execution lock type (redis, postgres, sqlite, local_only, noop_lock; postgres and sqlite require the same db.type)
   type: redis
 
 # -- Indexing configuration
 indexing:
   # -- Enable indexing
   enabled: true
-  # -- Indexing type (elasticsearch, opensearch, opensearch2, opensearch3, postgres, sqlite, memory)
+  # -- Indexing type (elasticsearch, elasticsearch8, opensearch2, opensearch3, postgres, sqlite; postgres and sqlite require the
+  # same db.type, and elasticsearch8, opensearch2 and opensearch3 an image built with the INDEXING_BACKEND build argument, as
+  # the conductoross/conductor image only includes Elasticsearch 7)
   type: elasticsearch
 
 # -- External payload storage configuration
 externalPayloadStorage:
-  # -- External payload storage type (postgres, s3, azure_blob, null)
-  type: null
+  # -- External payload storage type (postgres, s3, azureblob, or empty for none; postgres uses the postgres.* connection)
+  type: ""
 
 # -- Redis configuration
 redis:
   # -- Redis host
   host: ""
-  # -- Redis port
+  # -- Redis port (with redis_sentinel, the port of the master, also allowed by networkPolicy.allowBackends)
   port: 6379
-  # -- List of redis hosts (host:port). Overrides host/port if set
+  # -- List of Redis hosts (host:port[:rack], separated by semicolons, the Sentinel nodes for redis_sentinel; the rack defaults
+  # to availabilityZone, and the chart appends the password). Overrides host/port if set
   hosts: ""
   # -- Redis Sentinel master name
   masterName: ""
+  # -- Password of the Redis Sentinel nodes themselves (when they require AUTH)
+  sentinelPassword: ""
+  # -- Redis ACL username
+  username: ""
   # -- Enable SSL/TLS
   ssl: false
-  # -- Redis password
+  # -- Redis password (must not contain ':' or ';', as Conductor reads it from the host list)
   password: ""
-  # -- Task definition cache refresh interval
+  # -- Task definition cache refresh interval in seconds
   taskDefCacheRefreshInterval: 1
   # -- Workflow namespace prefix
   workflowNamespacePrefix: conductor
   # -- Queue namespace prefix
   queueNamespacePrefix: conductor_queues
-  # -- Non-quorum port used to connect to local Redis (used by Dynomite queues)
-  queuesNonQuorumPort: 22122
   # -- Availability zone/rack for the Redis node
   availabilityZone: us-east-1c
   # -- Maximum idle connections in the pool
@@ -470,9 +505,9 @@ redis:
 
 # -- Redis lock configuration (used when workflowExecutionLock.type is redis)
 redisLock:
-  # -- Redis lock server type (single, cluster, sentinel). Set this when Redis is not a single server
+  # -- Redis lock server type (single, cluster, sentinel; defaults to the type matching db.type)
   serverType: ""
-  # -- Redis Sentinel master name for the lock
+  # -- Redis Sentinel master name for the lock (defaults to redis.masterName)
   serverMasterName: ""
   # -- Redis lock namespace/key prefix
   namespace: ""
@@ -489,6 +524,8 @@ mySql:
   password: ""
   # -- MySQL database name
   database: ""
+  # -- Extra JDBC URL parameters (e.g., sslMode=REQUIRED&serverTimezone=UTC)
+  urlParameters: ""
   # -- MySQL deadlock retry max attempts
   deadlockRetryMax: ""
   # -- Task definition cache refresh interval (e.g., 60s)
@@ -506,6 +543,8 @@ postgres:
   password: ""
   # -- PostgreSQL database name
   database: ""
+  # -- Extra JDBC URL parameters (e.g., sslmode=require), also used for the external payload storage
+  urlParameters: ""
   # -- PostgreSQL schema
   schema: ""
   # -- PostgreSQL deadlock retry max attempts
@@ -532,8 +571,8 @@ postgres:
     conductorUrl: ""
     # -- Table name
     tableName: external.external_payload
-    # -- Max data rows
-    maxDataRows: 9223372036854775807
+    # -- Max data rows (a string, as larger numbers lose precision in YAML)
+    maxDataRows: "9223372036854775807"
     # -- Max data days
     maxDataDays: 0
     # -- Max data months
@@ -543,14 +582,12 @@ postgres:
 
 # -- Cassandra configuration
 cassandra:
-  # -- Cassandra contact points (comma-separated hostnames or IPs)
+  # -- Cassandra contact points (comma-separated hostnames or IPs), rendered as conductor.cassandra.hostAddress
   contactPoints: ""
   # -- Cassandra port
   port: 9042
   # -- Cassandra keyspace
   keyspace: conductor
-  # -- Cassandra local datacenter (recommended when using the DataStax driver)
-  localDatacenter: ""
   # -- Cassandra username
   username: ""
   # -- Cassandra password
@@ -558,6 +595,8 @@ cassandra:
 
 # -- AMQP (RabbitMQ) Event Queues configuration
 amqpEventQueues:
+  # -- Enable the AMQP event queues (for event handlers and EVENT tasks; also enabled by defaultEventQueue.type amqp)
+  enabled: false
   # -- RabbitMQ server host(s)
   hosts: ""
   # -- RabbitMQ username
@@ -592,7 +631,7 @@ amqpEventQueues:
   limit: 50
   # -- Rate limit duration in ms
   duration: 1000
-  # -- Retry type (REGULARINTERVALS, EXPONENTIALBACKOFF)
+  # -- Retry type (REGULARINTERVALS, EXPONENTIALBACKOFF, INCREMENTALINTERVALS)
   retryType: REGULARINTERVALS
   # -- Whether to use exchange (true) or queue (false)
   useExchange: true
@@ -602,12 +641,12 @@ amqpEventQueues:
   durable: false
   # -- Whether queues are exclusive
   exclusive: false
-  # -- Max priority for messages (-1 to disable)
-  maxPriority: -1
 
 # -- NATS Event Queues configuration
 natsEventQueues:
   natsStream:
+    # -- Enable the NATS Streaming event queues (also enabled by defaultEventQueue.type nats_stream)
+    enabled: false
     # -- NATS streaming cluster ID
     clusterID: test-cluster
     # -- NATS streaming durable name
@@ -616,9 +655,24 @@ natsEventQueues:
     url: nats://localhost:4222
     # -- Listener queue prefix
     listenerQueuePrefix: ""
+  jetStream:
+    # -- Enable the NATS JetStream event queues (also enabled by defaultEventQueue.type jsm)
+    enabled: false
+    # -- NATS JetStream URL
+    url: nats://localhost:4222
+    # -- JetStream durable consumer name
+    durableName: defaultQueue
+    # -- JetStream stream storage type (file, memory)
+    streamStorageType: file
+    # -- JetStream stream replicas
+    replicas: 3
+    # -- Listener queue prefix
+    listenerQueuePrefix: ""
 
 # -- Kafka Event Queues configuration
 kafkaEventQueues:
+  # -- Enable the Kafka event queues (also enabled by defaultEventQueue.type kafka)
+  enabled: false
   # -- Kafka bootstrap servers
   bootstrapServers: kafka:29092
   # -- Dead letter queue topic
@@ -634,17 +688,6 @@ kafkaEventQueues:
   # -- Kafka admin client properties
   admin: { }
 
-# -- Zookeeper lock configuration
-zookeeperLock:
-  # -- Zookeeper connection string for workflow execution lock (e.g., zk1:2181,zk2:2181)
-  connectionString: ""
-  # -- Zookeeper lock session timeout in ms
-  sessionTimeoutMs: ""
-  # -- Zookeeper lock connection timeout in ms
-  connectionTimeoutMs: ""
-  # -- Zookeeper namespace/key prefix
-  namespace: ""
-
 # -- Elasticsearch configuration
 elasticsearch:
   # -- Elasticsearch URL
@@ -653,12 +696,10 @@ elasticsearch:
   username: ""
   # -- Elasticsearch password
   password: ""
-  # -- Elasticsearch index name
-  indexName: ""
   # -- Elasticsearch index prefix
   indexPrefix: ""
-  # -- Elasticsearch index replicas count
-  indexReplicasCount: 0
+  # -- Elasticsearch index replicas count (0 has no redundancy; the cluster health stays yellow on a single node otherwise)
+  indexReplicasCount: 1
   # -- Elasticsearch primary shard count per index
   indexShardCount: 5
   # -- Documents per batch in async indexing mode
@@ -669,14 +710,12 @@ elasticsearch:
   asyncMaxPoolSize: 12
   # -- Maximum time an async buffer is held before flushing (e.g., 10s)
   asyncBufferFlushTimeout: 10s
-  # -- Elasticsearch version
+  # -- Elasticsearch version (7 with indexing.type elasticsearch; use indexing.type elasticsearch8 for Elasticsearch 8)
   version: 7
   # -- Elasticsearch cluster health color
   clusterHealthColor: yellow
-  # -- Elasticsearch REST client connection timeout
-  restClientConnectionTimeout: 5000
-  # -- Elasticsearch REST client read timeout
-  restClientReadTimeout: 30000
+  # -- REST client connection request timeout in ms (-1 means unlimited)
+  restClientConnectionRequestTimeout: -1
 
 # -- OpenSearch configuration
 openSearch:
@@ -686,16 +725,12 @@ openSearch:
   username: ""
   # -- OpenSearch password
   password: ""
-  # -- OpenSearch index prefix (preferred). If set, used as `conductor.opensearch.indexPrefix`
+  # -- OpenSearch index prefix
   indexPrefix: ""
-  # -- (Legacy) OpenSearch index name, mapped to indexPrefix when used via legacy elasticsearch namespace
-  indexName: ""
   # -- OpenSearch primary shard count per index
   indexShardCount: 5
-  # -- OpenSearch index replicas count
+  # -- OpenSearch index replicas count (0 has no redundancy)
   indexReplicasCount: 0
-  # -- (Legacy) OpenSearch version value used with `conductor.elasticsearch.version` when indexing.type=opensearch
-  version: 0
   # -- OpenSearch cluster health color
   clusterHealthColor: green
   # -- Whether Conductor automatically manages indices
@@ -712,10 +747,6 @@ openSearch:
   taskLogResultLimit: 10
   # -- REST client connection request timeout in ms (-1 means unlimited)
   restClientConnectionRequestTimeout: -1
-  # -- OpenSearch REST client connection timeout
-  restClientConnectionTimeout: 5000
-  # -- OpenSearch REST client read timeout
-  restClientReadTimeout: 30000
 
 # -- Amazon S3 configuration
 s3:
@@ -725,6 +756,8 @@ s3:
     bucketName: ""
     # -- Signed URL expiration duration in seconds
     signedUrlExpirationDuration: 5
+    # -- AWS region of the bucket
+    region: ""
 
 # -- Azure Blob configuration
 azureBlob:
@@ -764,8 +797,10 @@ statusNotifier:
   endpointWorkflow: ""
   # -- Webhook endpoint for task status
   endpointTask: ""
-  # -- Subscribed task statuses (e.g., SCHEDULED)
+  # -- Subscribed task statuses (comma-separated, e.g., SCHEDULED,COMPLETED)
   subscribedTaskStatuses: ""
+  # -- Subscribed workflow statuses (comma-separated, e.g., COMPLETED,FAILED)
+  subscribedWorkflowStatuses: ""
   # -- Custom header name
   headerPrefer: ""
   # -- Custom header value
@@ -787,7 +822,8 @@ statusNotifier:
 
 # -- AI configuration
 ai:
-  enabled: true
+  # -- Enable the AI integrations (LLM tasks, MCP, agents)
+  enabled: false
   # -- Outbound access for external MCP servers and Conductor-Agents OpenAPI discovery (default-deny)
   outbound:
     # -- Exact origins allowed for outbound access (comma-separated, e.g., https://tools.example.com)
@@ -852,22 +888,28 @@ ai:
     secretKey: ""
     # -- AWS Bedrock bearer token
     bearerToken: ""
-    # -- AWS region
-    region: us-east-1
+    # -- AWS region (defaults to the AWS_REGION environment variable, or us-east-1)
+    region: ""
   # -- Google Gemini configuration
   gemini:
     # -- Google Gemini API key
     apiKey: ""
     # -- Google Cloud project ID
     projectID: ""
-    # -- Google Cloud location
-    location: us-central1
-    # -- Path to Google application credentials inside the container
+    # -- Google Cloud location (defaults to the GOOGLE_CLOUD_LOCATION environment variable, or us-central1)
+    location: ""
+    # -- Path to Google application credentials inside the container (e.g., mounted via extraVolumes)
     applicationCredentials: ""
+    # -- Secret with the Google application credentials (a service account key), mounted for GOOGLE_APPLICATION_CREDENTIALS
+    credentialsSecret:
+      # -- Name of the Secret (takes precedence over applicationCredentials)
+      name: ""
+      # -- Key in the Secret that holds the credentials JSON (defaults to 'credentials.json')
+      key: ""
   # -- Ollama configuration
   ollama:
-    # -- Ollama base URL
-    baseUrl: http://localhost:11434
+    # -- Ollama base URL (defaults to the OLLAMA_BASE_URL or OLLAMA_HOST environment variable, or http://localhost:11434)
+    baseUrl: ""
 
 # -- Document access policy configuration
 documentAccessPolicy:
@@ -884,23 +926,24 @@ documentAccessPolicy:
 
 # -- Metrics configuration
 metrics:
+  # -- Add the prometheus.io pod annotations for scraping /actuator/prometheus (requires prometheus in
+  # management.endpointsWebExposureInclude)
+  enabled: false
   # -- Enable metrics logging
   loggerEnabled: false
-  # -- Metrics logging a report period in seconds
-  loggerReportPeriodSeconds: 1
-  # -- Enable Prometheus metrics
-  prometheusEnabled: true
 
 # -- Management configuration
 management:
-  # -- Enable Redis health check
-  healthRedisEnabled: true
-  # -- Actuator endpoints to expose (comma-separated)
-  endpointsWebExposureInclude: health,info,metrics,prometheus
+  # -- Enable Spring Boot's Redis health indicator (it checks spring.data.redis, not Conductor's Redis connection)
+  healthRedisEnabled: false
+  # -- Enable Spring Boot's Elasticsearch health indicator (it checks spring.elasticsearch, not Conductor's connection)
+  healthElasticsearchEnabled: false
+  # -- Actuator endpoints to expose (comma-separated; the image's nginx also serves them under /actuator on the UI port)
+  endpointsWebExposureInclude: health,info,prometheus
   # -- Request metrics percentiles (comma-separated)
   metricsPercentiles: 0.50,0.75,0.90,0.95,0.99
-  # -- Health endpoint detail level (never, when_authorized, always)
-  healthShowDetails: always
+  # -- Health endpoint detail level (never, when_authorized, always; always exposes backend details to anyone)
+  healthShowDetails: when_authorized
   # -- Metrics export backends
   metricsExport:
     # -- Enable Atlas metrics export
@@ -921,7 +964,7 @@ management:
     stackdriverProjectID: ""
     # -- Enable Datadog metrics export
     datadog: false
-    # -- Datadog API Key
+    # -- Datadog API Key (stored in the Secret)
     datadogApiKey: ""
     # -- Enable StatsD metrics export
     statsD: false
@@ -931,7 +974,7 @@ management:
     cloudWatchNamespace: conductor
     # -- Enable Azure Monitor metrics export
     azureMonitor: false
-    # -- Azure Monitor Instrumentation Key
+    # -- Azure Monitor Instrumentation Key (stored in the Secret)
     azureMonitorInstrumentationKey: ""
     # -- Enable JMX metrics export
     jmx: false
@@ -939,40 +982,7 @@ management:
 # -- GRPC Server configuration
 grpcServer:
   # -- Enable GRPC server (listen port is `container.ports.grpc`)
-  enabled: true
-
-# -- CORS configuration
-cors:
-  # -- Allowed origins for CORS (comma-separated, or * for all)
-  allowedOrigins: "*"
-
-# -- Security configuration (IAM/Auth)
-security:
-  # -- Enable security
   enabled: false
-  auth:
-    oidc:
-      # -- Enable OIDC authentication
-      enabled: false
-      # -- OIDC Discovery URI
-      discoveryUri: ""
-      # -- OIDC Client ID
-      clientID: ""
-      # -- OIDC Client Secret (can be provided via secret)
-      clientSecret: ""
-      # -- OIDC Audience
-      audience: ""
-      # -- OIDC Groups Claim
-      groupsClaim: groups
-    basic:
-      # -- Enable Basic authentication
-      enabled: false
-      # -- Basic Auth Realm
-      realm: ""
-      # -- Basic Auth Principal
-      principal: ""
-      # -- Basic Auth Role
-      role: ""
 
 # -- Spring configuration
 spring:
@@ -980,8 +990,8 @@ spring:
   applicationName: conductor
   # -- Allow Spring bean definition overriding
   allowBeanDefinitionOverriding: true
-  # -- Profiles passed via SPRING_PROFILES_ACTIVE
-  profilesActive: logrotate
+  # -- Profiles passed via SPRING_PROFILES_ACTIVE (the image has none of its own; Conductor logs to the console)
+  profilesActive: ""
   # -- Path to the API docs endpoint
   apiDocsPath: /api-docs
 
@@ -993,9 +1003,11 @@ logging:
 
 # -- Secrets
 secrets:
-  # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
+  # -- When true (default), the chart creates its own Secret from values when no existingSecret is specified (when false,
+  # create a Secret named like the release fullname with the same keys)
   manageSecret: true
-  # -- Use an existing Secret for all credential keys instead of a chart-managed Secret
+  # -- Use an existing Secret for all credential keys instead of a chart-managed Secret (the Redis, MySQL and PostgreSQL
+  # passwords are required keys when used; the others are optional)
   existingSecret:
     # -- Name of the existing Secret containing the credentials
     name: ""
@@ -1003,6 +1015,8 @@ secrets:
     keys:
       # -- Key name for Redis password (defaults to 'redis-password')
       redisPassword: ""
+      # -- Key name for Redis Sentinel password (defaults to 'redis-sentinel-password')
+      redisSentinelPassword: ""
       # -- Key name for Elasticsearch password (defaults to 'elasticsearch-password')
       elasticsearchPassword: ""
       # -- Key name for MySQL password (defaults to 'my-sql-password')
@@ -1047,9 +1061,16 @@ secrets:
       aiBedrockBearerToken: ""
       # -- Key name for Gemini API key (defaults to 'ai-gemini-api-key')
       aiGeminiApiKey: ""
-      # -- OIDC client secret (defaults to 'auth-oidc-client-secret')
-      authOidcClientSecret: ""
+      # -- Key name for Datadog API key (defaults to 'datadog-api-key')
+      datadogApiKey: ""
+      # -- Key name for Azure Monitor instrumentation key (defaults to 'azure-monitor-instrumentation-key')
+      azureMonitorInstrumentationKey: ""
 
-# -- Environment variables
+# -- Extra Conductor/Spring properties (e.g., conductor.app.foo: bar), added to (and overriding) the chart's properties (an
+# empty value removes the property)
+extraProperties: { }
+
+# -- Environment variables (EXTRA_JVM_OPTS is appended to JAVA_OPTS; the names must be valid shell identifiers, as the
+# image starts Java from a shell, so set the Conductor/Spring properties via extraProperties, which take precedence)
 env:
   EXTRA_JVM_OPTS: ""

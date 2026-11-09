@@ -3,3 +3,48 @@ CHART VERSION: {{ .Chart.Version }}
 APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
+
+{{- $service := printf "%s.%s.svc" (include "conductor-oss-conductor.fullname" .) .Release.Namespace }}
+
+REST API: http://{{ $service }}:{{ .Values.service.ports.rest }}/api
+UI:       http://{{ $service }}:{{ .Values.service.ports.ui }}
+{{- if .Values.grpcServer.enabled }}
+gRPC:     {{ $service }}:{{ .Values.service.ports.grpc }}
+{{- end }}
+{{- if .Values.ingress.create }}
+{{- range .Values.ingress.hosts }}
+Ingress:  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+
+To access the UI locally:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "conductor-oss-conductor.fullname" . }} {{ .Values.service.ports.ui }}:{{ .Values.service.ports.ui }}
+{{- end }}
+
+The Conductor properties are in the ConfigMap {{ include "conductor-oss-conductor.fullname" . }} (key conductor.properties).
+
+WARNING: Conductor OSS has no authentication: anyone reaching the API, UI or gRPC ports can manage the workflows.
+Restrict access with networkPolicy.create (and an authenticating proxy in front of the Ingress, if any).
+{{- if and .Values.indexing.enabled (has .Values.indexing.type (list "elasticsearch8" "opensearch2" "opensearch3")) }}
+
+WARNING: indexing.type {{ .Values.indexing.type }} requires an image built with the matching INDEXING_BACKEND build argument
+(conductoross/conductor only includes Elasticsearch 7).
+{{- end }}
+{{- $maxReplicas := ternary .Values.autoscaling.maxReplicas .Values.replicaCount .Values.autoscaling.create }}
+{{- if eq .Values.db.type "sqlite" }}
+
+WARNING: db.type {{ .Values.db.type }} keeps the data in the pod, so it is lost on restart{{ if gt (int $maxReplicas) 1 }} (and each replica has its own){{ end }}.
+{{- end }}
+{{- if and (gt (int $maxReplicas) 1) (not .Values.externalPayloadStorage.type) }}
+
+WARNING: without externalPayloadStorage.type, the payloads beyond the app.*PayloadSizeThreshold values are stored in the
+pod, so the other replicas cannot read them (and they are lost on restart).
+{{- end }}
+{{- if and (gt (int $maxReplicas) 1) (has .Values.workflowExecutionLock.type (list "local_only" "noop_lock")) }}
+
+WARNING: workflowExecutionLock.type {{ .Values.workflowExecutionLock.type }} does not lock across replicas.
+{{- end }}
+{{- if and .Values.networkPolicy.create (not .Values.networkPolicy.ingress) }}
+
+WARNING: networkPolicy.ingress is empty, so no client {{- if .Values.networkPolicy.allowTests }} (but the chart's test pods){{ else }} (including `helm test`){{ end }} can reach Conductor.
+{{- end }}

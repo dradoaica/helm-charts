@@ -65,6 +65,23 @@ Pod labels
 {{- end -}}
 
 {{/*
+Test pod labels (without the selector labels, so that the Service, PDB and NetworkPolicy do not select the test pods)
+*/}}
+{{- define "ignite.testLabels" -}}
+helm.sh/chart: {{ include "ignite.chart" . }}
+app.kubernetes.io/name: {{ include "ignite.name" . }}-test
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: test
+{{- if .Values.labels }}
+{{ include "common.tplvalues.render" (dict "value" .Values.labels "context" $) }}
+{{- end }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
 Common annotations
 */}}
 {{- define "ignite.annotations" -}}
@@ -128,11 +145,11 @@ ServiceAccount annotations
 */}}
 {{- define "ignite.serviceAccountAnnotations" -}}
 {{- $annotations := dict -}}
-{{- with (include "ignite.annotations" .) }}
-    {{- $annotations = merge $annotations (. | fromYaml) -}}
-{{- end }}
 {{- if .Values.serviceAccount.annotations }}
     {{- $annotations = merge $annotations (include "common.tplvalues.render" (dict "value" .Values.serviceAccount.annotations "context" $) | fromYaml) -}}
+{{- end }}
+{{- with (include "ignite.annotations" .) }}
+    {{- $annotations = merge $annotations (. | fromYaml) -}}
 {{- end }}
 {{- if gt (len $annotations) 0 }}
     {{- $annotations | toYaml -}}

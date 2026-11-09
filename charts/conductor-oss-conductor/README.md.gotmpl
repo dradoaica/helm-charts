@@ -1,0 +1,91 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Configuration
+
+The chart renders the Conductor properties into a ConfigMap (key `conductor.properties`), which Conductor loads at
+startup (`CONDUCTOR_CONFIG_FILE`) as system properties; the credentials come from a Secret, through `${...}` placeholders
+resolved from environment variables. Set any other property via `extraProperties` (flat names, e.g.,
+`conductor.app.ownerEmailMandatory: true`). The chart requires the hosts of the configured backends (e.g., `redis.host`
+and `elasticsearch.url` with the defaults) and fails with a message when one is missing or a type is not supported.
+
+The `conductoross/conductor` image includes a single indexing backend, Elasticsearch 7: `indexing.type` elasticsearch8,
+opensearch2 and opensearch3 require an image built with the matching `INDEXING_BACKEND` build argument (see the Conductor
+`docker/server/Dockerfile`).
+
+Conductor OSS has no authentication: restrict access to the API, UI and gRPC ports (e.g., with `networkPolicy.create`
+and an authenticating proxy in front of the Ingress).
+
+## Upgrading to 3.33.2
+
+Chart 3.33.1 and earlier passed the configuration as environment variables named like the properties (e.g.,
+`conductor.db.type`), which the image's shell (dash) drops before starting Java: Conductor ran with its built-in
+defaults (SQLite in the pod) whatever the values. From 3.33.2, the configuration is applied, so check the values
+against your backends before upgrading. Upgrade with `--reset-then-reuse-values` (not `--reuse-values`, which keeps
+the 3.33.1 defaults and misses the new settings; the chart then fails with a message):
+
+```shell
+helm upgrade <release> <chart> --version 3.33.2 --reset-then-reuse-values
+```
+
+Also:
+
+- The JVM options are passed as `JAVA_OPTS` (`memory.*` and `env.EXTRA_JVM_OPTS` now apply); the default heap is
+  1536 MB and the memory request equals the limit (3Gi).
+- The pods run with a read-only root filesystem (writable `emptyDir` volumes for `/tmp`, `/app/logs` and nginx), which
+  also lets nginx serve the UI as a non-root user.
+- The image runs Java under a shell that does not forward SIGTERM, so the pods used to be killed at the end of the
+  termination grace period: a default `preStop` hook (`lifecycleHooks`) now signals Java, which shuts down gracefully
+  (`gracefulShutdownTimeout`). An init container also discards `/app/logs/server.log`, a copy of the console output
+  that the image's startup script appends to without rotation.
+- `spring.profilesActive` defaults to empty (the `logrotate` profile does not exist in the image), and
+  `management.endpointsWebExposureInclude` to Conductor's `health,info,prometheus` (the image's nginx also serves them
+  under `/actuator` on the UI port).
+- The event queues have their own switches (`amqpEventQueues.enabled`, `natsEventQueues.natsStream.enabled`,
+  `natsEventQueues.jetStream.enabled`, `kafkaEventQueues.enabled`), so several systems can be used at once;
+  `defaultEventQueue` still enables the queues of its type.
+- With `networkPolicy.create`, the NetworkPolicy allows the chart's test pods (`allowTests`) and the egress to the
+  ports of the configured backends (`allowBackends`).
+- The pods prefer different nodes (`topologySpreadConstraints`).
+- New settings: `redis.sentinelPassword`, and `postgres.urlParameters` / `mySql.urlParameters` (e.g., `sslmode=require`).
+- Changed defaults: `grpcServer.enabled` (false, as the gRPC server never started with 3.33.1), the payload size
+  thresholds and maximums of `app` (Conductor's, i.e., 3-5 MB and 10 MB instead of 1 MB and 4 GB; without
+  `externalPayloadStorage.type`, the payloads beyond the thresholds are stored in the pod), `ai.enabled` (false), `management.healthShowDetails` (when_authorized), `management.healthRedisEnabled`
+  (false, as Spring Boot's indicator checks localhost), `podDisruptionBudget` (`maxUnavailable: 1`, only with more than
+  one replica), `autoscaling.targetMemoryUtilizationPercentage` (disabled); the pods no longer mount the ServiceAccount token nor
+  get the Service environment variables.
+- Removed values that Conductor OSS does not read: `cors`, `security`, `zookeeperLock`, `queues.dynomiteThreads`,
+  `app.enableRemoveRedisKey`, `app.ttlRedisKeyExpire`, `redis.queuesNonQuorumPort`, `cassandra.localDatacenter`,
+  `elasticsearch.indexName`, `openSearch.indexName` and `openSearch.version`, the `restClientConnectionTimeout` and
+  `restClientReadTimeout` of `elasticsearch` and `openSearch`, `amqpEventQueues.maxPriority` (a per-queue URI parameter),
+  `metrics.loggerReportPeriodSeconds` and `metrics.prometheusEnabled` (`metrics.enabled` now adds the prometheus.io pod
+  annotations).
+- No longer supported types: `db.type` memory (it does not start with Conductor 3.33; use sqlite) and `indexing.type`
+  opensearch (Conductor fails at startup; use opensearch2 or opensearch3).
+- `workflowArchival` configures the archive workflow status listener (`type` DEFAULT or S3, `ttl`, `delaySeconds`,
+  `unsuccessfulOnly`, S3 bucket), combined with `statusListener.workflowType` when both are set; `workflowArchival.delay`
+  is replaced by `delaySeconds`.
+- The AI API keys (but Bedrock's) are passed as the environment variables read by Conductor (e.g., `OPENAI_API_KEY`), and
+  `ai.bedrock.region`, `ai.gemini.location` and `ai.ollama.baseUrl` default to Conductor's own defaults (which read
+  `AWS_REGION`, `GOOGLE_CLOUD_LOCATION` and `OLLAMA_BASE_URL`/`OLLAMA_HOST`).
+- `elasticsearch.indexReplicasCount` defaults to 1 (Conductor's default), and `podDisruptionBudget.minAvailable`, when set,
+  takes precedence over `maxUnavailable`.
+- `externalPayloadStorage.type` is `azureblob` (`azure_blob` still works), and empty instead of `null` for none.
+- With `secrets.existingSecret`, the optional credentials (all but the Redis, MySQL and PostgreSQL passwords) are
+  referenced as optional keys, so they no longer need to be set in the values too.
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
