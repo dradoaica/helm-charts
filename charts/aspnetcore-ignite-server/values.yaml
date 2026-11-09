@@ -459,8 +459,8 @@ ssl:
     clientCertificatePath: ""
     # -- Password of the client certificate
     clientCertificatePassword: ""
-  # -- Restart the node gracefully when the key/trust stores change (the container restarts when the node cannot stop
-  # within env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS)
+  # -- Restart the node gracefully when the key/trust stores change (the last server node deactivates the cluster
+  # first; the container restarts when the node cannot stop within env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS)
   restartOnFileChange: true
   # -- A Secret with the key store, trust store and client certificate (e.g., from cert-manager), mounted at /certs
   storesSecret:
@@ -470,7 +470,8 @@ ssl:
     keyStoreKey: keystore.p12
     # -- Key of the trust store in the Secret
     trustStoreKey: truststore.p12
-    # -- Key of the client certificate in the Secret
+    # -- Key of the client certificate (PKCS12) in the Secret, required with ssl.clientConnector.clientAuth (e.g.,
+    # keystore.p12)
     clientCertificateKey: ""
   # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
   manageSecret: true

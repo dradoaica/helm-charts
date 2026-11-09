@@ -170,9 +170,9 @@ Kubernetes: `>= 1.26.0`
 | ssl.keyStoreType | string | `"JKS"` | Key store type |
 | ssl.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | ssl.protocol | string | `"TLS"` | Protocol |
-| ssl.restartOnFileChange | bool | `true` | Restart the node gracefully when the key/trust stores change (the container restarts when the node cannot stop within env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS) |
+| ssl.restartOnFileChange | bool | `true` | Restart the node gracefully when the key/trust stores change (the last server node deactivates the cluster first; the container restarts when the node cannot stop within env.GRACEFUL_STOP_TIMEOUT_IN_SECONDS) |
 | ssl.storesSecret | object | `{"clientCertificateKey":"","keyStoreKey":"keystore.p12","name":"","trustStoreKey":"truststore.p12"}` | A Secret with the key store, trust store and client certificate (e.g., from cert-manager), mounted at /certs |
-| ssl.storesSecret.clientCertificateKey | string | `""` | Key of the client certificate in the Secret |
+| ssl.storesSecret.clientCertificateKey | string | `""` | Key of the client certificate (PKCS12) in the Secret, required with ssl.clientConnector.clientAuth (e.g., keystore.p12) |
 | ssl.storesSecret.keyStoreKey | string | `"keystore.p12"` | Key of the key store in the Secret |
 | ssl.storesSecret.name | string | `""` | Name of the Secret |
 | ssl.storesSecret.trustStoreKey | string | `"truststore.p12"` | Key of the trust store in the Secret |

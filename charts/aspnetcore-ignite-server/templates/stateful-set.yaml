@@ -1,3 +1,10 @@
+{{- /* The server refuses to start without the client certificate of its own loopback client (password change) */}}
+{{- $fromStoresSecret := not (empty .Values.ssl.storesSecret.name) }}
+{{- with .Values.ssl.clientConnector }}
+{{- if and .enabled .clientAuth (not (ternary $.Values.ssl.storesSecret.clientCertificateKey .clientCertificatePath $fromStoresSecret)) }}
+{{- fail (printf "ssl.clientConnector.clientAuth requires the client certificate (PKCS12) of the server's own client: set %s, or ssl.clientConnector.clientAuth=false" (ternary "ssl.storesSecret.clientCertificateKey (e.g., keystore.p12)" "ssl.clientConnector.clientCertificatePath" $fromStoresSecret)) }}
+{{- end }}
+{{- end }}
 {{- /* Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so
   replacing the running pods one by one would start a second cluster beside the first */}}
 {{- $statefulSet := lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-cluster" (include "aspnetcore-ignite-server.fullname" .)) }}
