@@ -1,6 +1,38 @@
 apiVersion: v1
 entries:
   aspnetcore-ignite-server:
+  - annotations:
+      ignite.apache.org/version: 2.18.0
+    apiVersion: v2
+    appVersion: 2.19.0
+    created: "2026-11-09T21:50:13.696642103Z"
+    description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery
+      clustering capabilities.
+    digest: 330bbe10b3052631338f6e768971397459218d7ff3a9e644bdfafd129ababb09
+    home: https://github.com/dradoaica/AspNetCore.Ignite/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - ignite
+    - csharp
+    - dotnet
+    - aspnetcore
+    - datagrid
+    - caching
+    - distributed
+    - key-value
+    - nosql
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: aspnetcore-ignite-server
+    sources:
+    - https://github.com/dradoaica/AspNetCore.Ignite/
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/aspnetcore-ignite-server-2.19.0/aspnetcore-ignite-server-2.19.0.tgz
+    version: 2.19.0
   - apiVersion: v2
     appVersion: 2.18.0
     created: "2026-10-21T18:07:01.376471121Z"
@@ -1100,4 +1132,4 @@ entries:
     urls:
     - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.0/ignite-3-3.1.0.tgz
     version: 3.1.0
-generated: "2026-11-09T21:27:51.913415271Z"
+generated: "2026-11-09T21:50:13.696747991Z"
