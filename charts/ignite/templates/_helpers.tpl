@@ -82,6 +82,16 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{/*
+Activation job pod labels (without the selector labels, so that the Services do not route clients to the job pod and
+the Kubernetes IP finder does not take it for a node)
+*/}}
+{{- define "ignite.activationJobLabels" -}}
+app.kubernetes.io/name: {{ include "ignite.name" . }}-activate
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: cluster-activate
+{{- end -}}
+
+{{/*
 Common annotations
 */}}
 {{- define "ignite.annotations" -}}

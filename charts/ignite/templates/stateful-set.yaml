@@ -102,7 +102,9 @@ spec:
                 -XX:+UseContainerSupport
                 -XX:+AlwaysPreTouch
                 -XX:+UseG1GC
-                -XX:G1HeapRegionSize={{ default 1 .Values.memory.g1HeapRegionSizeMB }}M
+                {{- with .Values.memory.g1HeapRegionSizeMB }}
+                -XX:G1HeapRegionSize={{ . }}M
+                {{- end }}
                 -XX:MaxGCPauseMillis=200
                 -XX:+ExplicitGCInvokesConcurrent
                 -XX:+UseStringDeduplication

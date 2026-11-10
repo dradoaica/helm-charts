@@ -19,8 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "ignite.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: cluster-init
+        {{- include "ignite.initializationJobLabels" . | nindent 8 }}
       {{- with (include "ignite.podAnnotations" .) }}
       annotations:
         {{- . | nindent 8 }}

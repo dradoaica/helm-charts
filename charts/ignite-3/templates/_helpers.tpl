@@ -82,6 +82,29 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{/*
+Initialization job pod labels (without the selector labels, so that the Services do not route clients to the job pod and
+the nodes do not take it for one of theirs, the headless Service listing it)
+*/}}
+{{- define "ignite.initializationJobLabels" -}}
+app.kubernetes.io/name: {{ include "ignite.name" . }}-init
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: cluster-init
+{{- end -}}
+
+{{/*
+The G1 region size in MB: memory.g1HeapRegionSizeMB, or what the JVM would choose (about 2048 regions, a power of 2
+from 1 to 32), since the image always passes -XX:G1HeapRegionSize (32 MB by default, too coarse for small heaps)
+*/}}
+{{- define "ignite.g1HeapRegionSizeMB" -}}
+{{- $regionMB := 1 -}}
+{{- $perRegion := div (int (default 1024 .Values.memory.onHeapMB)) 2048 -}}
+{{- range list 2 4 8 16 32 -}}
+{{- if ge $perRegion . }}{{ $regionMB = . }}{{ end -}}
+{{- end -}}
+{{- default $regionMB .Values.memory.g1HeapRegionSizeMB -}}
+{{- end -}}
+
+{{/*
 Common annotations
 */}}
 {{- define "ignite.annotations" -}}

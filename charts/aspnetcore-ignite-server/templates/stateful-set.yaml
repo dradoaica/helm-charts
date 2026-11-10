@@ -5,6 +5,11 @@
 {{- fail (printf "ssl.clientConnector.clientAuth requires the client certificate (PKCS12) of the server's own client: set %s, or ssl.clientConnector.clientAuth=false" (ternary "ssl.storesSecret.clientCertificateKey (e.g., keystore.p12)" "ssl.clientConnector.clientCertificatePath" $fromStoresSecret)) }}
 {{- end }}
 {{- end }}
+{{- /* Kubernetes kills a pod still stopping after its grace period: the node would not stop cleanly */}}
+{{- $shutdownTimeout := int (default 30 .Values.env.SHUTDOWN_TIMEOUT_IN_SECONDS) }}
+{{- if le (int .Values.terminationGracePeriodSeconds) $shutdownTimeout }}
+{{- fail (printf "terminationGracePeriodSeconds (%d) must be above env.SHUTDOWN_TIMEOUT_IN_SECONDS (%d), the time the server may take to stop" (int .Values.terminationGracePeriodSeconds) $shutdownTimeout) }}
+{{- end }}
 {{- /* Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so
   replacing the running pods one by one would start a second cluster beside the first */}}
 {{- $statefulSet := lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-cluster" (include "aspnetcore-ignite-server.fullname" .)) }}

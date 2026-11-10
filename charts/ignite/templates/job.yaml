@@ -19,8 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "ignite.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: cluster-activate
+        {{- include "ignite.activationJobLabels" . | nindent 8 }}
       {{- with (include "ignite.podAnnotations" .) }}
       annotations:
         {{- . | nindent 8 }}
@@ -69,11 +68,12 @@ spec:
               NEW_PASSWORD="${IGNITE_USER_PASSWORD:-}"
               PREVIOUS_PASSWORD="${IGNITE_USER_PREVIOUS_PASSWORD:-}"
 
-              # Calls the Ignite REST API with URL-encoded credentials (usage: ignite_rest <password> --data-urlencode <param=value>...)
+              # Calls the Ignite REST API with URL-encoded credentials (usage: ignite_rest <password> --data-urlencode <param=value>...);
+              # POSTed as a form, so that the passwords are not in the URL (e.g., in access logs)
               ignite_rest() {
                 REST_PASSWORD="$1"
                 shift
-                curl -sS -G "http://$CLUSTER_HOST/ignite" "$@" \
+                curl -sS "http://$CLUSTER_HOST/ignite" "$@" \
                   --data-urlencode "ignite.login=$DEFAULT_USER" \
                   --data-urlencode "ignite.password=$REST_PASSWORD" 2>&1
               }

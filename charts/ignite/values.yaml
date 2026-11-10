@@ -336,7 +336,8 @@ memory:
   maxMetaspaceSizeMB: ""
   # -- JVM ReservedCodeCache size in MB. If not set, defaults to 240
   reservedCodeCacheSizeMB: ""
-  # -- JVM G1 Heap region size in MB. If not set, defaults to 1
+  # -- JVM G1 Heap region size in MB (a power of 2 from 1 to 32). If not set, the JVM chooses (about 2048 regions; 1 MB
+  # for the default heap)
   g1HeapRegionSizeMB: ""
   # -- Off-heap memory limit in MB. Configures the default data region max size (data + indexes)
   offHeapMB: 2048

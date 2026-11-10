@@ -101,7 +101,7 @@ spec:
             - name: JVM_GC
               value: "G1GC"
             - name: JVM_G1HeapRegionSize
-              value: "{{ default 1 .Values.memory.g1HeapRegionSizeMB }}M"
+              value: "{{ include "ignite.g1HeapRegionSizeMB" . }}M"
             # Must be specified to ensure that Ignite 3 cluster replicas are visible to each other.
             - name: IGNITE_NODE_NAME
               valueFrom:

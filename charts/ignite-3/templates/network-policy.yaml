@@ -13,7 +13,7 @@ metadata:
 spec:
   egress:
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job)
+    # Allow traffic between the pods of this release (e.g., node-to-node communication)
     - to:
         - podSelector:
             matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}
@@ -31,7 +31,14 @@ spec:
               app.kubernetes.io/instance: {{ .Release.Name }}
     {{- end }}
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release (e.g., node-to-node communication, init/activation job)
+    # Allow traffic from the initialization job, which calls the REST API
+    - from:
+        - podSelector:
+            matchLabels: {{- include "ignite.initializationJobLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.container.ports.management }}
+          protocol: TCP
+    # Allow traffic between the pods of this release (e.g., node-to-node communication)
     - from:
         - podSelector:
             matchLabels: {{- include "ignite.selectorLabels" . | nindent 14 }}
