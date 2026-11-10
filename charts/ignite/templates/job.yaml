@@ -28,6 +28,10 @@ spec:
       terminationGracePeriodSeconds: 120
       serviceAccountName: {{ include "ignite.serviceAccountName" . }}
       automountServiceAccountToken: false
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        {{- toYaml (omit .Values.podSecurityContext "enabled") | nindent 8 }}
+      {{- end }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -39,6 +43,11 @@ spec:
         - name: cluster-activate
           image: {{ include "ignite.activationJob.image" . }}
           imagePullPolicy: {{ .Values.activationJob.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- /* curl writes nothing */}}
+            {{- toYaml (merge (dict "readOnlyRootFilesystem" true) (omit .Values.containerSecurityContext "enabled")) | nindent 12 }}
+          {{- end }}
           command:
             - /bin/sh
           args:
@@ -92,7 +101,7 @@ spec:
                   [ -n "$PASSWORD" ] || continue
                   echo "[INFO] Checking if the Ignite cluster is reachable with the $CANDIDATE password..."
                   STATE_RESPONSE=$(ignite_rest "$PASSWORD" --data-urlencode "cmd=state")
-                  if [ $? -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0'; then
+                  if [ $? -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus":0[,}]'; then
                     echo "[INFO] Authenticated successfully with the $CANDIDATE password"
                     CURRENT_PASSWORD=$PASSWORD
                     [ "$CANDIDATE" = new ] && PASSWORD_ALREADY_CHANGED=true
@@ -108,14 +117,14 @@ spec:
               echo "[INFO] Checking the Ignite cluster state..."
               STATE_RESPONSE=$(ignite_rest "$CURRENT_PASSWORD" --data-urlencode "cmd=state")
               EXIT_CODE=$?
-              if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
+              if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus":0[,}]' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
                 # The password may still have to change (e.g., a rotation)
                 echo "[INFO] The Ignite cluster is already ACTIVE"
               else
                 echo "[INFO] The Ignite cluster is not active. Activating..."
                 ACTIVATION_RES=$(ignite_rest "$CURRENT_PASSWORD" --data-urlencode "cmd=setstate" --data-urlencode "state=ACTIVE")
                 EXIT_CODE=$?
-                if [ $EXIT_CODE -ne 0 ] || ! echo "$ACTIVATION_RES" | grep -q '"successStatus".*0'; then
+                if [ $EXIT_CODE -ne 0 ] || ! echo "$ACTIVATION_RES" | grep -q '"successStatus":0[,}]'; then
                   echo "[ERROR] Failed to activate the Ignite cluster (exit code $EXIT_CODE): $ACTIVATION_RES"
                   exit 1
                 fi
@@ -128,7 +137,7 @@ spec:
               for i in $(seq 1 $MAX_RETRIES); do
                 STATE_RESPONSE=$(ignite_rest "$CURRENT_PASSWORD" --data-urlencode "cmd=state")
                 EXIT_CODE=$?
-                if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus".*0' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
+                if [ $EXIT_CODE -eq 0 ] && echo "$STATE_RESPONSE" | grep -q '"successStatus":0[,}]' && echo "$STATE_RESPONSE" | grep -q '"response".*"ACTIVE'; then
                   echo "[INFO] The Ignite cluster is now ACTIVE!"
 
                   if [ -n "$NEW_PASSWORD" ]; then
@@ -138,7 +147,7 @@ spec:
                       echo "[INFO] Creating the temporary cache '$TMP_CACHE'..."
                       CACHE_CREATE_RES=$(ignite_rest "$CURRENT_PASSWORD" --data-urlencode "cmd=getorcreate" --data-urlencode "cacheName=$TMP_CACHE")
                       EXIT_CODE=$?
-                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_CREATE_RES" | grep -q '"successStatus".*0'; then
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_CREATE_RES" | grep -q '"successStatus":0[,}]'; then
                         echo "[ERROR] Failed to create the temporary cache '$TMP_CACHE': $CACHE_CREATE_RES"
                         exit 1
                       fi
@@ -152,7 +161,7 @@ spec:
                         --data-urlencode "cacheName=$TMP_CACHE" \
                         --data-urlencode "qry=ALTER USER \"$DEFAULT_USER\" WITH PASSWORD '$SQL_PASSWORD';")
                       EXIT_CODE=$?
-                      if [ $EXIT_CODE -ne 0 ] || ! echo "$ALTER_USER_RES" | grep -q '"successStatus".*0'; then
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$ALTER_USER_RES" | grep -q '"successStatus":0[,}]'; then
                         echo "[ERROR] Failed to execute ALTER USER command: $ALTER_USER_RES"
                         exit 1
                       fi
@@ -160,7 +169,7 @@ spec:
                       echo "[INFO] Destroying the temporary cache '$TMP_CACHE'..."
                       CACHE_DEST_RES=$(ignite_rest "$NEW_PASSWORD" --data-urlencode "cmd=destcache" --data-urlencode "cacheName=$TMP_CACHE")
                       EXIT_CODE=$?
-                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_DEST_RES" | grep -q '"successStatus".*0'; then
+                      if [ $EXIT_CODE -ne 0 ] || ! echo "$CACHE_DEST_RES" | grep -q '"successStatus":0[,}]'; then
                         echo "[ERROR] Failed to destroy the temporary cache '$TMP_CACHE': $CACHE_DEST_RES"
                         exit 1
                       fi

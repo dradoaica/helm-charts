@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.7](https://img.shields.io/badge/Version-3.2.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.8](https://img.shields.io/badge/Version-3.2.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -20,6 +20,47 @@ Apache Ignite is a distributed database for high-performance computing with in-m
 
 Kubernetes: `>= 1.26.0`
 
+## Configuration
+
+The chart renders the node configuration (HOCON) into a ConfigMap; `extraConfiguration` is merged into it, e.g.:
+
+```yaml
+extraConfiguration: |
+  ignite.sql.execution.threadCount=8
+  ignite.raft.fsync=true
+```
+
+The initialization job (a post-install and post-upgrade hook) initializes the cluster with the `ignite` user and
+`authentication.igniteUserPassword`, and on later upgrades changes that password when it differs (with
+`cluster config update`, without restarting the nodes). It authenticates with the new, the previous
+(`authentication.igniteUserPreviousPassword`) or the default password, so set the previous one when the current password
+is neither of the others.
+
+The SSL key store and trust store passwords are rendered into the ConfigMap, as Ignite 3 does not substitute environment
+variables in its node configuration (see SECURITY.md).
+
+## Upgrading from 3.2.7
+
+Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the 3.2.7 defaults, e.g., `rbac.create` and the
+writable root filesystem, and misses the new settings, e.g., `jmx.agent.sha256`):
+
+```shell
+helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
+```
+
+- Changing `authentication.igniteUserPassword` (or the existing Secret) now changes the password of the `ignite` user;
+  it used to make the initialization job fail.
+- `rbac.create` defaults to false and the pods no longer mount the ServiceAccount token: Ignite 3 does not use the
+  Kubernetes API (the nodes find each other through the headless Service).
+- The default storage profile only has the keys of its engine (`dataStorage.engine`: aipersist, aimem or rocksdb), so
+  aimem and rocksdb now work.
+- `jmx.agent.url` and `jmx.agent.sha256`: the pods verify the downloaded JMX agent, and add the prometheus.io annotations
+  with `jmx.enabled`.
+- The containers run with a read-only root filesystem (writable `emptyDir` volumes for `/tmp`, the CLI's home
+  `/home/ignite` and, without persistence, the work directory), and the initialization job and the JMX agent init
+  container with the chart's security contexts (restricted Pod Security Standard). Write other files to a volume of
+  `extraVolumes`, or set `containerSecurityContext.readOnlyRootFilesystem` to false.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -27,10 +68,12 @@ Kubernetes: `>= 1.26.0`
 | affinity | object | `{}` | Node affinity |
 | annotations | object | `{}` | Annotations to add to all resources |
 | authentication.enabled | bool | `true` | Enable authentication |
-| authentication.existingSecret | object | `{"key":"","name":""}` | Use an existing Secret for the ignite user password instead of a chart-managed Secret |
+| authentication.existingSecret | object | `{"key":"","name":"","previousKey":""}` | Use an existing Secret for the ignite user password instead of a chart-managed Secret |
 | authentication.existingSecret.key | string | `""` | Key in the existing Secret that holds the password (defaults to 'ignite-user-password') |
 | authentication.existingSecret.name | string | `""` | Name of the existing Secret containing the ignite user password |
-| authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
+| authentication.existingSecret.previousKey | string | `""` | Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional) |
+| authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty), set by the initialization job at initialization and changed by it on upgrade |
+| authentication.igniteUserPreviousPassword | string | `""` | Current password of the ignite user, when rotating it to igniteUserPassword |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
 | autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data or the CMG/metastorage majority - see the values.yaml comments) |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
@@ -38,10 +81,11 @@ Kubernetes: `>= 1.26.0`
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
 | autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | container.ports | object | `{"cluster":3344,"management":10300,"managementSsl":10400,"rest":10800}` | Container ports used by the Pod spec and as Service targetPort values |
-| containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":false,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
+| containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
-| dataStorage.engine | string | `"aipersist"` | Storage engine to use (aipersist for persistence mode, aimem for in-memory mode) |
+| dataStorage.engine | string | `"aipersist"` | Storage engine of the default storage profile, sized by memory.offHeapMB (aipersist for persistence, aimem for in-memory, rocksdb) |
 | env | object | `{"EXTRA_JVM_OPTS":""}` | Environment variables |
+| extraConfiguration | string | `""` | Extra node configuration (HOCON), merged into the chart's (e.g., `ignite.sql.execution.threadCount=8`; a list, e.g., `ignite.storage.profiles`, replaces the chart's) |
 | extraContainers | list | `[]` | Extra sidecar containers to inject into the main Pod spec |
 | extraEnvFrom | list | `[]` | Extra envFrom entries to inject into the main container |
 | extraEnvVars | list | `[]` | Extra environment variables to inject into the main container |
@@ -65,8 +109,10 @@ Kubernetes: `>= 1.26.0`
 | initializationJob.activeDeadlineSeconds | int | `1800` | Maximum duration of the job in seconds (it waits for every pod) |
 | initializationJob.enabled | bool | `true` | Enable the cluster initialization job with topology verification and intelligent CMG sizing |
 | initializationJob.resources | object | `{"limits":{"cpu":"1","memory":"2Gi"},"requests":{"cpu":"500m","memory":"2Gi"}}` | Resources for the cluster initialization job |
-| jmx.agent.image | object | `{"pullPolicy":"IfNotPresent","registry":"docker.io","repository":"busybox","tag":1.36}` | JMX agent image (registry/repository:tag and pull policy) |
+| jmx.agent.image | object | `{"pullPolicy":"IfNotPresent","registry":"docker.io","repository":"busybox","tag":1.36}` | Image of the init container downloading the agent (needs wget and sha256sum) |
 | jmx.agent.resources | object | `{"limits":{"cpu":"100m","memory":"128Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}` | JMX agent container resources |
+| jmx.agent.sha256 | string | `"ba74aad73934e59f4ca9c0779b49f1663c1fc7a81d5d99fc665bd5e5039310f5"` | SHA-256 checksum of the jar at url (the pod does not start with another jar) |
+| jmx.agent.url | string | `"https://github.com/prometheus/jmx_exporter/releases/download/1.3.0/jmx_prometheus_javaagent-1.3.0.jar"` | URL of the Prometheus JMX exporter Java agent, downloaded when a pod starts (e.g., from an internal mirror) |
 | jmx.config | string | `"lowercaseOutputName: true\nlowercaseOutputLabelNames: true\n"` | JMX exporter configuration |
 | jmx.enabled | bool | `false` | Enable JMX agent sidecar for Prometheus scraping |
 | jmx.port | int | `9404` | JMX agent port |
@@ -100,14 +146,14 @@ Kubernetes: `>= 1.26.0`
 | persistence.storageClass | string | `""` | Persistent volume storage class (empty string uses cluster default) |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
 | podDisruptionBudget.create | bool | `true` | Create a PodDisruptionBudget (only with more than one replica) |
-| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
-| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
+| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty) |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable) |
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podManagementPolicy | string | `"OrderedReady"` | StatefulSet pod management policy |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |
 | podSecurityContext.enabled | bool | `true` | Enable pod security context |
 | priorityClassName | string | `""` | Pod priority class name |
-| rbac.create | bool | `true` | Create RBAC items (e.g., role, role-binding) |
+| rbac.create | bool | `false` | Create RBAC items (e.g., role, role-binding) and mount the ServiceAccount token in the pods (not needed by Ignite, whose nodes find each other through the headless Service) |
 | readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/readiness","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |

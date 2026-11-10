@@ -1,0 +1,49 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Configuration
+
+clamd listens on TCP (`service.ports.clamd`) without authentication: restrict access with `networkPolicy.create` and
+`networkPolicy.ingress`. The first start of a pod downloads the whole signature database (into its persistent volume)
+before starting clamd, and each replica downloads it on its own: with many replicas, use a private mirror
+(`freshclam.mirrors`), as `database.clamav.net` rate-limits clients that download too often.
+
+clamd, freshclam and the milter log to the console (`kubectl logs`). The HTTP proxy password of freshclam is kept in a
+Secret (`freshclam.httpProxyPassword` or `freshclam.existingSecret`) and added to `freshclam.conf` by an init container.
+
+## Upgrading to 1.5.5
+
+Upgrade with `--reset-then-reuse-values` (not `--reuse-values`, which keeps the 1.5.4 defaults and misses the new
+settings; the chart then fails with a message):
+
+```shell
+helm upgrade <release> <chart> --version 1.5.5 --reset-then-reuse-values
+```
+
+- `freshclam.checks` now applies: the image starts freshclam with `--checks` (1 by default), which overrode the
+  `Checks` of `freshclam.conf`, so the databases were checked once a day whatever the value (24 by default).
+- `freshclam.httpProxyPassword` moved from the ConfigMap to a Secret (or use `freshclam.existingSecret`).
+- The log files under `/var/log/clamav` are gone: the logs were already on the console, and the rotated files piled up
+  in the pod. `logging.verbose` and `clamd.logClean` keep the previous behavior by default.
+- The test pod is no longer selected by the Service and the PodDisruptionBudget; with `networkPolicy.create`, the
+  NetworkPolicy allows it (`networkPolicy.allowTests`).
+- `podDisruptionBudget.maxUnavailable`, when set, is used instead of `minAvailable` (setting both was refused).
+- New settings: `clamd.concurrentDatabaseReload` (disable it to keep a single copy of the database in memory).
+- The pods prefer different nodes (`topologySpreadConstraints`), no longer mount the ServiceAccount token, and get up to
+  10 minutes to start (`startupProbe.failureThreshold`).
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

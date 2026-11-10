@@ -40,9 +40,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
+Fail early on values from an older chart (included by the labels, which every template renders first)
+*/}}
+{{- define "ignite.checkValues" -}}
+{{- if not (hasKey .Values "logging") -}}
+{{- fail "The values miss settings added in chart 2.19.3 (e.g., reused from a 2.19.2 release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "ignite.labels" -}}
+{{- include "ignite.checkValues" . -}}
 helm.sh/chart: {{ include "ignite.chart" . }}
 {{ include "ignite.selectorLabels" . }}
 {{- if .Values.labels }}
@@ -68,6 +78,7 @@ Pod labels
 Test pod labels (without the selector labels, so that the Service, PDB and NetworkPolicy do not select the test pods)
 */}}
 {{- define "ignite.testLabels" -}}
+{{- include "ignite.checkValues" . -}}
 helm.sh/chart: {{ include "ignite.chart" . }}
 app.kubernetes.io/name: {{ include "ignite.name" . }}-test
 app.kubernetes.io/instance: {{ .Release.Name }}

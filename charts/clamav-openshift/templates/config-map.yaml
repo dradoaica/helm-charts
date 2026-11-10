@@ -1,3 +1,4 @@
+{{- include "clamav-openshift.validate" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,20 +21,18 @@ data:
     OnClean Accept
     OnInfected Quarantine
     OnFail Defer
-    LogFile /var/log/clamav/clamav-milter.log
-    LogFileMaxSize 1M
+    # Logs to the console only (kubectl logs), as nothing would rotate away the log files
     LogTime yes
     LogSyslog no
-    LogVerbose yes
+    LogVerbose {{ ternary "yes" "no" .Values.logging.verbose }}
     SupportMultipleRecipients yes
   # https://github.com/Cisco-Talos/clamav/blob/main/etc/clamd.conf.sample
   clamd.conf: |
-    LogFile /var/log/clamav/clamd.log
-    LogFileMaxSize 1M
+    # Logs to the console only (kubectl logs), as nothing would rotate away the log files
     LogTime yes
-    LogClean yes
+    LogClean {{ ternary "yes" "no" .Values.clamd.logClean }}
     LogSyslog no
-    LogVerbose yes
+    LogVerbose {{ ternary "yes" "no" .Values.logging.verbose }}
     PidFile /tmp/clamd.pid
     DatabaseDirectory /var/lib/clamav
     LocalSocket /tmp/clamd.sock
@@ -48,17 +47,18 @@ data:
     Foreground yes
     MaxScanSize {{ .Values.clamd.maxScanSize }}M
     MaxFileSize {{ .Values.clamd.maxFileSize }}M
+    ConcurrentDatabaseReload {{ ternary "yes" "no" .Values.clamd.concurrentDatabaseReload }}
   # https://github.com/Cisco-Talos/clamav/blob/main/etc/freshclam.conf.sample
   freshclam.conf: |
     DatabaseDirectory /var/lib/clamav
-    UpdateLogFile /var/log/clamav/freshclam.log
-    LogFileMaxSize 1M
+    # Logs to the console only (the image starts freshclam with --stdout)
     LogTime yes
-    LogVerbose yes
+    LogVerbose {{ ternary "yes" "no" .Values.logging.verbose }}
     LogSyslog no
     PidFile /tmp/freshclam.pid
     DatabaseOwner clamav
     DatabaseMirror {{ .Values.freshclam.mirrors }}
+    # The image passes FRESHCLAM_CHECKS (set from freshclam.checks) as --checks, which overrides Checks
     Checks {{ .Values.freshclam.checks }}
     {{- if .Values.freshclam.httpProxyHost }}
     HTTPProxyServer {{ .Values.freshclam.httpProxyHost }}
@@ -69,8 +69,6 @@ data:
     {{- if .Values.freshclam.httpProxyUsername }}
     HTTPProxyUsername {{ .Values.freshclam.httpProxyUsername }}
     {{- end }}
-    {{- if .Values.freshclam.httpProxyPassword }}
-    HTTPProxyPassword {{ .Values.freshclam.httpProxyPassword }}
-    {{- end }}
     NotifyClamd /etc/clamav/clamd.conf
     Foreground yes
+    {{- /* HTTPProxyPassword is appended from the Secret by the freshclam-config init container */}}

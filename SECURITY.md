@@ -35,10 +35,10 @@ backported.
 
 | Chart                    | Supported line |
 |--------------------------|----------------|
-| aspnetcore-ignite-server | latest 2.18.x  |
-| clamav-openshift         | latest 1.5.x   |
-| conductor-oss-conductor  | latest 3.32.x  |
-| ignite                   | latest 2.18.x  |
+| aspnetcore-ignite-server | latest 2.19.x  |
+| clamav-openshift         | latest 1.5.5   |
+| conductor-oss-conductor  | latest 3.33.x  |
+| ignite                   | latest 2.19.x  |
 | ignite-3                 | latest 3.2.x   |
 
 If you can't upgrade, say why in your report so the impact on your setup can be weighed.

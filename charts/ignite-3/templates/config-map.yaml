@@ -1,3 +1,4 @@
+{{- include "ignite.validate" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -171,13 +172,21 @@ data:
                     flushDelayMillis=100
                 }
             }
+            {{- $sizeBytes := mul (required "A valid memory.offHeapMB is required!" .Values.memory.offHeapMB) 1024 1024 }}
             profiles=[
                 {
                     engine={{ .Values.dataStorage.engine }}
                     name=default
+                    {{- if eq .Values.dataStorage.engine "aimem" }}
+                    initSizeBytes={{ $sizeBytes }}
+                    maxSizeBytes={{ $sizeBytes }}
+                    {{- else if eq .Values.dataStorage.engine "rocksdb" }}
+                    sizeBytes={{ $sizeBytes }}
+                    writeBufferSizeBytes=67108864
+                    {{- else }}
                     replacementMode=CLOCK
-                    sizeBytes={{ mul (required "A valid memory.offHeapMB is required!" .Values.memory.offHeapMB) 1024 1024 }}
-                    writeBufferSize=67108864
+                    sizeBytes={{ $sizeBytes }}
+                    {{- end }}
                 }
             ]
         }
@@ -193,3 +202,7 @@ data:
             partitionsLogPath=""
         }
     }
+    {{- with .Values.extraConfiguration }}
+    # extraConfiguration (merged into the configuration above; a list, e.g., storage.profiles, replaces the chart's)
+    {{- . | nindent 4 }}
+    {{- end }}

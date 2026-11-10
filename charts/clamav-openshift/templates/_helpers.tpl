@@ -40,11 +40,39 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
+Fail early on values from an older chart (included by the labels, which every template renders first, and the validation)
+*/}}
+{{- define "clamav-openshift.checkValues" -}}
+{{- if not (and (hasKey .Values "logging") (hasKey .Values.freshclam "existingSecret")) -}}
+{{- fail "The values miss settings added in chart 1.5.5 (e.g., reused from a 1.5.4 release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "clamav-openshift.labels" -}}
+{{- include "clamav-openshift.checkValues" . -}}
 helm.sh/chart: {{ include "clamav-openshift.chart" . }}
 {{ include "clamav-openshift.selectorLabels" . }}
+{{- if .Values.labels }}
+{{ include "common.tplvalues.render" (dict "value" .Values.labels "context" $) }}
+{{- end }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
+Test pod labels (without the selector labels, so that the Service and PDB do not select the test pods)
+*/}}
+{{- define "clamav-openshift.testLabels" -}}
+{{- include "clamav-openshift.checkValues" . -}}
+helm.sh/chart: {{ include "clamav-openshift.chart" . }}
+app.kubernetes.io/name: {{ include "clamav-openshift.name" . }}-test
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: test
 {{- if .Values.labels }}
 {{ include "common.tplvalues.render" (dict "value" .Values.labels "context" $) }}
 {{- end }}
@@ -122,4 +150,36 @@ ServiceAccount annotations
 {{- if gt (len $annotations) 0 }}
     {{- $annotations | toYaml -}}
 {{- end }}
+{{- end -}}
+
+{{/*
+Whether freshclam uses an HTTP proxy password (from freshclam.httpProxyPassword or an existing Secret)
+*/}}
+{{- define "clamav-openshift.usesProxyPassword" -}}
+{{- if or .Values.freshclam.httpProxyPassword .Values.freshclam.existingSecret.name -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Whether the chart creates the Secret holding the HTTP proxy password
+*/}}
+{{- define "clamav-openshift.createSecret" -}}
+{{- if and .Values.freshclam.httpProxyPassword (not .Values.freshclam.existingSecret.name) -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate the values
+*/}}
+{{- define "clamav-openshift.validate" -}}
+{{- include "clamav-openshift.checkValues" . -}}
+{{- $checks := int .Values.freshclam.checks -}}
+{{- if or (lt $checks 1) (gt $checks 50) -}}
+{{- fail (printf "freshclam.checks (%v) must be between 1 and 50, as freshclam refuses other values" .Values.freshclam.checks) -}}
+{{- end -}}
+{{- if and (include "clamav-openshift.usesProxyPassword" .) (not .Values.freshclam.httpProxyHost) -}}
+{{- fail "freshclam.httpProxyPassword (or freshclam.existingSecret) requires freshclam.httpProxyHost" -}}
+{{- end -}}
 {{- end -}}

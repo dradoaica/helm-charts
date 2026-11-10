@@ -1,6 +1,6 @@
 # aspnetcore-ignite-server
 
-![Version: 2.19.1](https://img.shields.io/badge/Version-2.19.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
+![Version: 2.19.2](https://img.shields.io/badge/Version-2.19.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
 
 Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 
@@ -130,8 +130,8 @@ Kubernetes: `>= 1.26.0`
 | persistence.walVolume.storageClass | string | `""` | Persistent volume storage class for WAL (empty string uses cluster default) |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
 | podDisruptionBudget.create | bool | `true` | Create a PodDisruptionBudget (only with more than one replica) |
-| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
-| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
+| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty) |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable) |
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podManagementPolicy | string | `"Parallel"` | StatefulSet pod management policy (Parallel is required when env.ACTIVATION_MIN_SERVER_NODES is above 1) |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |

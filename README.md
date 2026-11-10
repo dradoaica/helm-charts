@@ -10,7 +10,7 @@ available [packages](https://github.com/dradoaica?tab=packages&repo_name=helm-ch
 ## Available Charts
 
 - [aspnetcore-ignite-server](./charts/aspnetcore-ignite-server/README.md) — Stable: 2.18.x · Preview: 2.19.x
-- [clamav-openshift](./charts/clamav-openshift/README.md) — Stable: 1.5.4 · Preview: -
+- [clamav-openshift](./charts/clamav-openshift/README.md) — Stable: 1.5.4 · Preview: 1.5.5
 - [conductor-oss-conductor](./charts/conductor-oss-conductor/README.md) — Stable: 3.33.x · Preview: -
 - [ignite](./charts/ignite/README.md) — Stable: 2.18.x · Preview: 2.19.x
 - [ignite-3](./charts/ignite-3/README.md) — Stable: 3.1.x · Preview: 3.2.x

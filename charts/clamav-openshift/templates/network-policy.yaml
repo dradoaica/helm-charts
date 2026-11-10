@@ -11,8 +11,25 @@ metadata:
     {{- . | nindent 4 }}
   {{- end }}
 spec:
-  egress: {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
-  ingress: {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+  egress:
+    {{- with .Values.networkPolicy.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  ingress:
+    {{- if .Values.networkPolicy.allowTests }}
+    # Allow traffic from the chart's test pods (helm test)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "clamav-openshift.name" . }}-test
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: {{ .Values.container.ports.clamd }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.ingress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   podSelector:
     matchLabels: {{- include "clamav-openshift.selectorLabels" . | nindent 6 }}
   policyTypes:

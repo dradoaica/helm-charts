@@ -1,7 +1,21 @@
-# Minimal values for ClamAV OpenShift
-# Use this for development, testing, or resource-constrained environments
+# Minimal values for ClamAV OpenShift: one small pod, for development and tests
 #
 # Install with:
 #   helm install clamav ./charts/clamav-openshift -f ./charts/clamav-openshift/examples/minimal-values.yaml
 
 replicaCount: 1
+resources:
+  requests:
+    cpu: 200m
+    memory: 2Gi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+clamd:
+  maxThreads: 2
+  # One copy of the signature database in memory (clamd stops scanning while reloading it)
+  concurrentDatabaseReload: false
+freshclam:
+  checks: 4
+logging:
+  verbose: false

@@ -33,12 +33,22 @@ spec:
         {{- include "clamav-openshift.podLabels" . | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        {{- if include "clamav-openshift.usesProxyPassword" . }}
+        # Rollout on secret reference changes
+        creds/clamav-openshift-secret: {{ .Values.freshclam.existingSecret.name | default (include "clamav-openshift.fullname" .) | quote }}
+        {{- end }}
+        {{- if include "clamav-openshift.createSecret" . }}
+        # Rollout on proxy password changes
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
         {{- with (include "clamav-openshift.podAnnotations" .) }}
         {{- . | nindent 8 }}
         {{- end }}
     spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       serviceAccountName: {{ include "clamav-openshift.serviceAccountName" . }}
+      # ClamAV does not call the Kubernetes API
+      automountServiceAccountToken: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -50,9 +60,50 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
       {{- end }}
-      {{- if .Values.extraInitContainers }}
+      {{- if or .Values.extraInitContainers (include "clamav-openshift.usesProxyPassword" .) }}
       initContainers:
-        {{- toYaml .Values.extraInitContainers | nindent 8 }}
+        {{- if include "clamav-openshift.usesProxyPassword" . }}
+        # Appends the HTTP proxy password from the Secret to freshclam.conf, which has no environment variable substitution
+        - name: freshclam-config
+          image: {{ include "clamav-openshift.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- toYaml (omit .Values.containerSecurityContext "enabled") | nindent 12 }}
+          {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              {
+                cat /config/freshclam.conf
+                printf '\nHTTPProxyPassword %s\n' "$(printf '%s' "$HTTP_PROXY_PASSWORD" | tr -d '\r\n')"
+              } > /freshclam/freshclam.conf
+          env:
+            - name: HTTP_PROXY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.freshclam.existingSecret.name | default (include "clamav-openshift.fullname" .) }}
+                  key: {{ .Values.freshclam.existingSecret.key | default "http-proxy-password" }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          volumeMounts:
+            - mountPath: /config/freshclam.conf
+              name: config-map-volume
+              subPath: freshclam.conf
+              readOnly: true
+            - mountPath: /freshclam
+              name: freshclam-config-volume
+        {{- end }}
+        {{- with .Values.extraInitContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
       containers:
         {{- if .Values.extraContainers }}
@@ -75,6 +126,9 @@ spec:
             {{- end }}
             - name: CLAMD_STARTUP_TIMEOUT
               value: '1800'
+            # The image starts freshclam with --checks=$FRESHCLAM_CHECKS (1 when unset), which overrides Checks in freshclam.conf
+            - name: FRESHCLAM_CHECKS
+              value: {{ .Values.freshclam.checks | quote }}
             {{- range $name, $value := .Values.env }}
             - name: {{ $name | quote }}
               value: {{ $value | quote }}
@@ -137,8 +191,9 @@ spec:
               name: config-map-volume
               subPath: clamd.conf
             - mountPath: /etc/clamav/freshclam.conf
-              name: config-map-volume
+              name: {{ ternary "freshclam-config-volume" "config-map-volume" (eq (include "clamav-openshift.usesProxyPassword" .) "true") }}
               subPath: freshclam.conf
+              readOnly: true
             {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
@@ -150,6 +205,12 @@ spec:
         - name: config-map-volume
           configMap:
             name: {{ include "clamav-openshift.fullname" . }}
+        {{- if include "clamav-openshift.usesProxyPassword" . }}
+        - name: freshclam-config-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        {{- end }}
         {{- if .Values.extraVolumes }}
         {{- toYaml .Values.extraVolumes | nindent 8 }}
         {{- end }}
@@ -167,7 +228,7 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
     - metadata:

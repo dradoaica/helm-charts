@@ -13,10 +13,10 @@ spec:
   selector:
     matchLabels:
       {{- include "clamav-openshift.selectorLabels" . | nindent 6 }}
-  {{- if .Values.podDisruptionBudget.minAvailable }}
-  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- /* maxUnavailable, when set, takes precedence over minAvailable (which has a default) */}}
+  {{- if not (has (toString .Values.podDisruptionBudget.maxUnavailable) (list "" "<nil>")) }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else if not (has (toString .Values.podDisruptionBudget.minAvailable) (list "" "<nil>")) }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   {{- end }}
 {{- end }}

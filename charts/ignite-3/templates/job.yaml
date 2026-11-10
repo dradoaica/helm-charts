@@ -28,6 +28,10 @@ spec:
       terminationGracePeriodSeconds: 120
       serviceAccountName: {{ include "ignite.serviceAccountName" . }}
       automountServiceAccountToken: false
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        {{- toYaml (omit .Values.podSecurityContext "enabled") | nindent 8 }}
+      {{- end }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -40,6 +44,11 @@ spec:
           # Specify the Docker image with the Ignite 3 CLI and its version.
           image: {{ include "ignite.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            {{- /* The CLI only writes to /cluster-config and /tmp */}}
+            {{- toYaml (merge (dict "readOnlyRootFilesystem" true) (omit .Values.containerSecurityContext "enabled")) | nindent 12 }}
+          {{- end }}
           command:
             - /bin/sh
           # Command to init the cluster. URL and host must be the name of the service you created before. Port is the management port from values.
@@ -58,44 +67,116 @@ spec:
               --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
               --add-opens=java.base/sun.security.x509=ALL-UNNAMED"
 
+              CLI=/opt/ignite3cli/bin/ignite3
               CLUSTER_URL="http://{{ include "ignite.fullname" . }}-svc-headless:{{ .Values.service.ports.management }}"
               DEFAULT_USER="ignite"
-              DEFAULT_PASSWORD="${IGNITE_USER_PASSWORD:-ignite}"
+              DEFAULT_PASSWORD="ignite"
+              NEW_PASSWORD="${IGNITE_USER_PASSWORD:-$DEFAULT_PASSWORD}"
+              PREVIOUS_PASSWORD="${IGNITE_USER_PREVIOUS_PASSWORD:-}"
+              CURRENT_PASSWORD="$NEW_PASSWORD"
 
-              /opt/ignite3cli/bin/ignite3 cli config set ignite.cluster-endpoint-url="$CLUSTER_URL"
-              /opt/ignite3cli/bin/ignite3 cli config set ignite.auth.basic.username="$DEFAULT_USER"
-              /opt/ignite3cli/bin/ignite3 cli config set ignite.auth.basic.password="$DEFAULT_PASSWORD"
+              # Escapes a password for a HOCON quoted string
+              hocon_string() {
+                printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+              }
+
+              # Makes the CLI authenticate with the given password
+              use_password() {
+                $CLI cli config set ignite.auth.basic.password="$1" > /dev/null
+              }
+
+              # Succeeds when a CLI output reports rejected credentials
+              is_unauthorized() {
+                echo "$1" | grep -q -i -E 'unauthorized|authentication failed|(^|[^0-9a-z])401([^0-9]|$)'
+              }
+
+              # Runs a CLI command with the current password, then with the new, previous and default ones (once a password
+              # has changed, the nodes only accept the new one); the password that worked becomes the current one, and
+              # ALL_UNAUTHORIZED tells whether every password was rejected (rather than, e.g., the node not being up yet)
+              with_any_password() {
+                ALL_UNAUTHORIZED=true
+                for CANDIDATE in current new previous default; do
+                  case $CANDIDATE in
+                    current) PASSWORD=$CURRENT_PASSWORD ;;
+                    new) PASSWORD=$NEW_PASSWORD ;;
+                    previous) PASSWORD=$PREVIOUS_PASSWORD ;;
+                    default) PASSWORD=$DEFAULT_PASSWORD ;;
+                  esac
+                  [ -n "$PASSWORD" ] || continue
+                  [ "$CANDIDATE" = current ] || [ "$PASSWORD" != "$CURRENT_PASSWORD" ] || continue
+                  use_password "$PASSWORD"
+                  if OUTPUT=$("$@" 2>&1); then
+                    CURRENT_PASSWORD=$PASSWORD
+                    return 0
+                  fi
+                  is_unauthorized "$OUTPUT" || ALL_UNAUTHORIZED=false
+                done
+                return 1
+              }
+
+              # Succeeds when the cluster is initialized and active (and prints its status)
+              cluster_active() {
+                STATUS_RESPONSE=$($CLI cluster status --url=$CLUSTER_URL 2>&1) || { echo "$STATUS_RESPONSE"; return 1; }
+                echo "$STATUS_RESPONSE"
+                echo "$STATUS_RESPONSE" | grep -q 'status: active'
+              }
+
+              $CLI cli config set ignite.cluster-endpoint-url="$CLUSTER_URL"
+              $CLI cli config set ignite.auth.basic.username="$DEFAULT_USER"
+              use_password "$CURRENT_PASSWORD"
 
               REPLICA_COUNT={{ .Values.replicaCount }}
               for i in $(seq 0 $((REPLICA_COUNT - 1))); do
                 POD_URL="http://{{ include "ignite.fullname" . }}-cluster-$i.{{ include "ignite.fullname" . }}-svc-headless.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.ports.management }}"
                 echo "[INFO] Waiting for the Ignite pod $i ($POD_URL) to be ready..."
                 while true; do
-                  STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 node status --url=$POD_URL 2>&1)
-                  EXIT_CODE=$?
-                  echo "[INFO] Node $i status response: $STATUS_RESPONSE"
-                  if [ $EXIT_CODE -eq 0 ]; then
+                  if with_any_password $CLI node status --url=$POD_URL; then
+                    echo "[INFO] Node $i status response: $OUTPUT"
                     echo "[INFO] The Ignite pod $i is ready"
                     break
                   fi
 
-                  echo "[WARNING] The Ignite pod $i is not ready. Retrying in 5s..."
+                  if [ "$ALL_UNAUTHORIZED" = true ]; then
+                    echo "[ERROR] The Ignite pod $i accepts none of the new, previous and default passwords (set authentication.igniteUserPreviousPassword to the current one): $OUTPUT"
+                    exit 1
+                  fi
+                  echo "[WARNING] The Ignite pod $i is not ready ($OUTPUT). Retrying in 5s..."
                   sleep 5
                 done
               done
 
               echo "[INFO] Checking the Ignite cluster state..."
-              STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 cluster status --url=$CLUSTER_URL 2>&1)
-              EXIT_CODE=$?
-              if [ $EXIT_CODE -eq 0 ] && echo "$STATUS_RESPONSE" | grep -q 'status: active'; then
-                echo "[INFO] The Ignite cluster is already active"
-                exit 0
+              if with_any_password cluster_active; then
+                echo "[INFO] The Ignite cluster is already active: $OUTPUT"
+                if [ "$CURRENT_PASSWORD" = "$NEW_PASSWORD" ]; then
+                  exit 0
+                fi
+
+                echo "[INFO] Changing the password of the '$DEFAULT_USER' user..."
+                printf 'ignite.security.authentication.providers.default.users.%s.password="%s"\n' \
+                  "$DEFAULT_USER" "$(hocon_string "$NEW_PASSWORD")" > /cluster-config/password.conf
+                UPDATE_RES=$($CLI cluster config update --url=$CLUSTER_URL --file=/cluster-config/password.conf 2>&1)
+                EXIT_CODE=$?
+                rm -f /cluster-config/password.conf
+                if [ $EXIT_CODE -ne 0 ]; then
+                  echo "[ERROR] Failed to change the password (exit code $EXIT_CODE): $UPDATE_RES"
+                  exit 1
+                fi
+
+                use_password "$NEW_PASSWORD"
+                if STATUS_RESPONSE=$($CLI cluster status --url=$CLUSTER_URL 2>&1); then
+                  echo "[INFO] The password was changed successfully"
+                  exit 0
+                fi
+                echo "[ERROR] The cluster does not accept the new password: $STATUS_RESPONSE"
+                exit 1
               fi
+              use_password "$NEW_PASSWORD"
 
               echo "[INFO] Waiting for the last Ignite pod to be ready in the physical cluster topology..."
               MAX_RETRIES=30
               for i in $(seq 1 $MAX_RETRIES); do
-                if /opt/ignite3cli/bin/ignite3 cluster topology physical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
+                if $CLI cluster topology physical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
                   echo "[INFO] All Ignite pods are ready in the physical cluster topology"
                   break
                 fi
@@ -138,7 +219,7 @@ spec:
               echo "[INFO] CMG nodes: $CMG_NODES"
 
               # Render the cluster configuration here (instead of in the ConfigMap) so the password comes from the Secret
-              ESCAPED_PASSWORD=$(printf '%s' "$DEFAULT_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+              ESCAPED_PASSWORD=$(hocon_string "$NEW_PASSWORD")
               cat > /cluster-config/cluster-config.conf <<EOF
               ignite {
                 security {
@@ -161,10 +242,12 @@ spec:
               }
               EOF
 
-              INIT_RES=$(/opt/ignite3cli/bin/ignite3 cluster init --name={{ include "ignite.fullname" . }} --metastorage-group $CMG_NODES --url=$CLUSTER_URL --config-files=/cluster-config/cluster-config.conf 2>&1)
+              INIT_RES=$($CLI cluster init --name={{ include "ignite.fullname" . }} --metastorage-group $CMG_NODES --url=$CLUSTER_URL --config-files=/cluster-config/cluster-config.conf 2>&1)
               EXIT_CODE=$?
+              rm -f /cluster-config/cluster-config.conf
               if [ $EXIT_CODE -ne 0 ]; then
                 echo "[ERROR] Failed to initialize the cluster (exit code $EXIT_CODE): $INIT_RES"
+                echo "[ERROR] If the cluster is already initialized, the nodes accept none of the new, previous and default passwords (set authentication.igniteUserPreviousPassword to the current one)"
                 exit 1
               fi
 
@@ -172,7 +255,7 @@ spec:
 
               echo "[INFO] Waiting for the last Ignite pod to be ready in the logical cluster topology..."
               for i in $(seq 1 $MAX_RETRIES); do
-                if /opt/ignite3cli/bin/ignite3 cluster topology logical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
+                if $CLI cluster topology logical --url=$CLUSTER_URL 2>&1 | grep -q "{{ include "ignite.fullname" . }}-cluster-$((REPLICA_COUNT-1))"; then
                   echo "[INFO] All Ignite pods are ready in the logical cluster topology"
                   break
                 fi
@@ -188,7 +271,7 @@ spec:
 
               echo "[INFO] Waiting for the Ignite cluster to become active..."
               for i in $(seq 1 $MAX_RETRIES); do
-                STATUS_RESPONSE=$(/opt/ignite3cli/bin/ignite3 cluster status --url=$CLUSTER_URL 2>&1)
+                STATUS_RESPONSE=$($CLI cluster status --url=$CLUSTER_URL 2>&1)
                 EXIT_CODE=$?
                 echo "[INFO] Status response ($i/$MAX_RETRIES): $STATUS_RESPONSE"
                 if [ $EXIT_CODE -eq 0 ] && echo "$STATUS_RESPONSE" | grep -q 'status: active'; then
@@ -207,6 +290,15 @@ spec:
           resources:
             {{- toYaml .Values.initializationJob.resources | nindent 12 }}
           env:
+            # Writable locations for the CLI (its configuration and work directory), as the pod runs as a non-root user
+            - name: HOME
+              value: /cluster-config
+            - name: XDG_CONFIG_HOME
+              value: /cluster-config/.config
+            - name: XDG_STATE_HOME
+              value: /cluster-config/.local/state
+            - name: IGNITE_CLI_WORK_DIR
+              value: /cluster-config/ignite3cli
             - name: IGNITE_USER_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -218,11 +310,28 @@ spec:
                   key: ignite-user-password
                   {{- end }}
                   optional: true
+            - name: IGNITE_USER_PREVIOUS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.authentication.existingSecret.name }}
+                  name: {{ .Values.authentication.existingSecret.name }}
+                  key: {{ default "ignite-user-previous-password" .Values.authentication.existingSecret.previousKey }}
+                  {{- else }}
+                  name: {{ include "ignite.fullname" . }}-auth
+                  key: ignite-user-previous-password
+                  {{- end }}
+                  optional: true
           volumeMounts:
             - name: cluster-config-vol
               mountPath: /cluster-config
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: cluster-config-vol
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        - name: tmp
           emptyDir: { }
       restartPolicy: Never
       {{- with .Values.nodeSelector }}

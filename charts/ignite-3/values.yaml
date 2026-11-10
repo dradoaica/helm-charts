@@ -1,3 +1,5 @@
+# Upgrading from 3.2.7: see the Upgrading section of README.md
+
 global:
   # -- Global container image registry override
   imageRegistry: ""
@@ -55,8 +57,9 @@ serviceAccount:
   annotations: { }
 
 rbac:
-  # -- Create RBAC items (e.g., role, role-binding)
-  create: true
+  # -- Create RBAC items (e.g., role, role-binding) and mount the ServiceAccount token in the pods (not needed by Ignite, whose
+  # nodes find each other through the headless Service)
+  create: false
 
 # -- StatefulSet pod management policy
 podManagementPolicy: OrderedReady
@@ -96,7 +99,8 @@ containerSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   privileged: false
-  readOnlyRootFilesystem: false
+  # The chart mounts writable emptyDir volumes for /tmp, the CLI's home and, without persistence, the work directory
+  readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
   capabilities:
     drop: [ "ALL" ]
@@ -258,9 +262,9 @@ networkPolicy:
 podDisruptionBudget:
   # -- Create a PodDisruptionBudget (only with more than one replica)
   create: true
-  # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
+  # -- Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable)
   minAvailable: ""
-  # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
+  # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
 # Autoscaling is NOT recommended for Ignite 3 clusters:
@@ -323,8 +327,11 @@ memory:
 authentication:
   # -- Enable authentication
   enabled: true
-  # -- Password for the ignite user (defaults to ignite when empty)
+  # -- Password for the ignite user (defaults to ignite when empty), set by the initialization job at initialization and
+  # changed by it on upgrade
   igniteUserPassword: ""
+  # -- Current password of the ignite user, when rotating it to igniteUserPassword
+  igniteUserPreviousPassword: ""
   # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
   manageSecret: true
   # -- Use an existing Secret for the ignite user password instead of a chart-managed Secret
@@ -333,10 +340,17 @@ authentication:
     name: ""
     # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
     key: ""
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    previousKey: ""
 
 dataStorage:
-  # -- Storage engine to use (aipersist for persistence mode, aimem for in-memory mode)
+  # -- Storage engine of the default storage profile, sized by memory.offHeapMB (aipersist for persistence, aimem for
+  # in-memory, rocksdb)
   engine: aipersist
+
+# -- Extra node configuration (HOCON), merged into the chart's (e.g., `ignite.sql.execution.threadCount=8`; a list, e.g.,
+# `ignite.storage.profiles`, replaces the chart's)
+extraConfiguration: ""
 
 ssl:
   clientConnector:
@@ -423,7 +437,11 @@ jmx:
   # -- JMX agent port
   port: 9404
   agent:
-    # -- JMX agent image (registry/repository:tag and pull policy)
+    # -- URL of the Prometheus JMX exporter Java agent, downloaded when a pod starts (e.g., from an internal mirror)
+    url: https://github.com/prometheus/jmx_exporter/releases/download/1.3.0/jmx_prometheus_javaagent-1.3.0.jar
+    # -- SHA-256 checksum of the jar at url (the pod does not start with another jar)
+    sha256: ba74aad73934e59f4ca9c0779b49f1663c1fc7a81d5d99fc665bd5e5039310f5
+    # -- Image of the init container downloading the agent (needs wget and sha256sum)
     image:
       registry: docker.io
       repository: busybox

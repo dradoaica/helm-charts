@@ -294,9 +294,9 @@ networkPolicy:
 podDisruptionBudget:
   # -- Create a PodDisruptionBudget (only with more than one replica)
   create: true
-  # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
+  # -- Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable)
   minAvailable: ""
-  # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
+  # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
 # Autoscaling is NOT recommended for Ignite clusters:

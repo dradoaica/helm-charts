@@ -105,6 +105,18 @@ from 1 to 32), since the image always passes -XX:G1HeapRegionSize (32 MB by defa
 {{- end -}}
 
 {{/*
+Validate the values
+*/}}
+{{- define "ignite.validate" -}}
+{{- if not (has .Values.dataStorage.engine (list "aipersist" "aimem" "rocksdb")) -}}
+{{- fail (printf "dataStorage.engine %q is not one of aipersist, aimem or rocksdb" .Values.dataStorage.engine) -}}
+{{- end -}}
+{{- if and .Values.jmx.enabled (not .Values.jmx.agent.sha256) -}}
+{{- fail "jmx.agent.sha256 is required with jmx.enabled (the SHA-256 checksum of the jar at jmx.agent.url)" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common annotations
 */}}
 {{- define "ignite.annotations" -}}

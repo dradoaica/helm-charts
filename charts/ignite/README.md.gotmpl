@@ -13,6 +13,26 @@
 
 {{ template "chart.requirementsSection" . }}
 
+## Upgrading from 2.19.2
+
+Upgrade with `--reset-then-reuse-values` (not `--reuse-values`, which keeps the 2.19.2 defaults and misses the new
+settings; the chart then fails with a message):
+
+```shell
+helm upgrade <release> <chart> --version 2.19.3 --reset-then-reuse-values
+```
+
+- The containers run with a read-only root filesystem, with writable `emptyDir` volumes for `/tmp` and the work
+  directory `/opt/ignite/apache-ignite/work` (the logs and, without persistence, the work data). `EXTERNAL_LIBS` in
+  `env`, which the image downloads into its libs directory, requires `containerSecurityContext.readOnlyRootFilesystem`
+  set to false.
+- The logs also go to the console (`kubectl logs`), without ANSI colors (`logging.console`, `logging.level`); the work
+  directory keeps the last `logging.maxRolledFiles` rolled log files, instead of all of them.
+- The activation job runs with the chart's security contexts (restricted Pod Security Standard), and its checks of the
+  REST responses no longer take a failed response for a successful one.
+- `podDisruptionBudget.minAvailable`, when set, is used instead of `maxUnavailable` (setting both was refused);
+  `revisionHistoryLimit` can be 0, and `kubectl exec` defaults to the `ignite-node` container.
+
 ## Upgrading from 2.18.x
 
 Nodes of different Ignite minor versions cannot form one cluster (2.19 nodes do not even recognize 2.18 ones), so the

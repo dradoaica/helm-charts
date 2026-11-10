@@ -1,3 +1,5 @@
+# Upgrading from 1.5.4: see the Upgrading section of README.md
+
 global:
   # -- Global container image registry override
   imageRegistry: ""
@@ -130,7 +132,8 @@ readinessProbe:
   failureThreshold: 3
   successThreshold: 1
 
-# -- Startup probe configuration
+# -- Startup probe configuration (up to 605 s; the first start of a pod downloads the whole signature database before
+# starting clamd)
 startupProbe:
   # -- Enable startup probe
   enabled: true
@@ -140,7 +143,7 @@ startupProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 5
-  failureThreshold: 30
+  failureThreshold: 60
   successThreshold: 1
 
 # -- Lifecycle hooks configuration
@@ -194,15 +197,24 @@ nodeSelector: { }
 tolerations: [ ]
 # -- Node affinity
 affinity: { }
-# -- Topology spread constraints
-topologySpreadConstraints: [ ]
+# -- Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: '{{ include "clamav-openshift.name" . }}'
+        app.kubernetes.io/instance: '{{ .Release.Name }}'
 
 networkPolicy:
   # -- Create a NetworkPolicy
   create: false
   # -- Name for the NetworkPolicy (defaults to fullname when empty)
   name: ""
-  # -- NetworkPolicy ingress rules
+  # -- Allow ingress from the chart's test pods (helm test)
+  allowTests: true
+  # -- NetworkPolicy ingress rules (add rules for the clients that need access to clamd or the milter)
   ingress: [ ]
   # -- NetworkPolicy egress rules
   egress:
@@ -214,7 +226,7 @@ networkPolicy:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow HTTP/HTTPS for database updates
+    # Allow HTTP/HTTPS for database updates (add the proxy port when freshclam.httpProxyHost is set)
     - to:
         - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
@@ -226,13 +238,13 @@ networkPolicy:
 podDisruptionBudget:
   # -- Create a PodDisruptionBudget for high availability
   create: false
-  # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
+  # -- Minimum number of pods that must be available during disruptions (used when maxUnavailable is empty)
   minAvailable: 1
-  # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
+  # -- Maximum number of pods that can be unavailable during disruptions (if set, used instead of minAvailable; e.g., "50%")
   maxUnavailable: ""
-  # Alternatively, use maxUnavailable (mutually exclusive with minAvailable)
-  # maxUnavailable: "50%"
 
+# Each replica downloads the signature database on its own (the first start downloads all of it): with many replicas, use
+# a private mirror (freshclam.mirrors), as database.clamav.net rate-limits clients that download too often.
 autoscaling:
   # -- Create a HorizontalPodAutoscaler
   create: false
@@ -270,11 +282,16 @@ clamd:
   maxScanSize: 100
   # -- Maximum file size to scan (in MB)
   maxFileSize: 25
+  # -- Log the clean files too (one line per scan)
+  logClean: true
+  # -- Reload the signature database in the background, so that clamd keeps scanning (needs memory for two copies of the
+  # database, about 1 GB more; when disabled, clamd stops scanning while reloading)
+  concurrentDatabaseReload: true
 
 freshclam:
   # -- ClamAV database mirror servers
   mirrors: database.clamav.net
-  # -- Number of database checks per day
+  # -- Number of database checks per day (1 to 50)
   checks: 24
   # -- HTTP proxy host for freshclam updates
   httpProxyHost: ""
@@ -282,8 +299,18 @@ freshclam:
   httpProxyPort: ""
   # -- HTTP proxy username for freshclam updates
   httpProxyUsername: ""
-  # -- HTTP proxy password for freshclam updates
+  # -- HTTP proxy password for freshclam updates (stored in a chart-managed Secret)
   httpProxyPassword: ""
+  # -- Use an existing Secret for the HTTP proxy password instead of a chart-managed Secret
+  existingSecret:
+    # -- Name of the existing Secret containing the HTTP proxy password
+    name: ""
+    # -- Key in the existing Secret that holds the password (defaults to 'http-proxy-password')
+    key: ""
+
+logging:
+  # -- Verbose logging for clamd, freshclam and the milter (the logs go to the console, i.e., kubectl logs)
+  verbose: true
 
 # -- Environment variables
 env: { }

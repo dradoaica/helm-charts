@@ -1,0 +1,59 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Configuration
+
+The chart renders the node configuration (HOCON) into a ConfigMap; `extraConfiguration` is merged into it, e.g.:
+
+```yaml
+extraConfiguration: |
+  ignite.sql.execution.threadCount=8
+  ignite.raft.fsync=true
+```
+
+The initialization job (a post-install and post-upgrade hook) initializes the cluster with the `ignite` user and
+`authentication.igniteUserPassword`, and on later upgrades changes that password when it differs (with
+`cluster config update`, without restarting the nodes). It authenticates with the new, the previous
+(`authentication.igniteUserPreviousPassword`) or the default password, so set the previous one when the current password
+is neither of the others.
+
+The SSL key store and trust store passwords are rendered into the ConfigMap, as Ignite 3 does not substitute environment
+variables in its node configuration (see SECURITY.md).
+
+## Upgrading from 3.2.7
+
+Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the 3.2.7 defaults, e.g., `rbac.create` and the
+writable root filesystem, and misses the new settings, e.g., `jmx.agent.sha256`):
+
+```shell
+helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
+```
+
+- Changing `authentication.igniteUserPassword` (or the existing Secret) now changes the password of the `ignite` user;
+  it used to make the initialization job fail.
+- `rbac.create` defaults to false and the pods no longer mount the ServiceAccount token: Ignite 3 does not use the
+  Kubernetes API (the nodes find each other through the headless Service).
+- The default storage profile only has the keys of its engine (`dataStorage.engine`: aipersist, aimem or rocksdb), so
+  aimem and rocksdb now work.
+- `jmx.agent.url` and `jmx.agent.sha256`: the pods verify the downloaded JMX agent, and add the prometheus.io annotations
+  with `jmx.enabled`.
+- The containers run with a read-only root filesystem (writable `emptyDir` volumes for `/tmp`, the CLI's home
+  `/home/ignite` and, without persistence, the work directory), and the initialization job and the JMX agent init
+  container with the chart's security contexts (restricted Pod Security Standard). Write other files to a volume of
+  `extraVolumes`, or set `containerSecurityContext.readOnlyRootFilesystem` to false.
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

@@ -18,10 +18,10 @@ spec:
       - key: app.kubernetes.io/component
         operator: NotIn
         values: [ cluster-activate, test ]
-  {{- if .Values.podDisruptionBudget.minAvailable }}
+  {{- /* minAvailable, when set, takes precedence over maxUnavailable (which has a default) */}}
+  {{- if not (has (toString .Values.podDisruptionBudget.minAvailable) (list "" "<nil>")) }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else if not (has (toString .Values.podDisruptionBudget.maxUnavailable) (list "" "<nil>")) }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   {{- end }}
 {{- end }}

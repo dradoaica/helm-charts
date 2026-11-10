@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.19.2](https://img.shields.io/badge/Version-2.19.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
+![Version: 2.19.3](https://img.shields.io/badge/Version-2.19.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -19,6 +19,26 @@ Apache Ignite is a distributed database for high-performance computing with in-m
 ## Requirements
 
 Kubernetes: `>= 1.26.0`
+
+## Upgrading from 2.19.2
+
+Upgrade with `--reset-then-reuse-values` (not `--reuse-values`, which keeps the 2.19.2 defaults and misses the new
+settings; the chart then fails with a message):
+
+```shell
+helm upgrade <release> <chart> --version 2.19.3 --reset-then-reuse-values
+```
+
+- The containers run with a read-only root filesystem, with writable `emptyDir` volumes for `/tmp` and the work
+  directory `/opt/ignite/apache-ignite/work` (the logs and, without persistence, the work data). `EXTERNAL_LIBS` in
+  `env`, which the image downloads into its libs directory, requires `containerSecurityContext.readOnlyRootFilesystem`
+  set to false.
+- The logs also go to the console (`kubectl logs`), without ANSI colors (`logging.console`, `logging.level`); the work
+  directory keeps the last `logging.maxRolledFiles` rolled log files, instead of all of them.
+- The activation job runs with the chart's security contexts (restricted Pod Security Standard), and its checks of the
+  REST responses no longer take a failed response for a successful one.
+- `podDisruptionBudget.minAvailable`, when set, is used instead of `maxUnavailable` (setting both was refused);
+  `revisionHistoryLimit` can be 0, and `kubectl exec` defaults to the `ignite-node` container.
 
 ## Upgrading from 2.18.x
 
@@ -81,7 +101,7 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | container.ports.metrics | int | `9464` | Prometheus metrics (only with metrics.enabled) |
 | container.ports.rest | int | `8080` | REST API (unencrypted) |
 | container.ports.sql | int | `10800` | Thin clients, JDBC, ODBC and the control utility (client connector) |
-| containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":false,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
+| containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | dataStorage | object | `{"extraConfiguration":"","pageEvictionMode":""}` | Data storage configuration |
 | dataStorage.extraConfiguration | string | `""` | Extra configuration for org.apache.ignite.configuration.DataStorageConfiguration bean |
@@ -119,6 +139,9 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/ignite?cmd=version","port":8080},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | loadBalancingSpi | string | `""` | Load balancing SPI |
+| logging.console | bool | `true` | Log to the console (kubectl logs) too; when false, only the errors (the logs are always kept in the work directory) |
+| logging.level | string | `"INFO"` | Root log level (e.g., INFO, DEBUG) |
+| logging.maxRolledFiles | int | `10` | Number of rolled (compressed) log files kept in the work directory |
 | memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB (a power of 2 from 1 to 32). If not set, the JVM chooses (about 2048 regions; 1 MB for the default heap) |
 | memory.maxDirectMemorySizeMB | int | `2960` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size) |
 | memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
@@ -154,8 +177,8 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | persistence.walVolume.storageClass | string | `""` | Persistent volume storage class for WAL (empty string uses cluster default) |
 | podAnnotations | object | `{}` | Additional annotations to add to pods |
 | podDisruptionBudget.create | bool | `true` | Create a PodDisruptionBudget (only with more than one replica) |
-| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable) |
-| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable) |
+| podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty) |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable) |
 | podLabels | object | `{}` | Additional labels to add to pods |
 | podManagementPolicy | string | `"OrderedReady"` | StatefulSet pod management policy |
 | podSecurityContext | object | `{"enabled":true,"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | Pod security context configuration |

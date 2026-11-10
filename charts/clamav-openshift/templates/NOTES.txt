@@ -3,3 +3,30 @@ CHART VERSION: {{ .Chart.Version }}
 APP VERSION: {{ .Chart.AppVersion }}
 
 ** Please be patient while the chart is being deployed **
+
+The first start of a pod downloads the whole signature database before starting clamd, which can take several minutes.
+
+{{- $service := printf "%s.%s.svc" (include "clamav-openshift.fullname" .) .Release.Namespace }}
+
+ClamD (TCP): {{ $service }}:{{ .Values.service.ports.clamd }}
+{{- if .Values.milter.enabled }}
+Milter:      inet:{{ .Values.service.ports.milter }}@{{ $service }}
+{{- end }}
+
+To check it locally:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "clamav-openshift.fullname" . }} {{ .Values.service.ports.clamd }}:{{ .Values.service.ports.clamd }}
+  echo PING | nc localhost {{ .Values.service.ports.clamd }}
+
+WARNING: clamd has no authentication: anyone reaching its port can scan files (and load the pods).
+{{- if not .Values.networkPolicy.create }}
+Restrict access with networkPolicy.create.
+{{- else if not .Values.networkPolicy.ingress }}
+
+WARNING: networkPolicy.ingress is empty, so no client {{- if .Values.networkPolicy.allowTests }} (but the chart's test pods){{ else }} (including `helm test`){{ end }} can reach ClamAV.
+{{- end }}
+{{- $maxReplicas := ternary .Values.autoscaling.maxReplicas .Values.replicaCount .Values.autoscaling.create }}
+{{- if and (gt (int $maxReplicas) 1) (eq .Values.freshclam.mirrors "database.clamav.net") }}
+
+WARNING: each replica downloads the signature database on its own, and database.clamav.net rate-limits clients that
+download too often: with many replicas, use a private mirror (freshclam.mirrors).
+{{- end }}

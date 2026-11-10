@@ -34,7 +34,7 @@ spec:
   {{- with .Values.minReadySeconds }}
   minReadySeconds: {{ . }}
   {{- end }}
-  {{- if .Values.revisionHistoryLimit }}
+  {{- if not (has (toString .Values.revisionHistoryLimit) (list "" "<nil>")) }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- end }}
   {{- if .Values.updateStrategy }}
@@ -49,6 +49,7 @@ spec:
       labels:
         {{- include "ignite.podLabels" . | nindent 8 }}
       annotations:
+        kubectl.kubernetes.io/default-container: ignite-node
         checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
         # Rollout on secret reference changes
         creds/ignite-auth-secret: {{ (default (printf "%s-auth" (include "ignite.fullname" .)) .Values.authentication.existingSecret.name) | quote }}
@@ -216,6 +217,12 @@ spec:
           lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
           {{- end }}
           volumeMounts:
+            # Writable directories (the root filesystem may be read-only): heap dumps and Jetty, and the logs (and, without
+            # persistence, the work directory)
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /opt/ignite/apache-ignite/work
+              name: work
             {{- if .Values.persistence.enabled }}
             - mountPath: "/storage"
               name: storage
@@ -232,6 +239,10 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: { }
+        - name: work
+          emptyDir: { }
         - name: config-volume
           configMap:
             name: {{ include "ignite.fullname" . }}

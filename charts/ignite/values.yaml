@@ -1,4 +1,4 @@
-# Upgrading from 2.18.x: see the Upgrading section of README.md
+# Upgrading from 2.19.2 or 2.18.x: see the Upgrading sections of README.md
 
 global:
   # -- Global container image registry override
@@ -99,7 +99,9 @@ containerSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   privileged: false
-  readOnlyRootFilesystem: false
+  # The chart mounts writable emptyDir volumes for /tmp and the work directory (set it to false for EXTERNAL_LIBS in env,
+  # which the image downloads into its libs directory)
+  readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
   capabilities:
     drop: [ "ALL" ]
@@ -283,9 +285,9 @@ networkPolicy:
 podDisruptionBudget:
   # -- Create a PodDisruptionBudget (only with more than one replica)
   create: true
-  # -- Minimum number of pods that must be available during disruptions (mutually exclusive with maxUnavailable)
+  # -- Minimum number of pods that must be available during disruptions (if set, used instead of maxUnavailable)
   minAvailable: ""
-  # -- Maximum number of pods that can be unavailable during disruptions (mutually exclusive with minAvailable)
+  # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
 # Autoscaling is NOT recommended for Ignite clusters:
@@ -496,6 +498,14 @@ failoverSpi: |-
 
 # -- Load balancing SPI
 loadBalancingSpi: |-
+
+logging:
+  # -- Log to the console (kubectl logs) too; when false, only the errors (the logs are always kept in the work directory)
+  console: true
+  # -- Root log level (e.g., INFO, DEBUG)
+  level: INFO
+  # -- Number of rolled (compressed) log files kept in the work directory
+  maxRolledFiles: 10
 
 metrics:
   # -- Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations)

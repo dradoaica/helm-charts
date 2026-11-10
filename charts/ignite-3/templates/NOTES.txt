@@ -17,6 +17,11 @@ WARNING: without persistence.enabled, a restarted node loses its cluster and met
 
 WARNING: the 'ignite' user keeps its well-known default password: set authentication.igniteUserPassword (or authentication.existingSecret).
 {{- end }}
+{{- if .Values.authentication.enabled }}
+
+To change the password of the 'ignite' user, upgrade with the new authentication.igniteUserPassword (the initialization
+job applies it); if the job cannot authenticate, also set authentication.igniteUserPreviousPassword to the current one.
+{{- end }}
 {{- if and (not .Values.ssl.network.enabled) (not .Values.networkPolicy.create) }}
 
 WARNING: without ssl.network.enabled or networkPolicy.create, any pod can join the cluster.
