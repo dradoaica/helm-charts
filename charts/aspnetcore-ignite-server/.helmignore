@@ -25,3 +25,5 @@
 *.tmproj
 .vscode/
 gcp.yaml
+# helm-docs template
+README.md.gotmpl

@@ -43,7 +43,7 @@ image:
   registry: docker.io
   # -- Main container image repository
   repository: apacheignite/ignite
-  # -- Main container image tag
+  # -- Main container image tag (defaults to appVersion when empty)
   tag: ""
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
@@ -57,13 +57,14 @@ serviceAccount:
   annotations: { }
 
 rbac:
-  # -- Create RBAC items (e.g., role, role-binding) and mount the ServiceAccount token in the pods (not needed by Ignite, whose
-  # nodes find each other through the headless Service)
+  # -- Create RBAC items (e.g., role, role-binding) and mount the ServiceAccount token in the pods (not needed by
+  # Ignite,
+  # whose nodes find each other through the headless Service)
   create: false
 
 # -- StatefulSet pod management policy
 podManagementPolicy: OrderedReady
-# -- Number of old ReplicaSets to retain
+# -- Number of old StatefulSet revisions (ControllerRevisions) to retain
 revisionHistoryLimit: 10
 
 # -- StatefulSet update strategy
@@ -111,7 +112,8 @@ containerSecurityContext:
 #  memory calculation: onHeapMB (JVM Heap max size)
 #   + maxMetaspaceSizeMB (JVM Metaspace max size)
 #   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)
-#   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))
+#   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of
+# data))
 #   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)
 #     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)
 #     || 2GB (offHeapMB > 8 GB)
@@ -170,11 +172,11 @@ lifecycleHooks: { }
 container:
   # -- Container ports used by the Pod spec and as Service targetPort values
   ports:
-    # REST/Management API (HTTP)
+    # -- REST/Management API (HTTP)
     management: 10300
-    # REST/Management API (HTTPS)
+    # -- REST/Management API (HTTPS)
     managementSsl: 10400
-    # Client connector (binary protocol for thin clients and JDBC; not HTTP)
+    # -- Client connector (binary protocol for thin clients and JDBC; not HTTP)
     rest: 10800
     cluster: 3344
 
@@ -182,11 +184,11 @@ service:
   # -- Service ports used by the Service spec. targetPort fields reference container.ports.* (cluster is on the headless
   # Service only)
   ports:
-    # REST/Management API (HTTP)
+    # -- REST/Management API (HTTP)
     management: 10300
-    # REST/Management API (HTTPS)
+    # -- REST/Management API (HTTPS)
     managementSsl: 10400
-    # Client connector (binary protocol for thin clients and JDBC; not HTTP)
+    # -- Client connector (binary protocol for thin clients and JDBC; not HTTP)
     rest: 10800
     cluster: 3344
     jmx: 9404
@@ -242,7 +244,7 @@ networkPolicy:
   allowIntraCluster: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
-  # -- NetworkPolicy egress rules
+  # -- NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS rule in it)
   egress:
     # Allow DNS resolution
     - to:
@@ -252,7 +254,7 @@ networkPolicy:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow HTTPS for JMX agent download
+    # Allow HTTPS for the download of the JMX agent (jmx.agent.url)
     - to:
         - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
@@ -267,25 +269,30 @@ podDisruptionBudget:
   # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
-# Autoscaling is NOT recommended for Ignite 3 clusters:
-#  - The CMG/metastorage group is chosen once at initialization from `replicaCount` (the lowest pod ordinals);
-#    scaling down below its majority makes the cluster unavailable.
-#  - Scaling down removes nodes without draining them; partitions with fewer replicas than removed nodes
-#    become lost or unavailable.
-#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`, overriding the HPA (an implicit scale-down).
-#  - Memory-based scaling does not fit the JVM (heap is pre-touched and rarely returned), so pods rarely scale back down.
-# Prefer scaling manually via `replicaCount`, one node at a time, and only with backups/replicas configured.
+# The autoscaler only scales up (it never removes pods): the CMG/metastorage group is chosen once at initialization from
+# the lowest pod ordinals, and removing nodes can lose its majority or partitions.
+#  - Every added node triggers rebalancing, which loads the other nodes: keep the scale-up steps small and far apart.
+#  - CPU is the only target (the JVM pre-touches its heap, so the memory utilization stays high whatever the load).
+#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`: raise it to the current number of pods
+#    first.
+# Scale down manually via `replicaCount`, with the autoscaler off, one node at a time, and only with replicas
+# configured.
 autoscaling:
-  # -- Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data or the CMG/metastorage majority - see the values.yaml comments)
+  # -- Create a HorizontalPodAutoscaler that only scales up - see the values.yaml comments
   create: false
-  # -- Minimum number of replicas
+  # -- Minimum number of replicas (not below replicaCount)
   minReplicas: 1
   # -- Maximum number of replicas
   maxReplicas: 10
   # -- Target CPU utilization percentage
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
-  targetMemoryUtilizationPercentage: 80
+  # -- Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing)
+  scaleUp:
+    stabilizationWindowSeconds: 600
+    policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 600
 
 ingress:
   # -- Create an Ingress for external HTTP access
@@ -300,7 +307,8 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          # REST/Management API (HTTP); the client connector port (10800) is a binary protocol and cannot be exposed via Ingress
+          # REST/Management API (HTTP); the client connector port (10800) is a binary protocol and cannot be exposed
+          # via Ingress
           port: 10300
   # -- TLS configuration for Ingress
   tls: [ ]
@@ -310,7 +318,7 @@ ingress:
 replicaCount: 1
 
 memory:
-  # -- On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024
+  # -- On-heap memory limit in MB (the JVM heap; JVM_MIN_MEM and JVM_MAX_MEM). If not set, defaults to 1024
   onHeapMB: ""
   # -- JVM Metaspace max size in MB. If not set, defaults to 256
   maxMetaspaceSizeMB: ""
@@ -340,7 +348,8 @@ authentication:
     name: ""
     # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
     key: ""
-    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password';
+    # optional)
     previousKey: ""
 
 dataStorage:
@@ -348,7 +357,8 @@ dataStorage:
   # in-memory, rocksdb)
   engine: aipersist
 
-# -- Extra node configuration (HOCON), merged into the chart's (e.g., `ignite.sql.execution.threadCount=8`; a list, e.g.,
+# -- Extra node configuration (HOCON), merged into the chart's (e.g., `ignite.sql.execution.threadCount=8`; a list,
+# e.g.,
 # `ignite.storage.profiles`, replaces the chart's)
 extraConfiguration: ""
 
@@ -412,7 +422,9 @@ ssl:
     trustStoreType: PKCS12
   # -- When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified
   manageSecret: true
-  # -- Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret
+  # -- Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret (not supported with
+  # SSL
+  # enabled yet, as Ignite 3 reads the passwords from its configuration only: see SECURITY.md)
   existingSecret:
     # -- Name of the existing Secret containing SSL passphrase keys
     name: ""

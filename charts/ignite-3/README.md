@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.8](https://img.shields.io/badge/Version-3.2.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.2.9](https://img.shields.io/badge/Version-3.2.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -39,6 +39,29 @@ is neither of the others.
 The SSL key store and trust store passwords are rendered into the ConfigMap, as Ignite 3 does not substitute environment
 variables in its node configuration (see SECURITY.md).
 
+Until Apache Ignite 3.2.0 (`appVersion`) is released, run the 3.1.0 image with `examples/ignite-3.1-values.yaml`, whose
+probes check the REST port instead of the `/health` endpoints of Ignite 3.2:
+
+```shell
+helm install <release> <chart> -f examples/ignite-3.1-values.yaml
+```
+
+## Upgrading from 3.2.8
+
+Upgrade with `--reset-then-reuse-values`, as from 3.2.7 (the chart fails with a message on values that miss the new
+settings):
+
+```shell
+helm upgrade <release> <chart> --version 3.2.9 --reset-then-reuse-values
+```
+
+- The autoscaler (`autoscaling.create`) only scales up, on CPU only (`autoscaling.targetMemoryUtilizationPercentage` is
+  refused), with `autoscaling.minReplicas` not below `replicaCount`.
+- The CLI works with `kubectl exec` on the read-only root filesystem (it needs `XDG_CONFIG_HOME` and `XDG_STATE_HOME`,
+  now set).
+- `ssl.existingSecret` is refused with SSL enabled: the nodes read the SSL passwords from the ConfigMap only, so an
+  existing Secret left them empty. The passwords are now escaped in the configuration (a `"` or `\\` broke it).
+
 ## Upgrading from 3.2.7
 
 Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the 3.2.7 defaults, e.g., `rbac.create` and the
@@ -75,12 +98,15 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty), set by the initialization job at initialization and changed by it on upgrade |
 | authentication.igniteUserPreviousPassword | string | `""` | Current password of the ignite user, when rotating it to igniteUserPassword |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
-| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data or the CMG/metastorage majority - see the values.yaml comments) |
+| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler that only scales up - see the values.yaml comments |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
-| autoscaling.minReplicas | int | `1` | Minimum number of replicas |
+| autoscaling.minReplicas | int | `1` | Minimum number of replicas (not below replicaCount) |
+| autoscaling.scaleUp | object | `{"policies":[{"periodSeconds":600,"type":"Pods","value":1}],"stabilizationWindowSeconds":600}` | Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing) |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
-| autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | container.ports | object | `{"cluster":3344,"management":10300,"managementSsl":10400,"rest":10800}` | Container ports used by the Pod spec and as Service targetPort values |
+| container.ports.management | int | `10300` | REST/Management API (HTTP) |
+| container.ports.managementSsl | int | `10400` | REST/Management API (HTTPS) |
+| container.ports.rest | int | `10800` | Client connector (binary protocol for thin clients and JDBC; not HTTP) |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | dataStorage.engine | string | `"aipersist"` | Storage engine of the default storage profile, sized by memory.offHeapMB (aipersist for persistence, aimem for in-memory, rocksdb) |
@@ -100,7 +126,7 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | image.pullPolicy | string | `"IfNotPresent"` | Main container image pull policy |
 | image.registry | string | `"docker.io"` | Main container image registry |
 | image.repository | string | `"apacheignite/ignite"` | Main container image repository |
-| image.tag | string | `""` | Main container image tag |
+| image.tag | string | `""` | Main container image tag (defaults to appVersion when empty) |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |
@@ -124,14 +150,14 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | memory.maxDirectMemorySizeMB | int | `2560` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size) |
 | memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
 | memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the sizeBytes for the default storage profile (data + indexes) |
-| memory.onHeapMB | string | `""` | On-heap memory limit in MB. If set, JVM_MIN_MEM and JVM_MAX_MEM will be value. If not set, defaults to 1024 |
+| memory.onHeapMB | string | `""` | On-heap memory limit in MB (the JVM heap; JVM_MIN_MEM and JVM_MAX_MEM). If not set, defaults to 1024 |
 | memory.reservedCodeCacheSizeMB | string | `""` | JVM ReservedCodeCache size in MB. If not set, defaults to 240 |
 | minReadySeconds | int | `60` | Seconds a started pod must stay ready before the next one starts or restarts (gives the restarted node time to catch up on its replicas; raise it for large data sets) |
 | nameOverride | string | `""` | String to partially override the fullname template with a string (will prepend the release name) |
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.allowTests | bool | `true` | Allow ingress from the chart's test pods (helm test) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS rule in it) |
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
@@ -158,8 +184,11 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
-| revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
+| revisionHistoryLimit | int | `10` | Number of old StatefulSet revisions (ControllerRevisions) to retain |
 | service.ports | object | `{"cluster":3344,"jmx":9404,"management":10300,"managementSsl":10400,"rest":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* (cluster is on the headless Service only) |
+| service.ports.management | int | `10300` | REST/Management API (HTTP) |
+| service.ports.managementSsl | int | `10400` | REST/Management API (HTTPS) |
+| service.ports.rest | int | `10800` | Client connector (binary protocol for thin clients and JDBC; not HTTP) |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
 | serviceAccount.name | string | `""` | Name for the ServiceAccount (autogenerated when empty) |
@@ -172,7 +201,7 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | ssl.clientConnector.trustStoreFilePath | string | `""` | Path to the truststore used by the client connector |
 | ssl.clientConnector.trustStorePassword | string | `""` | Password for the client connector truststore |
 | ssl.clientConnector.trustStoreType | string | `"PKCS12"` | Truststore type for the client connector |
-| ssl.existingSecret | object | `{"keys":{"clientConnectorKsPass":"","clientConnectorTsPass":"","networkKsPass":"","networkTsPass":"","restKsPass":"","restTsPass":""},"name":""}` | Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret |
+| ssl.existingSecret | object | `{"keys":{"clientConnectorKsPass":"","clientConnectorTsPass":"","networkKsPass":"","networkTsPass":"","restKsPass":"","restTsPass":""},"name":""}` | Use an existing Secret for all SSL-related passphrase keys instead of a chart-managed Secret (not supported with SSL enabled yet, as Ignite 3 reads the passwords from its configuration only: see SECURITY.md) |
 | ssl.existingSecret.keys | object | `{"clientConnectorKsPass":"","clientConnectorTsPass":"","networkKsPass":"","networkTsPass":"","restKsPass":"","restTsPass":""}` | Optional mapping to override the expected key names in the existing Secret |
 | ssl.existingSecret.keys.clientConnectorKsPass | string | `""` | Key name for the client connector keystore password (defaults to 'client-connector-ks-pass') |
 | ssl.existingSecret.keys.clientConnectorTsPass | string | `""` | Key name for the client connector truststore password (defaults to 'client-connector-ts-pass') |

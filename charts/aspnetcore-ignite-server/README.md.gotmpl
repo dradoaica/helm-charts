@@ -1,0 +1,30 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Images
+
+Until the server 2.19.0 (`appVersion`) image is published, build it from the
+[repository](https://github.com/dradoaica/AspNetCore.Ignite/) and set `image.*` (the published 2.17.0 and 2.18.0 images
+do not start).
+
+## Upgrading
+
+See [docs/upgrading.md](https://github.com/dradoaica/AspNetCore.Ignite/blob/main/docs/upgrading.md). Upgrade with
+`--reset-then-reuse-values` (not `--reuse-values`, which keeps the old defaults and misses the new settings; the chart
+then fails with a message).
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

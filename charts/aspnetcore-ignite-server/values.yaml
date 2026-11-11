@@ -48,7 +48,8 @@ image:
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
 
-# -- Apache Ignite version of the image (defaults to the chart's when empty; set it when image.tag runs another one), used
+# -- Apache Ignite version of the image (defaults to the chart's when empty; set it when image.tag runs another one),
+# used
 # to refuse rolling upgrades across Ignite minor versions
 igniteVersion: ""
 
@@ -66,7 +67,7 @@ rbac:
 
 # -- StatefulSet pod management policy (Parallel is required when env.ACTIVATION_MIN_SERVER_NODES is above 1)
 podManagementPolicy: Parallel
-# -- Number of old ReplicaSets to retain
+# -- Number of old StatefulSet revisions (ControllerRevisions) to retain
 revisionHistoryLimit: 10
 
 # -- StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to
@@ -176,7 +177,7 @@ lifecycleHooks: { }
 container:
   # -- Container ports used by the Pod spec and as Service targetPort values
   ports:
-    # -- Thin clients, JDBC and ODBC (client connector)
+    # -- Thin clients, JDBC, ODBC and the control utility (client connector)
     thinClients: 10800
     spiCommunication: 47100
     spiDiscovery: 47500
@@ -227,7 +228,8 @@ persistence:
     annotations: { }
   # -- Volume where WAL is persisted (/wal)
   walVolume:
-    # -- Enable a dedicated WAL volume (disable it to keep the WAL in the storage volume, as with chart 2.18.x, whose data
+    # -- Enable a dedicated WAL volume (disable it to keep the WAL in the storage volume, as with chart 2.18.x, whose
+    # data
     # volumes cannot recover without their WAL)
     enabled: true
     # -- Name of the volume claim template
@@ -272,7 +274,8 @@ networkPolicy:
   allowIntraCluster: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
-  # -- NetworkPolicy egress rules (add a rule for the OTLP collector when env.OTEL_EXPORTER_OTLP_ENDPOINT is set)
+  # -- NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS and Kubernetes API server
+  # rules in it, e.g., when adding a rule for the OTLP collector of env.OTEL_EXPORTER_OTLP_ENDPOINT)
   egress:
     # Allow DNS resolution
     - to:
@@ -282,13 +285,16 @@ networkPolicy:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow access to the Kubernetes API server (required by the Kubernetes IP finder for discovery)
+    # Allow access to the Kubernetes API server (required by the Kubernetes IP finder for discovery), on the ports its
+    # endpoints listen on: 443 (e.g., EKS, AKS, GKE), 6443 (kubeadm, k3s, OpenShift), 16443 (MicroK8s)
     - to:
         - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
         - port: 443
           protocol: TCP
         - port: 6443
+          protocol: TCP
+        - port: 16443
           protocol: TCP
 
 podDisruptionBudget:
@@ -299,26 +305,32 @@ podDisruptionBudget:
   # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
-# Autoscaling is NOT recommended for Ignite clusters:
-#  - Scaling down removes nodes without draining them; partitions without backups become lost or unavailable.
-#    Without persistence, every scale event triggers rebalancing.
-#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`, overriding the HPA (an implicit scale-down).
-#  - Memory-based scaling does not fit the JVM (heap is pre-touched and rarely returned), so pods rarely scale back down.
-# Prefer scaling manually via `replicaCount`, one node at a time, and only with backups configured.
+# The autoscaler only scales up (it never removes pods): a new node joins the baseline (auto-adjust) and receives data.
+#  - Every added node triggers rebalancing, which loads the other nodes: keep the scale-up steps small and far apart.
+#  - CPU is the only target (the JVM pre-touches its heap, so the memory utilization stays high whatever the load).
+#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`: raise it to the current number of pods
+#    first.
+# Scale down manually via `replicaCount`, with the autoscaler off, one node at a time, and only with backups configured.
 autoscaling:
-  # -- Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data - see the values.yaml comments)
+  # -- Create a HorizontalPodAutoscaler that only scales up - see the values.yaml comments
   create: false
-  # -- Minimum number of replicas
+  # -- Minimum number of replicas (not below replicaCount)
   minReplicas: 1
   # -- Maximum number of replicas
   maxReplicas: 10
   # -- Target CPU utilization percentage
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
-  targetMemoryUtilizationPercentage: 80
+  # -- Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing)
+  scaleUp:
+    stabilizationWindowSeconds: 600
+    policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 600
 
 ingress:
-  # -- Create an Ingress for the REST API (requires rest.enabled; unencrypted, and Jetty 11 has no public fix for an HTTP
+  # -- Create an Ingress for the REST API (requires rest.enabled; unencrypted, and Jetty 11 has no public fix for an
+  # HTTP
   # request smuggling flaw - not for untrusted networks)
   create: false
   # -- IngressClass that will be used to implement the Ingress
@@ -346,9 +358,11 @@ memory:
   maxMetaspaceSizeMB: ""
   # -- JVM ReservedCodeCache size in MB. If not set, defaults to 240
   reservedCodeCacheSizeMB: ""
-  # -- JVM G1 Heap region size in MB. If not set, the JVM chooses
+  # -- JVM G1 Heap region size in MB (a power of 2 from 1 to 32). If not set, the JVM chooses (about 2048 regions; 1 MB
+  # for the default heap)
   g1HeapRegionSizeMB: ""
-  # -- Off-heap memory limit in MB. Configures the default data region max size (data + indexes; DEFAULT_OFF_HEAP_MEMORY)
+  # -- Off-heap memory limit in MB. Configures the default data region max size (data + indexes;
+  # DEFAULT_OFF_HEAP_MEMORY)
   offHeapMB: 2048
   # -- JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size)
   maxDirectMemorySizeMB: 2960
@@ -371,7 +385,8 @@ authentication:
     name: ""
     # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password'; required)
     key: ""
-    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password';
+    # optional)
     previousKey: ""
 
 # -- Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading)
@@ -516,7 +531,8 @@ env:
   EXTRA_CLASSPATH: ""
   # -- Server nodes a new persistent cluster waits for before activating (set it to replicaCount)
   ACTIVATION_MIN_SERVER_NODES: 1
-  # -- Seconds the baseline waits for a stable topology before following it (defaults to 300 with persistence and 30 without when empty)
+  # -- Seconds the baseline waits for a stable topology before following it (defaults to 300 with persistence and 30
+  # without when empty)
   BASELINE_AUTO_ADJUST_TIMEOUT_IN_SECONDS: ""
   # -- Mark a started node as ready only once it holds its data (at most REBALANCE_READINESS_MAX_WAIT_IN_SECONDS)
   READY_WHEN_REBALANCED: true

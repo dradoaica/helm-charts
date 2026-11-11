@@ -1,4 +1,13 @@
 {{- if .Values.autoscaling.create }}
+{{- if .Values.persistence.enabled }}
+{{- fail "autoscaling.create requires persistence.enabled=false: with persistence, the baseline is not adjusted automatically, so the added pods would hold no data" }}
+{{- end }}
+{{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+{{- fail "autoscaling.targetMemoryUtilizationPercentage is no longer supported: the JVM pre-touches its heap, so the memory utilization stays high whatever the load" }}
+{{- end }}
+{{- if lt (int .Values.autoscaling.minReplicas) (int .Values.replicaCount) }}
+{{- fail (printf "autoscaling.minReplicas (%d) must not be below replicaCount (%d)" (int .Values.autoscaling.minReplicas) (int .Values.replicaCount)) }}
+{{- end }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -17,20 +26,18 @@ spec:
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:
-    {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
-    {{- end }}
-    {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+          averageUtilization: {{ required "autoscaling.targetCPUUtilizationPercentage is required with autoscaling.create" .Values.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    # Scale-up only: removing nodes can lose data
+    scaleDown:
+      selectPolicy: Disabled
+    {{- with .Values.autoscaling.scaleUp }}
+    scaleUp:
+      {{- toYaml . | nindent 6 }}
     {{- end }}
 {{- end }}

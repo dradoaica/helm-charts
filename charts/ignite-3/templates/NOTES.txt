@@ -28,8 +28,5 @@ WARNING: without ssl.network.enabled or networkPolicy.create, any pod can join t
 {{- end }}
 {{- if .Values.autoscaling.create }}
 
-WARNING: autoscaling.create is enabled. Autoscaling is NOT recommended for Ignite 3 clusters:
-  - The CMG/metastorage group is fixed at initialization; scaling down below its majority makes the cluster unavailable.
-  - Scaling down removes nodes without draining them; partitions with fewer replicas than removed nodes become lost or unavailable.
-  - Every `helm upgrade` resets the replicas to replicaCount, overriding the HPA.
+The autoscaler only adds pods (up to autoscaling.maxReplicas): scale down manually via replicaCount, with it off.
 {{- end }}

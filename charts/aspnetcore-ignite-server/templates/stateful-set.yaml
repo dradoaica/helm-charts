@@ -51,7 +51,7 @@ spec:
   {{- if .Values.podManagementPolicy }}
   podManagementPolicy: {{ .Values.podManagementPolicy }}
   {{- end }}
-  {{- if .Values.revisionHistoryLimit }}
+  {{- if not (has (toString .Values.revisionHistoryLimit) (list "" "<nil>")) }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- end }}
   {{- if .Values.updateStrategy }}

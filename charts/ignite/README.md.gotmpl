@@ -13,6 +13,25 @@
 
 {{ template "chart.requirementsSection" . }}
 
+## Images
+
+Until Apache Ignite 2.19.0 (`appVersion`) is released, set `image.tag` to `2.18.0`.
+
+## Upgrading from 2.19.3
+
+Upgrade with `--reset-then-reuse-values`, as from 2.19.2 (the chart fails with a message on values that miss the new
+settings):
+
+```shell
+helm upgrade <release> <chart> --version 2.19.4 --reset-then-reuse-values
+```
+
+- The default `networkPolicy.egress` allows the Kubernetes API server on port 16443 too (MicroK8s, where the nodes did
+  not find each other).
+- The autoscaler (`autoscaling.create`) only scales up, on CPU only (`autoscaling.targetMemoryUtilizationPercentage` is
+  refused), with `autoscaling.minReplicas` not below `replicaCount`; it is refused with `persistence.enabled`, as the
+  added pods would hold no data.
+
 ## Upgrading from 2.19.2
 
 Upgrade with `--reset-then-reuse-values` (not `--reuse-values`, which keeps the 2.19.2 defaults and misses the new

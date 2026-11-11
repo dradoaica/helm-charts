@@ -1,4 +1,4 @@
-# Upgrading from 2.19.2 or 2.18.x: see the Upgrading sections of README.md
+# Upgrading from 2.19.3, 2.19.2 or 2.18.x: see the Upgrading sections of README.md
 
 global:
   # -- Global container image registry override
@@ -43,7 +43,8 @@ image:
   registry: docker.io
   # -- Main container image repository
   repository: apacheignite/ignite
-  # -- Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g., 2.19.0-arm64)
+  # -- Main container image tag (defaults to appVersion when empty; each architecture has its own tag, e.g.,
+  # 2.19.0-arm64)
   tag: ""
   # -- Main container image pull policy
   pullPolicy: IfNotPresent
@@ -62,17 +63,18 @@ rbac:
 
 # -- StatefulSet pod management policy
 podManagementPolicy: OrderedReady
-# -- Number of old ReplicaSets to retain
+# -- Number of old StatefulSet revisions (ControllerRevisions) to retain
 revisionHistoryLimit: 10
 
 # -- StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to
-# another minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0)
+# another Ignite minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0)
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:
     partition: 0
 
-# -- Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not wait
+# -- Seconds a started pod must stay ready before the next one starts or restarts (Ignite's readiness probe does not
+# wait
 # for rebalancing; raise it for large data sets)
 minReadySeconds: 60
 
@@ -99,7 +101,8 @@ containerSecurityContext:
   runAsGroup: 1001
   runAsNonRoot: true
   privileged: false
-  # The chart mounts writable emptyDir volumes for /tmp and the work directory (set it to false for EXTERNAL_LIBS in env,
+  # The chart mounts writable emptyDir volumes for /tmp and the work directory (set it to false for EXTERNAL_LIBS in
+  # env,
   # which the image downloads into its libs directory)
   readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
@@ -263,7 +266,8 @@ networkPolicy:
   allowIntraCluster: true
   # -- NetworkPolicy ingress rules (add rules for clients that need access to the cluster)
   ingress: [ ]
-  # -- NetworkPolicy egress rules
+  # -- NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS and Kubernetes API server
+  # rules in it)
   egress:
     # Allow DNS resolution
     - to:
@@ -273,13 +277,16 @@ networkPolicy:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow access to the Kubernetes API server (required by the Kubernetes IP finder for discovery)
+    # Allow access to the Kubernetes API server (required by the Kubernetes IP finder for discovery), on the ports its
+    # endpoints listen on: 443 (e.g., EKS, AKS, GKE), 6443 (kubeadm, k3s, OpenShift), 16443 (MicroK8s)
     - to:
         - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
         - port: 443
           protocol: TCP
         - port: 6443
+          protocol: TCP
+        - port: 16443
           protocol: TCP
 
 podDisruptionBudget:
@@ -290,25 +297,30 @@ podDisruptionBudget:
   # -- Maximum number of pods that can be unavailable during disruptions (used when minAvailable is empty)
   maxUnavailable: 1
 
-# Autoscaling is NOT recommended for Ignite clusters:
-#  - With persistence, baseline auto-adjust is disabled by default; new pods join but hold no data
-#    until they are added to the baseline topology (e.g., `control.sh --baseline add`).
-#  - Scaling down removes nodes without draining them; partitions without backups (the default is 0 backups)
-#    become lost or unavailable. Without persistence, every scale event triggers rebalancing.
-#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`, overriding the HPA (an implicit scale-down).
-#  - Memory-based scaling does not fit the JVM (heap is pre-touched and rarely returned), so pods rarely scale back down.
-# Prefer scaling manually via `replicaCount`, one node at a time, and only with backups/replicas configured.
+# The autoscaler only scales up (it never removes pods), and only without persistence: with it, the baseline is not
+# adjusted automatically, so new pods hold no data until added to it (control.sh --baseline add).
+#  - Every added node triggers rebalancing, which loads the other nodes: keep the scale-up steps small and far apart.
+#  - CPU is the only target (the JVM pre-touches its heap, so the memory utilization stays high whatever the load).
+#  - Every `helm upgrade` resets the StatefulSet replicas to `replicaCount`: raise it to the current number of pods
+#    first.
+# Scale down manually via `replicaCount`, with the autoscaler off, one node at a time, and only with backups configured.
 autoscaling:
-  # -- Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data, and new pods hold no data until added to the baseline topology - see the values.yaml comments)
+  # -- Create a HorizontalPodAutoscaler that only scales up, only without persistence.enabled - see the values.yaml
+  # comments
   create: false
-  # -- Minimum number of replicas
+  # -- Minimum number of replicas (not below replicaCount)
   minReplicas: 1
   # -- Maximum number of replicas
   maxReplicas: 10
   # -- Target CPU utilization percentage
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
-  targetMemoryUtilizationPercentage: 80
+  # -- Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing)
+  scaleUp:
+    stabilizationWindowSeconds: 600
+    policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 600
 
 ingress:
   # -- Create an Ingress for external HTTP access to REST API
@@ -364,7 +376,8 @@ authentication:
     name: ""
     # -- Key in the existing Secret that holds the password (defaults to 'ignite-user-password')
     key: ""
-    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password'; optional)
+    # -- Key in the existing Secret that holds the previous password (defaults to 'ignite-user-previous-password';
+    # optional)
     previousKey: ""
 
 # -- Enable the Ignite's [Zero Deployment](https://ignite.apache.org/docs/ignite2/latest/code-deployment/peer-class-loading.html#enabling-peer-class-loading)
@@ -425,7 +438,8 @@ executorConfiguration: |-
 serviceConfiguration: |-
 
 # -- SQL configuration (since Ignite 2.19, SQL runs on the Calcite engine by default, and on H2 only with the
-# QUERY_ENGINE('h2') hint; make org.apache.ignite.indexing.IndexingQueryEngineConfiguration the default engine to keep H2)
+# QUERY_ENGINE('h2') hint; make org.apache.ignite.indexing.IndexingQueryEngineConfiguration the default engine to keep
+# H2)
 sqlConfiguration: |-
 
 # -- Number of SQL queries each node keeps in its history (defaults to 0, as the node that ran the activation job's
@@ -500,7 +514,8 @@ failoverSpi: |-
 loadBalancingSpi: |-
 
 logging:
-  # -- Log to the console (kubectl logs) too; when false, only the errors (the logs are always kept in the work directory)
+  # -- Log to the console (kubectl logs) too; when false, only the errors (the logs are always kept in the work
+  # directory)
   console: true
   # -- Root log level (e.g., INFO, DEBUG)
   level: INFO
@@ -508,7 +523,8 @@ logging:
   maxRolledFiles: 10
 
 metrics:
-  # -- Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod annotations)
+  # -- Enable metrics, exposed for Prometheus on container.ports.metrics (/metrics, with the prometheus.io pod
+  # annotations)
   enabled: false
 
 # -- Environment variables

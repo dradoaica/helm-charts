@@ -1,6 +1,6 @@
 # aspnetcore-ignite-server
 
-![Version: 2.19.2](https://img.shields.io/badge/Version-2.19.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
+![Version: 2.19.3](https://img.shields.io/badge/Version-2.19.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
 
 Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clustering capabilities.
 
@@ -20,6 +20,18 @@ Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery clusterin
 
 Kubernetes: `>= 1.26.0`
 
+## Images
+
+Until the server 2.19.0 (`appVersion`) image is published, build it from the
+[repository](https://github.com/dradoaica/AspNetCore.Ignite/) and set `image.*` (the published 2.17.0 and 2.18.0 images
+do not start).
+
+## Upgrading
+
+See [docs/upgrading.md](https://github.com/dradoaica/AspNetCore.Ignite/blob/main/docs/upgrading.md). Upgrade with
+`--reset-then-reuse-values` (not `--reuse-values`, which keeps the old defaults and misses the new settings; the chart
+then fails with a message).
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -34,11 +46,11 @@ Kubernetes: `>= 1.26.0`
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user (defaults to ignite when empty) |
 | authentication.igniteUserPreviousPassword | string | `""` | Current password of the ignite user, when rotating it to igniteUserPassword |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
-| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data - see the values.yaml comments) |
+| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler that only scales up - see the values.yaml comments |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
-| autoscaling.minReplicas | int | `1` | Minimum number of replicas |
+| autoscaling.minReplicas | int | `1` | Minimum number of replicas (not below replicaCount) |
+| autoscaling.scaleUp | object | `{"policies":[{"periodSeconds":600,"type":"Pods","value":1}],"stabilizationWindowSeconds":600}` | Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing) |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
-| autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | binaryConfiguration | string | `""` | Binary configuration |
 | cacheConfiguration | string | `""` | Cache configuration |
 | collisionSpi | string | `""` | Collision SPI |
@@ -46,7 +58,7 @@ Kubernetes: `>= 1.26.0`
 | container.ports.management | int | `9464` | Health checks and /metrics |
 | container.ports.rest | int | `8080` | REST API (only with rest.enabled) |
 | container.ports.restTcp | int | `11211` | TCP binary protocol (only with rest.enabled) |
-| container.ports.thinClients | int | `10800` | Thin clients, JDBC and ODBC (client connector) |
+| container.ports.thinClients | int | `10800` | Thin clients, JDBC, ODBC and the control utility (client connector) |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"enabled":true,"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Container security context configuration |
 | containerSecurityContext.enabled | bool | `true` | Enable container security context |
 | dataStorage | object | `{"pageEvictionMode":"RANDOM_2_LRU","walCompactionEnabled":true,"walMode":"LOG_ONLY"}` | Data storage configuration |
@@ -91,7 +103,7 @@ Kubernetes: `>= 1.26.0`
 | livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/liveness","port":"management"},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | loadBalancingSpi | string | `""` | Load balancing SPI |
-| memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB. If not set, the JVM chooses |
+| memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB (a power of 2 from 1 to 32). If not set, the JVM chooses (about 2048 regions; 1 MB for the default heap) |
 | memory.maxDirectMemorySizeMB | int | `2960` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size + other system regions total size) |
 | memory.maxMetaspaceSizeMB | string | `""` | JVM Metaspace max size in MB. If not set, defaults to 256 |
 | memory.offHeapMB | int | `2048` | Off-heap memory limit in MB. Configures the default data region max size (data + indexes; DEFAULT_OFF_HEAP_MEMORY) |
@@ -103,7 +115,7 @@ Kubernetes: `>= 1.26.0`
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.allowTests | bool | `true` | Allow ingress from the chart's test pods (helm test) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules (add a rule for the OTLP collector when env.OTEL_EXPORTER_OTLP_ENDPOINT is set) |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"},{"port":16443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS and Kubernetes API server rules in it, e.g., when adding a rule for the OTLP collector of env.OTEL_EXPORTER_OTLP_ENDPOINT) |
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
@@ -144,7 +156,7 @@ Kubernetes: `>= 1.26.0`
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default region checkpointing buffer size)   + 100MB (sysMemPlc region max size)   + 100MB (metastoreMemPlc region max size)   + 100MB (TxLog region max size)   + 100MB (volatileDsMemPlc region max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
 | rest.enabled | bool | `false` | Start the REST API and the TCP binary protocol (both unencrypted) |
-| revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
+| revisionHistoryLimit | int | `10` | Number of old StatefulSet revisions (ControllerRevisions) to retain |
 | service.ports | object | `{"management":9464,"rest":8080,"restTcp":11211,"spiCommunication":47100,"spiDiscovery":47500,"thinClients":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* (spiCommunication and spiDiscovery are on the headless Service only) |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |

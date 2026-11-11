@@ -43,8 +43,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Fail early on values from an older chart (included by the labels, which every template renders first)
 */}}
 {{- define "ignite.checkValues" -}}
-{{- if not (hasKey .Values "logging") -}}
-{{- fail "The values miss settings added in chart 2.19.3 (e.g., reused from a 2.19.2 release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
+{{- if not (and (hasKey .Values "logging") (hasKey .Values.autoscaling "scaleUp")) -}}
+{{- fail "The values miss settings of this chart version (e.g., reused from an older release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
 {{- end -}}
 {{- end -}}
 

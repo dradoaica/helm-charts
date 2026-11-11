@@ -1,6 +1,6 @@
 # ignite
 
-![Version: 2.19.3](https://img.shields.io/badge/Version-2.19.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
+![Version: 2.19.4](https://img.shields.io/badge/Version-2.19.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -19,6 +19,25 @@ Apache Ignite is a distributed database for high-performance computing with in-m
 ## Requirements
 
 Kubernetes: `>= 1.26.0`
+
+## Images
+
+Until Apache Ignite 2.19.0 (`appVersion`) is released, set `image.tag` to `2.18.0`.
+
+## Upgrading from 2.19.3
+
+Upgrade with `--reset-then-reuse-values`, as from 2.19.2 (the chart fails with a message on values that miss the new
+settings):
+
+```shell
+helm upgrade <release> <chart> --version 2.19.4 --reset-then-reuse-values
+```
+
+- The default `networkPolicy.egress` allows the Kubernetes API server on port 16443 too (MicroK8s, where the nodes did
+  not find each other).
+- The autoscaler (`autoscaling.create`) only scales up, on CPU only (`autoscaling.targetMemoryUtilizationPercentage` is
+  refused), with `autoscaling.minReplicas` not below `replicaCount`; it is refused with `persistence.enabled`, as the
+  added pods would hold no data.
 
 ## Upgrading from 2.19.2
 
@@ -84,11 +103,11 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | authentication.igniteUserPassword | string | `""` | Password for the ignite user, set by the activation job (defaults to ignite when empty) |
 | authentication.igniteUserPreviousPassword | string | `""` | Current password of the ignite user, when rotating it to igniteUserPassword |
 | authentication.manageSecret | bool | `true` | When true (default), the chart may create/manage its own Secret from values when no existingSecret is specified |
-| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler (not recommended; scaling down can lose data, and new pods hold no data until added to the baseline topology - see the values.yaml comments) |
+| autoscaling.create | bool | `false` | Create a HorizontalPodAutoscaler that only scales up, only without persistence.enabled - see the values.yaml comments |
 | autoscaling.maxReplicas | int | `10` | Maximum number of replicas |
-| autoscaling.minReplicas | int | `1` | Minimum number of replicas |
+| autoscaling.minReplicas | int | `1` | Minimum number of replicas (not below replicaCount) |
+| autoscaling.scaleUp | object | `{"policies":[{"periodSeconds":600,"type":"Pods","value":1}],"stabilizationWindowSeconds":600}` | Scale-up behavior (by default, one pod every 10 minutes, as every added node triggers rebalancing) |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage |
-| autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | binaryConfiguration | string | `""` | Binary configuration |
 | cacheConfiguration | string | `""` | Cache configuration |
 | cacheKeyConfiguration | string | `""` | Cache key configuration |
@@ -154,7 +173,7 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | networkPolicy.allowIntraCluster | bool | `true` | Allow ingress/egress traffic between the pods of this release (required for cluster communication) |
 | networkPolicy.allowTests | bool | `true` | Allow ingress from the chart's test pods (helm test) |
 | networkPolicy.create | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules |
+| networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]},{"ports":[{"port":443,"protocol":"TCP"},{"port":6443,"protocol":"TCP"},{"port":16443,"protocol":"TCP"}],"to":[{"ipBlock":{"cidr":"0.0.0.0/0"}}]}]` | NetworkPolicy egress rules (a list set here replaces these defaults, so repeat the DNS and Kubernetes API server rules in it) |
 | networkPolicy.ingress | list | `[]` | NetworkPolicy ingress rules (add rules for clients that need access to the cluster) |
 | networkPolicy.name | string | `""` | Name for the NetworkPolicy (defaults to fullname when empty) |
 | nodeSelector | object | `{}` | Node selector |
@@ -189,7 +208,7 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default region max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default region checkpointing buffer size)   + 100MB (sysMemPlc region max size)   + 100MB (metastoreMemPlc region max size)   + 100MB (TxLog region max size)   + 100MB (volatileDsMemPlc region max size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
-| revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain |
+| revisionHistoryLimit | int | `10` | Number of old StatefulSet revisions (ControllerRevisions) to retain |
 | service.ports | object | `{"jdbc":11211,"metrics":9464,"rest":8080,"spiCommunication":47100,"spiDiscovery":47500,"sql":10800}` | Service ports used by the Service spec. targetPort fields reference container.ports.* (spiCommunication and spiDiscovery are on the headless Service only) |
 | serviceAccount.annotations | object | `{}` | Additional annotations to add to ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount |
@@ -233,7 +252,7 @@ supports (memoryConfiguration, tracing) make the chart fail with a message.
 | tolerations | list | `[]` | Node tolerations |
 | topologySpreadConstraints | list | `[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"{{ .Release.Name }}","app.kubernetes.io/name":"{{ include \"ignite.name\" . }}"}},"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}]` | Topology spread constraints (templated; by default, the pods prefer different Kubernetes nodes, so that a node failure takes as few copies of the same partitions as possible) |
 | transactionConfiguration | string | `""` | Transaction configuration |
-| updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to another minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0) |
+| updateStrategy | object | `{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}` | StatefulSet update strategy (nodes of different Ignite minor versions cannot form one cluster; before moving to another Ignite minor version, e.g., from 2.18 to 2.19, deactivate the cluster and scale the StatefulSet to 0) |
 | userAttributes | string | `""` | User attributes |
 
 ----------------------------------------------

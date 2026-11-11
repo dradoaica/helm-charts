@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  # The cluster name.
   name: {{ include "ignite.fullname" . }}-cluster
   labels:
     {{- include "ignite.labels" . | nindent 4 }}
@@ -103,9 +102,7 @@ spec:
         {{- if .Values.extraContainers }}
         {{- toYaml .Values.extraContainers | nindent 8 }}
         {{- end }}
-        # Custom pod name.
         - name: ignite-node
-          # Limits and requests for the Ignite container.
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
@@ -125,10 +122,13 @@ spec:
             # Writable locations for the CLI (kubectl exec), as the root filesystem may be read-only
             - name: HOME
               value: /home/ignite
+            - name: XDG_CONFIG_HOME
+              value: /home/ignite/.config
+            - name: XDG_STATE_HOME
+              value: /home/ignite/.local/state
             - name: IGNITE_CLI_WORK_DIR
               value: /home/ignite/ignite3cli
             {{- if .Values.persistence.enabled }}
-            # Ignite 3 working directory.
             - name: IGNITE_WORK_DIR
               value: /persistence
             {{- end }}
@@ -256,7 +256,6 @@ spec:
                 name: {{ .Values.extraEnvVarsSecret }}
             {{- end }}
           {{- end }}
-          # Ignite 3 Docker image and it's version.
           image: {{ include "ignite.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.containerSecurityContext.enabled }}
@@ -304,7 +303,6 @@ spec:
             - mountPath: /opt/ignite/work
               name: work
             {{- end }}
-            # The config will be placed at this path in the container.
             - mountPath: /opt/ignite/etc/ignite-config.conf
               name: config-map-vol
               subPath: ignite-config.conf

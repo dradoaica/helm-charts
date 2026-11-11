@@ -32,6 +32,29 @@ is neither of the others.
 The SSL key store and trust store passwords are rendered into the ConfigMap, as Ignite 3 does not substitute environment
 variables in its node configuration (see SECURITY.md).
 
+Until Apache Ignite 3.2.0 (`appVersion`) is released, run the 3.1.0 image with `examples/ignite-3.1-values.yaml`, whose
+probes check the REST port instead of the `/health` endpoints of Ignite 3.2:
+
+```shell
+helm install <release> <chart> -f examples/ignite-3.1-values.yaml
+```
+
+## Upgrading from 3.2.8
+
+Upgrade with `--reset-then-reuse-values`, as from 3.2.7 (the chart fails with a message on values that miss the new
+settings):
+
+```shell
+helm upgrade <release> <chart> --version 3.2.9 --reset-then-reuse-values
+```
+
+- The autoscaler (`autoscaling.create`) only scales up, on CPU only (`autoscaling.targetMemoryUtilizationPercentage` is
+  refused), with `autoscaling.minReplicas` not below `replicaCount`.
+- The CLI works with `kubectl exec` on the read-only root filesystem (it needs `XDG_CONFIG_HOME` and `XDG_STATE_HOME`,
+  now set).
+- `ssl.existingSecret` is refused with SSL enabled: the nodes read the SSL passwords from the ConfigMap only, so an
+  existing Secret left them empty. The passwords are now escaped in the configuration (a `"` or `\\` broke it).
+
 ## Upgrading from 3.2.7
 
 Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the 3.2.7 defaults, e.g., `rbac.create` and the

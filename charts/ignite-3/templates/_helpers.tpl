@@ -40,9 +40,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
+Fail early on values from an older chart (included by the labels, which every template renders first)
+*/}}
+{{- define "ignite.checkValues" -}}
+{{- if not (hasKey .Values.autoscaling "scaleUp") -}}
+{{- fail "The values miss settings of this chart version (e.g., reused from an older release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "ignite.labels" -}}
+{{- include "ignite.checkValues" . -}}
 helm.sh/chart: {{ include "ignite.chart" . }}
 {{ include "ignite.selectorLabels" . }}
 {{- if .Values.labels }}
@@ -110,6 +120,9 @@ Validate the values
 {{- define "ignite.validate" -}}
 {{- if not (has .Values.dataStorage.engine (list "aipersist" "aimem" "rocksdb")) -}}
 {{- fail (printf "dataStorage.engine %q is not one of aipersist, aimem or rocksdb" .Values.dataStorage.engine) -}}
+{{- end -}}
+{{- if and .Values.ssl.existingSecret.name (or .Values.ssl.clientConnector.enabled .Values.ssl.network.enabled .Values.ssl.rest.enabled) -}}
+{{- fail "ssl.existingSecret is not supported yet: Ignite 3 reads the SSL passwords from its configuration only, which the chart renders from ssl.*.keyStorePassword and ssl.*.trustStorePassword (see SECURITY.md)" -}}
 {{- end -}}
 {{- if and .Values.jmx.enabled (not .Values.jmx.agent.sha256) -}}
 {{- fail "jmx.agent.sha256 is required with jmx.enabled (the SHA-256 checksum of the jar at jmx.agent.url)" -}}

@@ -40,9 +40,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
+Fail early on values from an older chart (included by the labels, which every template renders first)
+*/}}
+{{- define "aspnetcore-ignite-server.checkValues" -}}
+{{- if not (hasKey .Values.autoscaling "scaleUp") -}}
+{{- fail "The values miss settings of this chart version (e.g., reused from an older release by helm upgrade --reuse-values): upgrade with --reset-then-reuse-values instead" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "aspnetcore-ignite-server.labels" -}}
+{{- include "aspnetcore-ignite-server.checkValues" . -}}
 helm.sh/chart: {{ include "aspnetcore-ignite-server.chart" . }}
 {{ include "aspnetcore-ignite-server.selectorLabels" . }}
 {{- if .Values.labels }}
@@ -68,6 +78,7 @@ Pod labels
 Test pod labels (without the selector labels, so that the Service, PDB and NetworkPolicy do not select the test pods)
 */}}
 {{- define "aspnetcore-ignite-server.testLabels" -}}
+{{- include "aspnetcore-ignite-server.checkValues" . -}}
 helm.sh/chart: {{ include "aspnetcore-ignite-server.chart" . }}
 app.kubernetes.io/name: {{ include "aspnetcore-ignite-server.name" . }}-test
 app.kubernetes.io/instance: {{ .Release.Name }}

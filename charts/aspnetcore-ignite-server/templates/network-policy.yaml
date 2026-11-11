@@ -26,7 +26,7 @@ spec:
               app.kubernetes.io/instance: {{ .Release.Name }}
     {{- end }}
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release
+    # Allow traffic between the pods of this release (e.g., node-to-node communication)
     - from:
         - podSelector:
             matchLabels: {{- include "aspnetcore-ignite-server.selectorLabels" . | nindent 14 }}
@@ -36,7 +36,7 @@ spec:
     {{- end }}
   egress:
     {{- if .Values.networkPolicy.allowIntraCluster }}
-    # Allow traffic between the pods of this release
+    # Allow traffic between the pods of this release (e.g., node-to-node communication)
     - to:
         - podSelector:
             matchLabels: {{- include "aspnetcore-ignite-server.selectorLabels" . | nindent 14 }}

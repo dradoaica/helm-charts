@@ -24,13 +24,13 @@ data:
                 clientAuth={{ .Values.ssl.clientConnector.clientAuth }}
                 enabled={{ .Values.ssl.clientConnector.enabled }}
                 keyStore {
-                    password="{{ .Values.ssl.clientConnector.keyStorePassword }}"
-                    path="{{ .Values.ssl.clientConnector.keyStoreFilePath }}"
+                    password={{ .Values.ssl.clientConnector.keyStorePassword | toJson }}
+                    path={{ .Values.ssl.clientConnector.keyStoreFilePath | toJson }}
                     type="{{ .Values.ssl.clientConnector.keyStoreType }}"
                 }
                 trustStore {
-                    password="{{ .Values.ssl.clientConnector.trustStorePassword }}"
-                    path="{{ .Values.ssl.clientConnector.trustStoreFilePath }}"
+                    password={{ .Values.ssl.clientConnector.trustStorePassword | toJson }}
+                    path={{ .Values.ssl.clientConnector.trustStoreFilePath | toJson }}
                     type="{{ .Values.ssl.clientConnector.trustStoreType }}"
                 }
             }
@@ -96,13 +96,13 @@ data:
                 clientAuth={{ .Values.ssl.network.clientAuth }}
                 enabled={{ .Values.ssl.network.enabled }}
                 keyStore {
-                    password="{{ .Values.ssl.network.keyStorePassword }}"
-                    path="{{ .Values.ssl.network.keyStoreFilePath }}"
+                    password={{ .Values.ssl.network.keyStorePassword | toJson }}
+                    path={{ .Values.ssl.network.keyStoreFilePath | toJson }}
                     type="{{ .Values.ssl.network.keyStoreType }}"
                 }
                 trustStore {
-                    password="{{ .Values.ssl.network.trustStorePassword }}"
-                    path="{{ .Values.ssl.network.trustStoreFilePath }}"
+                    password={{ .Values.ssl.network.trustStorePassword | toJson }}
+                    path={{ .Values.ssl.network.trustStoreFilePath | toJson }}
                     type="{{ .Values.ssl.network.trustStoreType }}"
                 }
             }
@@ -131,14 +131,14 @@ data:
                 clientAuth={{ .Values.ssl.rest.clientAuth }}
                 enabled={{ .Values.ssl.rest.enabled }}
                 keyStore {
-                    password="{{ .Values.ssl.rest.keyStorePassword }}"
-                    path="{{ .Values.ssl.rest.keyStoreFilePath }}"
+                    password={{ .Values.ssl.rest.keyStorePassword | toJson }}
+                    path={{ .Values.ssl.rest.keyStoreFilePath | toJson }}
                     type="{{ .Values.ssl.rest.keyStoreType }}"
                 }
                 port={{ .Values.container.ports.managementSsl }}
                 trustStore {
-                    password="{{ .Values.ssl.rest.trustStorePassword }}"
-                    path="{{ .Values.ssl.rest.trustStoreFilePath }}"
+                    password={{ .Values.ssl.rest.trustStorePassword | toJson }}
+                    path={{ .Values.ssl.rest.trustStoreFilePath | toJson }}
                     type="{{ .Values.ssl.rest.trustStoreType }}"
                 }
             }
