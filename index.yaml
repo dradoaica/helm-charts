@@ -5,6 +5,38 @@ entries:
       ignite.apache.org/version: 2.18.0
     apiVersion: v2
     appVersion: 2.19.0
+    created: "2026-11-11T21:51:32.303568601Z"
+    description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery
+      clustering capabilities.
+    digest: 2ba0182d8c74ef8e8e545cf44fc28526531369c49fd063252234313d99d60a22
+    home: https://github.com/dradoaica/AspNetCore.Ignite/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - ignite
+    - csharp
+    - dotnet
+    - aspnetcore
+    - datagrid
+    - caching
+    - distributed
+    - key-value
+    - nosql
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: aspnetcore-ignite-server
+    sources:
+    - https://github.com/dradoaica/AspNetCore.Ignite/
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/aspnetcore-ignite-server-2.19.3/aspnetcore-ignite-server-2.19.3.tgz
+    version: 2.19.3
+  - annotations:
+      ignite.apache.org/version: 2.18.0
+    apiVersion: v2
+    appVersion: 2.19.0
     created: "2026-11-10T19:52:42.406439587Z"
     description: Apache Ignite 2 embedded in an ASP.NET Core server with auto-discovery
       clustering capabilities.
@@ -702,6 +734,35 @@ entries:
   ignite:
   - apiVersion: v2
     appVersion: 2.19.0
+    created: "2026-11-11T21:51:32.524560196Z"
+    description: Apache Ignite is a distributed database for high-performance computing
+      with in-memory speed.
+    digest: cab6b47d41480854e48174f2c38bfe3a607acf4facea07120b14dc45d0c21039
+    home: https://ignite.apache.org/docs/ignite2/latest/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - java
+    - datagrid
+    - caching
+    - jvm
+    - sql
+    - key-value
+    - nosql
+    - distributed
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: ignite
+    sources:
+    - https://github.com/apache/ignite
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/ignite-2.19.4/ignite-2.19.4.tgz
+    version: 2.19.4
+  - apiVersion: v2
+    appVersion: 2.19.0
     created: "2026-11-10T19:52:42.87937678Z"
     description: Apache Ignite is a distributed database for high-performance computing
       with in-memory speed.
@@ -1022,6 +1083,35 @@ entries:
   ignite-3:
   - apiVersion: v2
     appVersion: 3.2.0
+    created: "2026-11-11T21:51:32.767328586Z"
+    description: Apache Ignite is a distributed database for high-performance computing
+      with in-memory speed.
+    digest: dc1a0c966814eb60856e0aa72380e82664a442f961e96b6b8088822e65f01d65
+    home: https://ignite.apache.org/docs/ignite3/latest/
+    icon: https://ignite.apache.org/img/logo.svg
+    keywords:
+    - java
+    - datagrid
+    - caching
+    - jvm
+    - sql
+    - key-value
+    - nosql
+    - distributed
+    kubeVersion: '>= 1.26.0'
+    maintainers:
+    - email: dradoaica@gmail.com
+      name: dradoaica
+      url: https://dradoaica.blogspot.com/
+    name: ignite-3
+    sources:
+    - https://github.com/apache/ignite-3
+    type: application
+    urls:
+    - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.2.9/ignite-3-3.2.9.tgz
+    version: 3.2.9
+  - apiVersion: v2
+    appVersion: 3.2.0
     created: "2026-11-10T19:52:43.068374845Z"
     description: Apache Ignite is a distributed database for high-performance computing
       with in-memory speed.
@@ -1339,4 +1429,4 @@ entries:
     urls:
     - https://github.com/dradoaica/helm-charts/releases/download/ignite-3-3.1.0/ignite-3-3.1.0.tgz
     version: 3.1.0
-generated: "2026-11-10T19:52:43.068536939Z"
+generated: "2026-11-11T21:51:32.767534055Z"
