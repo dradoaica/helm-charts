@@ -51,7 +51,7 @@ data:
                     systemWorkerBlocked,
                     systemCriticalOperationTimeout
                 ]
-                # The node stops and its container restarts (the default since Ignite 3.2)
+                # The node stops and its container restarts
                 type=stop
             }
             oomBufferSizeBytes=16384

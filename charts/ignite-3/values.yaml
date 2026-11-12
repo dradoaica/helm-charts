@@ -1,4 +1,4 @@
-# Upgrading from 3.2.7: see the Upgrading section of README.md
+# Upgrading from 3.1.1 or a withdrawn 3.2.x: see the Upgrading section of README.md
 
 global:
   # -- Global container image registry override
@@ -127,12 +127,13 @@ resources:
     cpu: "2"
     memory: 5Gi
 
+# The probes check the REST port: Ignite 3.1 has no health endpoints (a pod is then ready as soon as its node listens,
+# before the cluster is initialized). For probes on the node state endpoint, see examples/node-state-probes-values.yaml
 # -- Liveness probe configuration
 livenessProbe:
   # -- Enable liveness probe
   enabled: true
-  httpGet:
-    path: /health/liveness
+  tcpSocket:
     port: 10300
   initialDelaySeconds: 5
   periodSeconds: 30
@@ -144,8 +145,7 @@ livenessProbe:
 readinessProbe:
   # -- Enable readiness probe
   enabled: true
-  httpGet:
-    path: /health/readiness
+  tcpSocket:
     port: 10300
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -157,8 +157,7 @@ readinessProbe:
 startupProbe:
   # -- Enable startup probe
   enabled: true
-  httpGet:
-    path: /health/liveness
+  tcpSocket:
     port: 10300
   initialDelaySeconds: 30
   periodSeconds: 10

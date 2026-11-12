@@ -1,0 +1,27 @@
+# Probes on the node state endpoint of the REST API, instead of the default probes on the REST port
+#
+# With authentication, the chart adds the Authorization header of the ignite user to httpGet probes, rendered from
+# authentication.igniteUserPassword, so:
+#  - the password is readable in the StatefulSet and its pods
+#  - authentication.existingSecret is refused
+#  - before changing the password, go back to the default probes for that upgrade (the pods would restart with the new
+#    password in their probes before the initialization job changes it)
+#
+# Install with:
+#   helm install ignite-3 ./charts/ignite-3 -f ./charts/ignite-3/examples/node-state-probes-values.yaml
+
+startupProbe:
+  tcpSocket: null
+  httpGet:
+    path: /management/v1/node/state
+    port: 10300
+livenessProbe:
+  tcpSocket: null
+  httpGet:
+    path: /management/v1/node/state
+    port: 10300
+readinessProbe:
+  tcpSocket: null
+  httpGet:
+    path: /management/v1/node/state
+    port: 10300

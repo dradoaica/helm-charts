@@ -39,7 +39,7 @@ backported.
 | clamav-openshift         | latest 1.5.5   |
 | conductor-oss-conductor  | latest 3.33.x  |
 | ignite                   | latest 2.19.x  |
-| ignite-3                 | latest 3.2.x   |
+| ignite-3                 | latest 3.1.x   |
 
 If you can't upgrade, say why in your report so the impact on your setup can be weighed.
 

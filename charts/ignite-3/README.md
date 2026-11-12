@@ -1,6 +1,6 @@
 # ignite-3
 
-![Version: 3.2.9](https://img.shields.io/badge/Version-3.2.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.2.0](https://img.shields.io/badge/AppVersion-3.2.0-informational?style=flat-square)
+![Version: 3.1.2](https://img.shields.io/badge/Version-3.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.1.0](https://img.shields.io/badge/AppVersion-3.1.0-informational?style=flat-square)
 
 Apache Ignite is a distributed database for high-performance computing with in-memory speed.
 
@@ -39,38 +39,38 @@ is neither of the others.
 The SSL key store and trust store passwords are rendered into the ConfigMap, as Ignite 3 does not substitute environment
 variables in its node configuration (see SECURITY.md).
 
-Until Apache Ignite 3.2.0 (`appVersion`) is released, run the 3.1.0 image with `examples/ignite-3.1-values.yaml`, whose
-probes check the REST port instead of the `/health` endpoints of Ignite 3.2:
+The probes check the REST port by default. `examples/node-state-probes-values.yaml` has probes on the node state
+endpoint (`/management/v1/node/state`) instead: with authentication, the chart adds the `Authorization` header of the
+`ignite` user to `httpGet` probes, with the limits listed in that file.
+
+## Status of Apache Ignite 3
+
+As of October 2026, there are no plans for the next Apache Ignite 3 release: 3.1.0 remains available, and the community
+recommends Apache Ignite 2.x (see the [ignite](../ignite/README.md) chart) for new projects and production deployments.
+
+This chart therefore deploys Ignite 3.1.0. Its 3.2.x versions, a preview for the unreleased Ignite 3.2.0, are withdrawn;
+chart 3.1.2 and later carry all their changes.
+
+## Upgrading from 3.1.1 or a withdrawn 3.2.x
+
+Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the old defaults, e.g., `rbac.create` and the writable
+root filesystem, and misses the new settings, e.g., `jmx.agent.sha256`; the chart fails with a message on such values):
 
 ```shell
-helm install <release> <chart> -f examples/ignite-3.1-values.yaml
+helm upgrade <release> <chart> --version 3.1.2 --reset-then-reuse-values
 ```
 
-## Upgrading from 3.2.8
+A release of a 3.2.x chart moves to 3.1.2 the same way (Helm does not mind the lower version number).
 
-Upgrade with `--reset-then-reuse-values`, as from 3.2.7 (the chart fails with a message on values that miss the new
-settings):
-
-```shell
-helm upgrade <release> <chart> --version 3.2.9 --reset-then-reuse-values
-```
-
+- The probes check the REST port (`tcpSocket`) by default: Ignite 3.1 has no `/health` endpoints. The probe
+  overrides of the former `examples/ignite-3.1-values.yaml` are no longer needed in your values.
+- The image defaults to 3.1.0 (`appVersion`).
 - The autoscaler (`autoscaling.create`) only scales up, on CPU only (`autoscaling.targetMemoryUtilizationPercentage` is
   refused), with `autoscaling.minReplicas` not below `replicaCount`.
 - The CLI works with `kubectl exec` on the read-only root filesystem (it needs `XDG_CONFIG_HOME` and `XDG_STATE_HOME`,
   now set).
 - `ssl.existingSecret` is refused with SSL enabled: the nodes read the SSL passwords from the ConfigMap only, so an
   existing Secret left them empty. The passwords are now escaped in the configuration (a `"` or `\\` broke it).
-
-## Upgrading from 3.2.7
-
-Upgrade with `--reset-then-reuse-values` (`--reuse-values` keeps the 3.2.7 defaults, e.g., `rbac.create` and the
-writable root filesystem, and misses the new settings, e.g., `jmx.agent.sha256`):
-
-```shell
-helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
-```
-
 - Changing `authentication.igniteUserPassword` (or the existing Secret) now changes the password of the `ignite` user;
   it used to make the initialization job fail.
 - `rbac.create` defaults to false and the pods no longer mount the ServiceAccount token: Ignite 3 does not use the
@@ -144,7 +144,7 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | jmx.port | int | `9404` | JMX agent port |
 | labels | object | `{}` | Additional labels to add to all resources |
 | lifecycleHooks | object | `{}` | Lifecycle hooks configuration |
-| livenessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/liveness","port":10300},"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":10}` | Liveness probe configuration |
+| livenessProbe | object | `{"enabled":true,"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":30,"successThreshold":1,"tcpSocket":{"port":10300},"timeoutSeconds":10}` | Liveness probe configuration |
 | livenessProbe.enabled | bool | `true` | Enable liveness probe |
 | memory.g1HeapRegionSizeMB | string | `""` | JVM G1 Heap region size in MB (a power of 2 from 1 to 32). If not set, what the JVM would choose (about 2048 regions; 1 MB for the default heap) |
 | memory.maxDirectMemorySizeMB | int | `2560` | JVM DirectMemory max size in MB (offHeapMB + checkpointing buffer size) |
@@ -180,7 +180,7 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | podSecurityContext.enabled | bool | `true` | Enable pod security context |
 | priorityClassName | string | `""` | Pod priority class name |
 | rbac.create | bool | `false` | Create RBAC items (e.g., role, role-binding) and mount the ServiceAccount token in the pods (not needed by Ignite, whose nodes find each other through the headless Service) |
-| readinessProbe | object | `{"enabled":true,"failureThreshold":3,"httpGet":{"path":"/health/readiness","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Readiness probe configuration |
+| readinessProbe | object | `{"enabled":true,"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"tcpSocket":{"port":10300},"timeoutSeconds":10}` | Readiness probe configuration |
 | readinessProbe.enabled | bool | `true` | Enable readiness probe |
 | replicaCount | int | `1` | Number of pods |
 | resources | object | `{"limits":{"cpu":"2","memory":"5Gi"},"requests":{"cpu":"2","memory":"5Gi"}}` | Main container requests/limits with guaranteed QoS (requests = limits)  memory calculation: onHeapMB (JVM Heap max size)   + maxMetaspaceSizeMB (JVM Metaspace max size)   + reservedCodeCacheSizeMB (JVM ReservedCodeCache size)   + offHeapMB (default storage profile max size; data + indexes (basic use cases will add a 30% increase on top of data))   + MIN(256MB, offHeapMB) (offHeapMB < 1 GB)     || offHeapMB/4 (offHeapMB between 1 GB and 8 GB)     || 2GB (offHeapMB > 8 GB)       (default storage profile checkpointing buffer size)   + ~512MB (other overheads; e.g., thread stacks, GC, symbols, etc.) |
@@ -229,7 +229,7 @@ helm upgrade <release> <chart> --version 3.2.8 --reset-then-reuse-values
 | ssl.rest.trustStoreFilePath | string | `""` | Path to the truststore used by the REST endpoint |
 | ssl.rest.trustStorePassword | string | `""` | Password for the REST endpoint truststore |
 | ssl.rest.trustStoreType | string | `"PKCS12"` | Truststore type for the REST endpoint |
-| startupProbe | object | `{"enabled":true,"failureThreshold":15,"httpGet":{"path":"/health/liveness","port":10300},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1}` | Startup probe configuration |
+| startupProbe | object | `{"enabled":true,"failureThreshold":15,"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"tcpSocket":{"port":10300},"timeoutSeconds":1}` | Startup probe configuration |
 | startupProbe.enabled | bool | `true` | Enable startup probe |
 | terminationGracePeriodSeconds | int | `60` | Pod termination grace period |
 | tolerations | list | `[]` | Node tolerations |

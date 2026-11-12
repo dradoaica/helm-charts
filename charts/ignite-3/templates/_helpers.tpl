@@ -49,6 +49,28 @@ Fail early on values from an older chart (included by the labels, which every te
 {{- end -}}
 
 {{/*
+Renders a probe; with authentication, an httpGet probe (on the REST API) gets the Authorization header of the ignite user
+*/}}
+{{- define "ignite.probe" -}}
+{{- $probe := deepCopy (omit .probe "enabled") -}}
+{{- /* A handler set to null in the values to remove a default one that no longer exists */ -}}
+{{- range $key, $value := $probe -}}
+{{- if kindIs "invalid" $value -}}
+{{- $_ := unset $probe $key -}}
+{{- end -}}
+{{- end -}}
+{{- $authentication := .context.Values.authentication -}}
+{{- if and $probe.httpGet $authentication.enabled -}}
+{{- if $authentication.existingSecret.name -}}
+{{- fail "httpGet probes are not supported with authentication.existingSecret (their Authorization header is rendered from authentication.igniteUserPassword): use tcpSocket probes" -}}
+{{- end -}}
+{{- $header := dict "name" "Authorization" "value" (printf "Basic %s" (printf "ignite:%s" ($authentication.igniteUserPassword | default "ignite") | b64enc)) -}}
+{{- $_ := set $probe.httpGet "httpHeaders" (append ($probe.httpGet.httpHeaders | default list) $header) -}}
+{{- end -}}
+{{- include "common.tplvalues.render" (dict "value" $probe "context" .context) -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "ignite.labels" -}}
