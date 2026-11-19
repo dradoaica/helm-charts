@@ -1,6 +1,6 @@
 # conductor-oss-conductor
 
-![Version: 3.33.2](https://img.shields.io/badge/Version-3.33.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.33.0](https://img.shields.io/badge/AppVersion-3.33.0-informational?style=flat-square)
+![Version: 3.34.0](https://img.shields.io/badge/Version-3.34.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.34.0](https://img.shields.io/badge/AppVersion-3.34.0-informational?style=flat-square)
 
 Conductor OSS Conductor is a platform originally created at Netflix to orchestrate workflows that span across microservices. This chart deploys Conductor OSS Conductor as a Deployment.
 
@@ -28,14 +28,32 @@ resolved from environment variables. Set any other property via `extraProperties
 `conductor.app.ownerEmailMandatory: true`). The chart requires the hosts of the configured backends (e.g., `redis.host`
 and `elasticsearch.url` with the defaults) and fails with a message when one is missing or a type is not supported.
 
-The `conductoross/conductor` image includes a single indexing backend, Elasticsearch 7: `indexing.type` elasticsearch8,
-opensearch2 and opensearch3 require an image built with the matching `INDEXING_BACKEND` build argument (see the Conductor
+The `conductoross/conductor` image includes a single indexing backend, Elasticsearch 8 (`indexing.type` elasticsearch or
+elasticsearch8): opensearch2 and opensearch3, and the deprecated Elasticsearch 7 (elasticsearch with `elasticsearch.version`
+7), require an image built with the matching `INDEXING_BACKEND` build argument (see the Conductor
 `docker/server/Dockerfile`).
 
 Conductor OSS has no authentication: restrict access to the API, UI and gRPC ports (e.g., with `networkPolicy.create`
 and an authenticating proxy in front of the Ingress).
 
+## Upgrading to 3.34.0
+
+Conductor 3.34 is a platform upgrade (Spring Boot 4, Java 25, an Alpine-based image), see its
+[release notes](https://github.com/conductor-oss/conductor/releases/tag/v3.34.0). For the chart:
+
+- The image indexes in Elasticsearch 8, also with `indexing.type` elasticsearch, and its client cannot talk to an
+  Elasticsearch 7 cluster: upgrade the cluster to 8.x first, or stay on chart 3.33.2 (or use an image built with the
+  `INDEXING_BACKEND` elasticsearch7).
+- The writable nginx volumes are mounted at the Alpine nginx paths (`/var/lib/nginx/tmp`, `/var/lib/nginx/logs` and
+  `/run/nginx`); without them, nginx does not start and the UI port does not answer, while the API stays up.
+- New setting: `app.graaljsRestrictedHostAccess` (Conductor's `conductor.app.graaljs.restricted-host-access`, false by
+  default, true from Conductor 3.35), which keeps the INLINE task scripts from calling arbitrary Java methods.
+
 ## Upgrading to 3.33.2
+
+Chart 3.33.2 runs Conductor 3.33, see the [3.33.0](https://github.com/conductor-oss/conductor/releases/tag/v3.33.0)
+and [3.33.1](https://github.com/conductor-oss/conductor/releases/tag/v3.33.1) release notes. Conductor 3.33.1 (PostgreSQL
+queue fixes) is the last Elasticsearch 7 image: to stay on Elasticsearch 7, use chart 3.33.2 with `image.tag` 3.33.1.
 
 Chart 3.33.1 and earlier passed the configuration as environment variables named like the properties (e.g.,
 `conductor.db.type`), which the image's shell (dash) drops before starting Java: Conductor ran with its built-in
@@ -168,7 +186,7 @@ Also:
 | amqpEventQueues.username | string | `""` | RabbitMQ username |
 | amqpEventQueues.virtualHost | string | `"/"` | RabbitMQ virtual host |
 | annotations | object | `{}` | Annotations to add to all resources |
-| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"","eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"","maxTaskOutputPayloadSizeThreshold":"","maxWorkflowInputPayloadSizeThreshold":"","maxWorkflowOutputPayloadSizeThreshold":"","maxWorkflowVariablesPayloadSizeThreshold":"","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperQueuePopTimeout":"","sweeperSweepBatchSize":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskPostponeThreshold":"","systemTaskQueuePopTimeout":"","systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"","taskOutputPayloadSizeThreshold":"","taskWorkerConfigs":{},"workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"","workflowRepairServiceEnabled":false}` | App configuration |
+| app | object | `{"activeWorkerLastPollTimeout":"","appID":"","asyncIndexingEnabled":"","asyncUpdateDelay":"","asyncUpdateShortRunningWorkflowDuration":"","eventExecutionIndexingEnabled":"","eventMessageIndexingEnabled":"","eventProcessorThreadCount":"","eventQueueLongPollTimeout":"","eventQueuePollCount":"","eventQueuePollInterval":"","eventQueueSchedulerPollThreadCount":"","executorServiceMaxThreadCount":"","graaljsRestrictedHostAccess":"","isolatedSystemTaskWorkerThreadCount":"","lockLeaseTime":"","lockTimeToTry":500,"maxPostponeDurationSeconds":"","maxTaskInputPayloadSizeThreshold":"","maxTaskOutputPayloadSizeThreshold":"","maxWorkflowInputPayloadSizeThreshold":"","maxWorkflowOutputPayloadSizeThreshold":"","maxWorkflowVariablesPayloadSizeThreshold":"","ownerEmailMandatory":"","stack":"","summaryInputOutputJsonSerializationEnabled":"","sweeperQueuePopTimeout":"","sweeperSweepBatchSize":"","sweeperThreadCount":"","sweeperWorkflowPollTimeout":"","systemTaskMaxPollCount":20,"systemTaskPostponeThreshold":"","systemTaskQueuePopTimeout":"","systemTaskWorkerCallbackDuration":"","systemTaskWorkerExecutionNamespace":"","systemTaskWorkerPollInterval":"","systemTaskWorkerThreadCount":20,"taskExecLogIndexingEnabled":"","taskExecLogSizeLimit":"","taskExecutionPostponeDuration":"","taskIndexingEnabled":"","taskInputPayloadSizeThreshold":"","taskOutputPayloadSizeThreshold":"","taskWorkerConfigs":{},"workflowExecutionLockEnabled":true,"workflowInputPayloadSizeThreshold":"","workflowNameValidationEnabled":false,"workflowOffsetTimeout":"","workflowOutputPayloadSizeThreshold":"","workflowRepairServiceEnabled":false}` | App configuration |
 | app.activeWorkerLastPollTimeout | string | `""` | The time to consider if a worker is actively polling for a task (e.g., 10s) |
 | app.appID | string | `""` | The ID with which the app has been registered (e.g., conductor, myApp) |
 | app.asyncIndexingEnabled | string | `""` | Whether to enable asynchronous indexing to Elasticsearch |
@@ -182,6 +200,7 @@ Also:
 | app.eventQueuePollInterval | string | `""` | The time interval at which the default event queues will be polled (e.g., 100ms) |
 | app.eventQueueSchedulerPollThreadCount | string | `""` | The number of threads used in the Scheduler for polling events from multiple event queues |
 | app.executorServiceMaxThreadCount | string | `""` | The maximum number of threads to be allocated to the executor service threadpool |
+| app.graaljsRestrictedHostAccess | string | `""` | Whether to restrict the Java host access of the JavaScript evaluator (INLINE tasks, javascript and graaljs evaluators) to the task data and console logging (defaults to false, i.e., arbitrary Java methods are reachable; Conductor 3.35 changes the default to true) |
 | app.isolatedSystemTaskWorkerThreadCount | string | `""` | The number of threads to be used within the threadpool for system task workers in each isolation group |
 | app.lockLeaseTime | string | `""` | The time for which the lock is leased (e.g., 60000ms, 1m) |
 | app.lockTimeToTry | int | `500` | The time for which the thread will block in an attempt to acquire the lock (e.g., 500ms, 1s) |
@@ -267,7 +286,7 @@ Also:
 | elasticsearch.restClientConnectionRequestTimeout | int | `-1` | REST client connection request timeout in ms (-1 means unlimited) |
 | elasticsearch.url | string | `""` | Elasticsearch URL |
 | elasticsearch.username | string | `""` | Elasticsearch username |
-| elasticsearch.version | int | `7` | Elasticsearch version (7 with indexing.type elasticsearch; use indexing.type elasticsearch8 for Elasticsearch 8) |
+| elasticsearch.version | int | `7` | Elasticsearch version (with indexing.type elasticsearch, read only by an image built with the deprecated INDEXING_BACKEND elasticsearch7, which requires 7; the Elasticsearch 8 backend ignores it) |
 | env | object | `{"EXTRA_JVM_OPTS":""}` | Environment variables (EXTRA_JVM_OPTS is appended to JAVA_OPTS; the names must be valid shell identifiers, as the image starts Java from a shell, so set the Conductor/Spring properties via extraProperties, which take precedence) |
 | externalPayloadStorage | object | `{"type":""}` | External payload storage configuration |
 | externalPayloadStorage.type | string | `""` | External payload storage type (postgres, s3, azureblob, or empty for none; postgres uses the postgres.* connection) |
@@ -292,7 +311,7 @@ Also:
 | image.tag | string | `""` | Main container image tag |
 | indexing | object | `{"enabled":true,"type":"elasticsearch"}` | Indexing configuration |
 | indexing.enabled | bool | `true` | Enable indexing |
-| indexing.type | string | `"elasticsearch"` | Indexing type (elasticsearch, elasticsearch8, opensearch2, opensearch3, postgres, sqlite; postgres and sqlite require the same db.type, and elasticsearch8, opensearch2 and opensearch3 an image built with the INDEXING_BACKEND build argument, as the conductoross/conductor image only includes Elasticsearch 7) |
+| indexing.type | string | `"elasticsearch"` | Indexing type (elasticsearch, elasticsearch8, opensearch2, opensearch3, postgres, sqlite; postgres and sqlite require the same db.type, and opensearch2 and opensearch3 an image built with the INDEXING_BACKEND build argument, as the conductoross/conductor image only includes Elasticsearch 8, selected by both elasticsearch and elasticsearch8) |
 | ingress.annotations | object | `{}` | Additional annotations for the Ingress |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress |
 | ingress.create | bool | `false` | Create an Ingress for external HTTP access |

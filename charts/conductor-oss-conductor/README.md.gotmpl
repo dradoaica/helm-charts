@@ -21,14 +21,32 @@ resolved from environment variables. Set any other property via `extraProperties
 `conductor.app.ownerEmailMandatory: true`). The chart requires the hosts of the configured backends (e.g., `redis.host`
 and `elasticsearch.url` with the defaults) and fails with a message when one is missing or a type is not supported.
 
-The `conductoross/conductor` image includes a single indexing backend, Elasticsearch 7: `indexing.type` elasticsearch8,
-opensearch2 and opensearch3 require an image built with the matching `INDEXING_BACKEND` build argument (see the Conductor
+The `conductoross/conductor` image includes a single indexing backend, Elasticsearch 8 (`indexing.type` elasticsearch or
+elasticsearch8): opensearch2 and opensearch3, and the deprecated Elasticsearch 7 (elasticsearch with `elasticsearch.version`
+7), require an image built with the matching `INDEXING_BACKEND` build argument (see the Conductor
 `docker/server/Dockerfile`).
 
 Conductor OSS has no authentication: restrict access to the API, UI and gRPC ports (e.g., with `networkPolicy.create`
 and an authenticating proxy in front of the Ingress).
 
+## Upgrading to 3.34.0
+
+Conductor 3.34 is a platform upgrade (Spring Boot 4, Java 25, an Alpine-based image), see its
+[release notes](https://github.com/conductor-oss/conductor/releases/tag/v3.34.0). For the chart:
+
+- The image indexes in Elasticsearch 8, also with `indexing.type` elasticsearch, and its client cannot talk to an
+  Elasticsearch 7 cluster: upgrade the cluster to 8.x first, or stay on chart 3.33.2 (or use an image built with the
+  `INDEXING_BACKEND` elasticsearch7).
+- The writable nginx volumes are mounted at the Alpine nginx paths (`/var/lib/nginx/tmp`, `/var/lib/nginx/logs` and
+  `/run/nginx`); without them, nginx does not start and the UI port does not answer, while the API stays up.
+- New setting: `app.graaljsRestrictedHostAccess` (Conductor's `conductor.app.graaljs.restricted-host-access`, false by
+  default, true from Conductor 3.35), which keeps the INLINE task scripts from calling arbitrary Java methods.
+
 ## Upgrading to 3.33.2
+
+Chart 3.33.2 runs Conductor 3.33, see the [3.33.0](https://github.com/conductor-oss/conductor/releases/tag/v3.33.0)
+and [3.33.1](https://github.com/conductor-oss/conductor/releases/tag/v3.33.1) release notes. Conductor 3.33.1 (PostgreSQL
+queue fixes) is the last Elasticsearch 7 image: to stay on Elasticsearch 7, use chart 3.33.2 with `image.tag` 3.33.1.
 
 Chart 3.33.1 and earlier passed the configuration as environment variables named like the properties (e.g.,
 `conductor.db.type`), which the image's shell (dash) drops before starting Java: Conductor ran with its built-in

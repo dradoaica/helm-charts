@@ -545,6 +545,7 @@ conductor.app.taskOutputPayloadSizeThreshold: {{ $v.app.taskOutputPayloadSizeThr
 conductor.app.maxTaskOutputPayloadSizeThreshold: {{ $v.app.maxTaskOutputPayloadSizeThreshold | toJson }}
 conductor.app.maxWorkflowVariablesPayloadSizeThreshold: {{ $v.app.maxWorkflowVariablesPayloadSizeThreshold | toJson }}
 conductor.app.taskExecLogSizeLimit: {{ $v.app.taskExecLogSizeLimit | toJson }}
+conductor.app.graaljs.restricted-host-access: {{ $v.app.graaljsRestrictedHostAccess | toJson }}
 {{- range $task, $config := $v.app.taskWorkerConfigs }}
 {{- range $name, $value := $config }}
 {{ printf "conductor.app.taskWorkerConfigs.%s.%s" $task $name }}: {{ $value | toJson }}

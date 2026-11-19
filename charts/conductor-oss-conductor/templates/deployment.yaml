@@ -195,17 +195,24 @@ spec:
             - name: config
               mountPath: /app/config/chart
               readOnly: true
-            # Writable directories (the root filesystem may be read-only): heap dumps, server logs, nginx (serving the UI)
+            # Writable directories (the root filesystem may be read-only): heap dumps, server logs, nginx (serving the UI;
+            # Alpine's nginx keeps its temporary files in /var/lib/nginx/tmp, its pid in /run/nginx and first opens
+            # /var/lib/nginx/logs/error.log, and the image's /var/lib/nginx is not readable by other users)
             - name: tmp
               mountPath: /tmp
             - name: logs
               mountPath: /app/logs
             - name: nginx
               mountPath: /var/lib/nginx
+            - name: nginx
+              mountPath: /var/lib/nginx/tmp
+              subPath: tmp
             - name: nginx-logs
               mountPath: /var/log/nginx
+            - name: nginx-logs
+              mountPath: /var/lib/nginx/logs
             - name: run
-              mountPath: /run
+              mountPath: /run/nginx
             {{- if and .Values.ai.enabled .Values.ai.gemini.credentialsSecret.name }}
             - name: gemini-credentials
               mountPath: /var/run/secrets/gemini

@@ -385,6 +385,10 @@ app:
   maxWorkflowVariablesPayloadSizeThreshold: ""
   # -- The maximum size of task execution logs
   taskExecLogSizeLimit: ""
+  # -- Whether to restrict the Java host access of the JavaScript evaluator (INLINE tasks, javascript and graaljs
+  # evaluators) to the task data and console logging (defaults to false, i.e., arbitrary Java methods are reachable;
+  # Conductor 3.35 changes the default to true)
+  graaljsRestrictedHostAccess: ""
   # -- Whether to enable the (deprecated) workflow repair service
   workflowRepairServiceEnabled: false
 
@@ -454,8 +458,8 @@ indexing:
   # -- Enable indexing
   enabled: true
   # -- Indexing type (elasticsearch, elasticsearch8, opensearch2, opensearch3, postgres, sqlite; postgres and sqlite require the
-  # same db.type, and elasticsearch8, opensearch2 and opensearch3 an image built with the INDEXING_BACKEND build argument, as
-  # the conductoross/conductor image only includes Elasticsearch 7)
+  # same db.type, and opensearch2 and opensearch3 an image built with the INDEXING_BACKEND build argument, as the
+  # conductoross/conductor image only includes Elasticsearch 8, selected by both elasticsearch and elasticsearch8)
   type: elasticsearch
 
 # -- External payload storage configuration
@@ -710,7 +714,8 @@ elasticsearch:
   asyncMaxPoolSize: 12
   # -- Maximum time an async buffer is held before flushing (e.g., 10s)
   asyncBufferFlushTimeout: 10s
-  # -- Elasticsearch version (7 with indexing.type elasticsearch; use indexing.type elasticsearch8 for Elasticsearch 8)
+  # -- Elasticsearch version (with indexing.type elasticsearch, read only by an image built with the deprecated
+  # INDEXING_BACKEND elasticsearch7, which requires 7; the Elasticsearch 8 backend ignores it)
   version: 7
   # -- Elasticsearch cluster health color
   clusterHealthColor: yellow
